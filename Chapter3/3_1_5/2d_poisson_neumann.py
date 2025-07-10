@@ -15,7 +15,7 @@ os.environ['CC'] = 'mpicc'
 
 # CHECK THIS -> what solver to use?
 # check symmetry etc
-# python3 2d_poisson_neumann.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# python3 2d_poisson_neumann.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
 
 # 2D test
 # Solving -u_xx - u_yy = 8pi**2 * cos(2pix) * cos(2piy)
@@ -212,7 +212,7 @@ Ly = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]
-n_values = [129]
+# n_values = [65]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -244,7 +244,7 @@ for n in n_values:
 
     u.data[:] = 0.1
     exprs = [eqn] + bcs
-    # TODO: set ksp type to CG -> need to check this? think it should be gmres since neumann ruins symmetry?
+    # TODO: Use GMRES since mirroring along boundary ruins symmetry
     petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
     with switchconfig(log_level='DEBUG'):
@@ -269,7 +269,11 @@ for n in n_values:
     n_interior = np.prod([s - 1 for s in grid.shape])
     discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
     discrete_l2_norms.append(discrete_l2_norm)
-    
+
+# print(op.ccode)
+# print(op.arguments())
+
+# print(u_exact.data[:])
 print(infinity_norms)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
