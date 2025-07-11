@@ -212,7 +212,7 @@ Ly = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]
-# n_values = [65]
+n_values = [1026]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -242,7 +242,7 @@ for n in n_values:
     bcs += [neumann_left(neumann_top(eqn, sub7), sub7)]
     bcs += [neumann_right(neumann_top(eqn, sub8), sub8)]
 
-    u.data[:] = 0.1
+    # u.data[:] = 0.1
     exprs = [eqn] + bcs
     # TODO: Use GMRES since mirroring along boundary ruins symmetry
     petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})

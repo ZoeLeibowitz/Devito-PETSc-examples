@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD,&(size)));
 
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,1025,1025,1,1,1,2,NULL,NULL,&(da0)));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,1026,1026,1,1,1,2,NULL,NULL,&(da0)));
   PetscCall(DMSetUp(da0));
   PetscCall(DMSetMatType(da0,MATSHELL));
   PetscCall(SNESCreate(PETSC_COMM_WORLD,&(snes0)));
@@ -342,11 +342,8 @@ PetscErrorCode FormExact(DM dm0, Vec B)
   PetscCall(VecGetArray(blocal0,&b_u_vec));
   PetscCall(DMGetApplicationContext(dm0,&(ctx0)));
   PetscCall(DMDAGetLocalInfo(dm0,&(info)));
-//   struct dataobj * f_vec = ctx0->f_vec;
 
   PetscScalar (* b_u)[info.gxm] = (PetscScalar (*)[info.gxm]) b_u_vec;
-//   PetscScalar (* f)[f_vec->size[1]] __attribute__ ((aligned (64))) = (PetscScalar (*)[f_vec->size[1]]) f_vec->data;
-
 
   for (int ix = ctx0->x_m; ix <= ctx0->x_M; ix += 1)
   {
@@ -384,7 +381,6 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
 //   struct dataobj * f_vec = ctx0->f_vec;
 
   PetscScalar (* b_u)[info.gxm] = (PetscScalar (*)[info.gxm]) b_u_vec;
-//   PetscScalar (* f)[f_vec->size[1]] __attribute__ ((aligned (64))) = (PetscScalar (*)[f_vec->size[1]]) f_vec->data;
 
 
   for (int ix = ctx0->x_m; ix <= ctx0->x_M; ix += 1)
@@ -395,64 +391,6 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
       PetscScalar y = ctx0->h_y*iy;
       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*x)*PetscCosReal(2.0*PETSC_PI*y);
     }
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
-//   }
-//   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
-//   {
-//     #pragma omp simd aligned(f:32)
-//     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
-//     {
-//       b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*f[ix + 2][iy + 2];
-//     }
   }
   PetscCall(DMLocalToGlobalBegin(dm0,blocal0,INSERT_VALUES,B));
   PetscCall(DMLocalToGlobalEnd(dm0,blocal0,INSERT_VALUES,B));
@@ -467,20 +405,21 @@ PetscErrorCode PopulateUserContext0(UserCtx0 * ctx0)
 {
   PetscFunctionBeginUser;
 
-  ctx0->h_x = 0.0009765625;
-  ctx0->h_y = 0.0009765625;
-  ctx0->x_M = 1024;
+  ctx0->h_x = 0.00097560975;
+  ctx0->h_y = 0.00097560975;
+  ctx0->x_M = 1025;
   ctx0->x_ltkn0 = 1;
   ctx0->x_ltkn1 = 1;
   ctx0->x_m = 0;
   ctx0->x_rtkn0 = 1;
   ctx0->x_rtkn2 = 1;
-  ctx0->y_M = 1024;
+  ctx0->y_M = 1025;
   ctx0->y_ltkn0 = 1;
   ctx0->y_ltkn2 = 1;
   ctx0->y_m = 0;
   ctx0->y_rtkn0 = 1;
   ctx0->y_rtkn1 = 1;
+
 
   PetscFunctionReturn(0);
 }
