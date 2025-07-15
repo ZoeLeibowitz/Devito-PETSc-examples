@@ -136,7 +136,7 @@ plt.tight_layout()
 plt.savefig("3_1_1_mpi.png", dpi=200)
 plt.show()
 
-#rerun these
+
 serial_infinity_norms = [
     np.float64(0.00027376999356110154),
     np.float64(6.882733511814898e-05),
