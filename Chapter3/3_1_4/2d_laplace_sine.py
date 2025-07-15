@@ -134,6 +134,7 @@ for n in n_values:
     discrete_l2_norms.append(discrete_l2_norm)
     
 print(infinity_norms)
+print(ksp_iters)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
 assert slope > 1.9

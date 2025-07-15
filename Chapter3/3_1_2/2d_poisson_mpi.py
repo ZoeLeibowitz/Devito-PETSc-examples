@@ -3,18 +3,19 @@ import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax)
-from devito.mpi.distributed import MPI
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
-# import matplotlib.pyplot as plt
+from devito.mpi.distributed import MPI
+
+import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# DEVITO_MPI=1 mpiexec -n 1 python3 2d_poisson_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# DEVITO_MPI=1 mpiexec -n 4 python3 2d_poisson_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
 
 # 2D test
 # Solving -u_xx - u_yy = f(x,y)
@@ -72,7 +73,6 @@ Ly = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]
-n_values = [129]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -111,12 +111,12 @@ for n in n_values:
     # TODO: set ksp type to CG
     petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
-    # with switchconfig(log_level='DEBUG'):
-    op = Operator(petsc, language='petsc')
-    summary = op.apply()
+    with switchconfig(log_level='DEBUG'):
+        op = Operator(petsc, language='petsc')
+        summary = op.apply()
 
-    # iters = summary.petsc[('section0', None)].KSPGetIterationNumber
-    # ksp_iters.append(iters)
+    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X, Y)
@@ -135,18 +135,66 @@ for n in n_values:
     else:
         infinity_norm_mpi = None
 
-
-    # Compute infinity norm using numpy
-    # TODO: Figure out how to compute the infinity norm using Devito
-    infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-    infinity_norms.append(infinity_norm)
-
-    # Compute discrete L2 norm (RMS error)
-    n_interior = np.prod([s - 1 for s in grid.shape])
-    discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-    discrete_l2_norms.append(discrete_l2_norm)
+    infinity_norms.append(infinity_norm_mpi)
     
 
+slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 print(infinity_norms)
+assert slope > 1.9
+assert slope < 2.1
 
-print(infinity_norm_mpi)
+# Plot
+plt.figure(figsize=(6, 5))
+plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**2,
+    'k--',
+    label=r'Reference slope $O(h^2)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'$\infty$-norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("3_1_2_mpi.png", dpi=200)
+plt.show()
+
+
+# TODO: Note, I ran with mpiexec -n 1 to check that the infinity norm computation is the exact same as below (the serial case)
+serial_infinity_norms = [
+    np.float64(8.59058043676253e-05),
+    np.float64(2.183883155537636e-05),
+    np.float64(5.477518565166761e-06),
+    np.float64(1.371033316877046e-06),
+    np.float64(3.428173114272681e-07),
+    np.float64(8.571514120703227e-08),
+    np.float64(2.1436735497815107e-08),
+    np.float64(5.381981305063732e-09)
+]
+
+# taken from output:
+parallel_infinity_norms = [
+    np.float64(8.590580436740325e-05),
+    np.float64(2.1838831555598404e-05),
+    np.float64(5.477518564056538e-06),
+    np.float64(1.371033316877046e-06),
+    np.float64(3.428173112052235e-07),
+    np.float64(8.571514054089846e-08),
+    np.float64(2.1436737274171946e-08),
+    np.float64(5.3819804168853125e-09)
+]
+
+
+# check iters are exact same 
+serial_kspiters = [
+    25,
+    60,
+    124,
+    246,
+    486,
+    956,
+    1886,
+    3720,
+]
+
+assert ksp_iters == serial_kspiters

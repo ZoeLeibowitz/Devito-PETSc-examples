@@ -110,7 +110,7 @@ for n in n_values:
 
 
 slope, intercept = np.polyfit(np.log(dx), np.log(infinity_norms), 1)
-
+print(infinity_norms)
 assert slope > 1.9
 assert slope < 2.1
 

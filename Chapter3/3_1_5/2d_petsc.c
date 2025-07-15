@@ -29,7 +29,7 @@ static char help[] = "Solves 2D Poisson equation,\n\
 extern PetscErrorCode MatMult0(Mat J, Vec X, Vec Y);
 extern PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy);
 extern PetscErrorCode FormRHS0(DM dm0, Vec B);
-extern PetscErrorCode PopulateUserContext0(UserCtx0 * ctx0);
+extern PetscErrorCode PopulateUserContext0(UserCtx0 * ctx0, DM da);
 extern PetscErrorCode FormExact(DM dm0, Vec B);
 
 
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD,&(size)));
 
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,1026,1026,1,1,1,2,NULL,NULL,&(da0)));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,9,9,1,1,1,2,NULL,NULL,&(da0)));
   PetscCall(DMSetUp(da0));
   PetscCall(DMSetMatType(da0,MATSHELL));
   PetscCall(SNESCreate(PETSC_COMM_WORLD,&(snes0)));
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
   PetscCall(DMCreateGlobalVector(da0,&(exact)));
 
   PetscCall(SNESGetKSP(snes0,&(ksp0)));
-  PetscCall(KSPSetTolerances(ksp0,1e-12,1e-50,100000.0,10000.0));
+  PetscCall(KSPSetTolerances(ksp0,1e-10,1e-50,100000.0,10000.0));
   PetscCall(KSPSetType(ksp0,KSPGMRES));
   PetscCall(KSPGetPC(ksp0,&(pc0)));
   PetscCall(PCSetType(pc0,PCNONE));
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
   PetscCall(MatShellSetOperation(J0,MATOP_MULT,(void (*)(void))MatMult0));
   PetscCall(SNESSetFunction(snes0,NULL,FormFunction0,(void*)(da0)));
   PetscCall(SNESSetFromOptions(snes0));
-  PetscCall(PopulateUserContext0(&(ctx0)));
+  PetscCall(PopulateUserContext0(&(ctx0), da0));
   PetscCall(MatSetDM(J0,da0));
   PetscCall(DMSetApplicationContext(da0,&(ctx0)));
 
@@ -86,24 +86,29 @@ int main(int argc, char **argv)
   PetscCall(FormExact(da0,exact));
 
   MatNullSpace nullspace;
-  MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullspace);
-  MatSetNullSpace(J0, nullspace);
+  PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullspace));
+  PetscCall(MatSetNullSpace(J0, nullspace));
+
+  // # TODO: figure out if this is necessary if mat is not symmetric
+  PetscCall(MatSetTransposeNullSpace(J0, nullspace));
 
   PetscCall(VecSet(xglobal0,0.001));
 
-//   MatNullSpaceRemove(nullspace, bglobal0);
-  MatNullSpaceRemove(nullspace, xglobal0);
+  // PetscCall(KSPSet)
+
+  // PetscCall(MatNullSpaceRemove(nullspace, xglobal0));
+  PetscCall(MatNullSpaceRemove(nullspace, bglobal0));
   PetscCall(SNESSolve(snes0,bglobal0,xglobal0));
+
+  // PetscCall(VecView(xglobal0,PETSC_VIEWER_STDOUT_WORLD));
 
   // compute infinity norm
   PetscCall(VecAXPY(xglobal0,-1.0,exact));   // u <- u + (-1.0) uexact
   PetscCall(VecNorm(xglobal0,NORM_INFINITY,&errinf));
 
-
 //   PetscCall(VecView(xglobal0,PETSC_VIEWER_STDOUT_WORLD));
 
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "error |u-uexact|_inf = %.22e\n", errinf));
-
 
   PetscCall(VecDestroy(&(bglobal0)));
   PetscCall(VecDestroy(&(xglobal0)));
@@ -323,6 +328,11 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
   PetscCall(DMRestoreLocalVector(dm0,&(xloc)));
   PetscCall(DMRestoreLocalVector(dm0,&(floc)));
 
+  MatNullSpace nullspace;
+  PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
+  PetscCall(MatNullSpaceRemove(nullspace, F));
+  PetscCall(MatNullSpaceDestroy(&nullspace));
+
   PetscFunctionReturn(0);
 }
 
@@ -378,7 +388,6 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
   PetscCall(VecGetArray(blocal0,&b_u_vec));
   PetscCall(DMGetApplicationContext(dm0,&(ctx0)));
   PetscCall(DMDAGetLocalInfo(dm0,&(info)));
-//   struct dataobj * f_vec = ctx0->f_vec;
 
   PetscScalar (* b_u)[info.gxm] = (PetscScalar (*)[info.gxm]) b_u_vec;
 
@@ -397,29 +406,38 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
   PetscCall(VecRestoreArray(blocal0,&b_u_vec));
   PetscCall(DMRestoreLocalVector(dm0,&(blocal0)));
 
+  // MatNullSpace nullspace;
+  // PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
+  // PetscCall(MatNullSpaceRemove(nullspace, B));
+  // PetscCall(MatNullSpaceDestroy(&nullspace));
+
   PetscFunctionReturn(0);
 }
 
 
-PetscErrorCode PopulateUserContext0(UserCtx0 * ctx0)
+PetscErrorCode PopulateUserContext0(UserCtx0 * ctx0, DM da)
 {
   PetscFunctionBeginUser;
 
-  ctx0->h_x = 0.00097560975;
-  ctx0->h_y = 0.00097560975;
-  ctx0->x_M = 1025;
+  // get local info
+  DMDALocalInfo info;
+  PetscCall(DMDAGetLocalInfo(da,&(info)));
+
+  ctx0->h_x = 1.0/(PetscReal)(info.mx - 1);
+  ctx0->h_y = 1.0/(PetscReal)(info.my - 1);
+
+  ctx0->x_M = info.mx - 1;
   ctx0->x_ltkn0 = 1;
   ctx0->x_ltkn1 = 1;
   ctx0->x_m = 0;
   ctx0->x_rtkn0 = 1;
   ctx0->x_rtkn2 = 1;
-  ctx0->y_M = 1025;
+  ctx0->y_M = info.my - 1;
   ctx0->y_ltkn0 = 1;
   ctx0->y_ltkn2 = 1;
   ctx0->y_m = 0;
   ctx0->y_rtkn0 = 1;
   ctx0->y_rtkn1 = 1;
-
 
   PetscFunctionReturn(0);
 }
