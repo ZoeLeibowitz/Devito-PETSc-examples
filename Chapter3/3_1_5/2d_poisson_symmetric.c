@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD,&(size)));
 
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,2049,2049,1,1,1,2,NULL,NULL,&(da0)));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,129,129,1,1,1,2,NULL,NULL,&(da0)));
   PetscCall(DMSetUp(da0));
   PetscCall(DMSetMatType(da0,MATSHELL));
   PetscCall(SNESCreate(PETSC_COMM_WORLD,&(snes0)));
@@ -69,8 +69,8 @@ int main(int argc, char **argv)
   PetscCall(DMCreateGlobalVector(da0,&(exact)));
 
   PetscCall(SNESGetKSP(snes0,&(ksp0)));
-  PetscCall(KSPSetTolerances(ksp0,1e-10,1e-50,100000.0,10000.0));
-  PetscCall(KSPSetType(ksp0,KSPGMRES));
+  PetscCall(KSPSetTolerances(ksp0,1e-12,1e-50,100000.0,10000.0));
+  PetscCall(KSPSetType(ksp0,KSPCG));
   PetscCall(KSPGetPC(ksp0,&(pc0)));
   PetscCall(PCSetType(pc0,PCNONE));
   PetscCall(KSPSetFromOptions(ksp0));
@@ -89,15 +89,11 @@ int main(int argc, char **argv)
   PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullspace));
   PetscCall(MatSetNullSpace(J0, nullspace));
 
-  // # TODO: figure out if this is necessary if mat is not symmetric
-  // PetscCall(MatSetTransposeNullSpace(J0, nullspace));
 
-  // PetscCall(VecSet(xglobal0,0.001));
-
-  // PetscCall(KSPSet)
+  PetscCall(VecSet(xglobal0,0.001));
 
   // PetscCall(MatNullSpaceRemove(nullspace, xglobal0));
-  // PetscCall(MatNullSpaceRemove(nullspace, bglobal0));
+//   PetscCall(MatNullSpaceRemove(nullspace, bglobal0));
   PetscCall(SNESSolve(snes0,bglobal0,xglobal0));
 
   // PetscCall(VecView(xglobal0,PETSC_VIEWER_STDOUT_WORLD));
@@ -105,8 +101,6 @@ int main(int argc, char **argv)
   // compute infinity norm
   PetscCall(VecAXPY(xglobal0,-1.0,exact));   // u <- u + (-1.0) uexact
   PetscCall(VecNorm(xglobal0,NORM_INFINITY,&errinf));
-
-  PetscCall(VecView(exact,PETSC_VIEWER_STDOUT_WORLD));
 
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "error |u-uexact|_inf = %.22e\n", errinf));
 
@@ -160,12 +154,12 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r2 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r2 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r2 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -5.0e-1*((r2 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r2 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r3 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r3 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r3 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -5.0e-1*((r3 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r3 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -173,7 +167,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
     {
       PetscScalar r4 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r4 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r4 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -5.0e-1*((r4 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r4 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -181,7 +175,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
     {
       PetscScalar r5 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r5 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r5 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -5.0e-1*((r5 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r5 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -189,7 +183,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r6 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r6 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r6 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -2.5e-1*((r6 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r6 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -197,7 +191,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r7 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r7 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r7 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -2.5e-1*((r7 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r7 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -205,7 +199,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r8 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r8 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r8 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -2.5e-1*((r8 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r8 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -213,7 +207,7 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r9 = -2.0*x_u[ix + 2][iy + 2];
-      y_u[ix + 2][iy + 2] = (-(r9 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r9 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      y_u[ix + 2][iy + 2] = -2.5e-1*((r9 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r9 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   PetscCall(VecRestoreArray(yloc,&y_u_vec));
@@ -222,6 +216,10 @@ PetscErrorCode MatMult0(Mat J, Vec X, Vec Y)
   PetscCall(DMLocalToGlobalEnd(dm0,yloc,ADD_VALUES,Y));
   PetscCall(DMRestoreLocalVector(dm0,&(xloc)));
   PetscCall(DMRestoreLocalVector(dm0,&(yloc)));
+
+  MatNullSpace nullspace;
+  PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullspace));
+  PetscCall(MatSetNullSpace(J, nullspace));
 
   PetscFunctionReturn(0);
 }
@@ -265,12 +263,12 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r12 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r12 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r12 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -5.0e-1*((r12 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r12 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r13 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r13 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r13 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -5.0e-1*((r13 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r13 + x_u[ix + 1][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -278,7 +276,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
     {
       PetscScalar r14 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r14 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r14 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -5.0e-1*((r14 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r14 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -286,7 +284,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
     {
       PetscScalar r15 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r15 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r15 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -5.0e-1*((r15 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r15 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -294,7 +292,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r16 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r16 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r16 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -2.5e-1*((r16 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r16 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -302,7 +300,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
     {
       PetscScalar r17 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r17 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) - (r17 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -2.5e-1*((r17 + x_u[ix + 2][2 + (PetscInt)(abs(iy - 1))] + x_u[ix + 2][iy + 3])/((ctx0->h_y*ctx0->h_y)) + (r17 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
@@ -310,7 +308,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r18 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r18 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r18 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -2.5e-1*((r18 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r18 + x_u[2 + (PetscInt)(abs(ix - 1))][iy + 2] + x_u[ix + 3][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
@@ -318,7 +316,7 @@ PetscErrorCode FormFunction0(SNES snes, Vec X, Vec F, void* dummy)
     for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
     {
       PetscScalar r19 = -2.0*x_u[ix + 2][iy + 2];
-      f_u[ix + 2][iy + 2] = (-(r19 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) - (r19 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
+      f_u[ix + 2][iy + 2] = -2.5e-1*((r19 + x_u[ix + 2][iy + 1] + x_u[ix + 2][iy + 2 - (PetscInt)(abs(iy - ctx0->y_M + 1))])/((ctx0->h_y*ctx0->h_y)) + (r19 + x_u[ix + 1][iy + 2] + x_u[ix + 2 - (PetscInt)(abs(ix - ctx0->x_M + 1))][iy + 2])/((ctx0->h_x*ctx0->h_x)))*ctx0->h_x*ctx0->h_y;
     }
   }
   PetscCall(VecRestoreArray(floc,&f_u_vec));
@@ -391,13 +389,61 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
 
   PetscScalar (* b_u)[info.gxm] = (PetscScalar (*)[info.gxm]) b_u_vec;
 
-  for (int ix = ctx0->x_m; ix <= ctx0->x_M; ix += 1)
+  for (int ix = ctx0->x_m + ctx0->x_ltkn0; ix <= ctx0->x_M - ctx0->x_rtkn0; ix += 1)
   {
-    for (int iy = ctx0->y_m; iy <= ctx0->y_M; iy += 1)
+    for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
     {
-      PetscScalar x = ctx0->h_x*ix;
-      PetscScalar y = ctx0->h_y*iy;
-      b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*x)*PetscCosReal(2.0*PETSC_PI*y);
+      b_u[ix + 2][iy + 2] = ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+    for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 5.0e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+    for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 5.0e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
+  {
+    for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 5.0e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
+  {
+    for (int iy = ctx0->y_m + ctx0->y_ltkn0; iy <= ctx0->y_M - ctx0->y_rtkn0; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 5.0e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
+  {
+    for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 2.5e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
+  {
+    for (int iy = ctx0->y_m; iy <= ctx0->y_m + ctx0->y_ltkn2 - 1; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 2.5e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_m; ix <= ctx0->x_m + ctx0->x_ltkn1 - 1; ix += 1)
+  {
+    for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 2.5e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
+    }
+  }
+  for (int ix = ctx0->x_M - ctx0->x_rtkn2 + 1; ix <= ctx0->x_M; ix += 1)
+  {
+    for (int iy = ctx0->y_M - ctx0->y_rtkn1 + 1; iy <= ctx0->y_M; iy += 1)
+    {
+      b_u[ix + 2][iy + 2] = 2.5e-1*ctx0->h_x*ctx0->h_y*8.0*PETSC_PI*PETSC_PI*PetscCosReal(2.0*PETSC_PI*ctx0->h_x*ix)*PetscCosReal(2.0*PETSC_PI*ctx0->h_y*iy);
     }
   }
   PetscCall(DMLocalToGlobalBegin(dm0,blocal0,INSERT_VALUES,B));
