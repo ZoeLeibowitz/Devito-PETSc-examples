@@ -2,6 +2,8 @@ import numpy as np
 
 
 
+# These are with mpiexec -n 4
+
 serial_infinity_norms = [
     np.float64(0.004403459551176603),
     np.float64(0.0011343085906865835),

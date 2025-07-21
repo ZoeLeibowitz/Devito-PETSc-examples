@@ -45,7 +45,7 @@ int main(int argc, char **argv)
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(KSPCreate(PETSC_COMM_WORLD, &ksp));
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 9, 9, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, &da));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 33, 33, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, &da));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
   PetscCall(DMDASetUniformCoordinates(da, 0, 1, 0, 1, 0, 0));
@@ -84,8 +84,7 @@ int main(int argc, char **argv)
   PetscCall(KSPGetOperators(ksp, &Amat, &Pmat));
 
   //view exact
-
-    // PetscCall(VecView(exact, PETSC_VIEWER_STDOUT_WORLD));
+  // PetscCall(VecView(exact, PETSC_VIEWER_STDOUT_WORLD));
   // PetscCall(MatView(Amat, PETSC_VIEWER_STDOUT_WORLD));
 
 
@@ -129,6 +128,8 @@ PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx)
   PetscCall(DMDAVecRestoreArray(da, b, &array));
   PetscCall(VecAssemblyBegin(b));
   PetscCall(VecAssemblyEnd(b));
+
+  // PetscCall(VecShift(b, 0.01));
 
   /* force right-hand side to be consistent for singular matrix */
   /* note this is really a hack, normally the model would provide you with a consistent right handside */

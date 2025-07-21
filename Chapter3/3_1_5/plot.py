@@ -149,31 +149,50 @@ norms = [
     6.5341950618025279595713e-05,
     1.6349832811846098934438e-05,
     4.0892860380115081397889e-06,
-
 ]
 
 
 
+# # testing 2d_poisson_symmetric.c -> pure petsc code
+# # with zero initial guess -> should be 2nd order accurate
+# # use rtol 1e-12
+# # USING KSPCG since we maintin symmetry
+# # testing the code WITHOUT setting the nullspace - should diverge probably
+# n_values = [9, 17, 33, 65, 129, 257, 513, 1025, 2049]
+# h = np.array([1.0/(n-1) for n in n_values])
+# norms = [
+#     6.6029649120150635255300e-02,
+#     1.6455766606752408875991e-02,
+#     4.1401939758805017532950e-03,
+#     1.0404542658237758701034e-03,
+#     2.6092642011144029368097e-04,
+#     6.5341950618025279595713e-05,
+#     1.6349832811846098934438e-05,
+#     4.0892860380115081397889e-06,
+#     1.0225521651641145126632e-06
+# ]
+
+
+
 # testing 2d_poisson_symmetric.c -> pure petsc code
-# with zero initial guess -> should be 2nd order accuracy
+# with zero initial guess -> should be 2nd order accurate
 # use rtol 1e-12
 # USING KSPCG since we maintin symmetry
-# testing the code WITHOUT setting the nullspace - should diverge probably
+# testing the code with setting the nullspace
+# if i add a constant to the RHS via VecShift, then it should still converge to the exact solution
 n_values = [9, 17, 33, 65, 129, 257, 513, 1025, 2049]
 h = np.array([1.0/(n-1) for n in n_values])
 norms = [
     6.6029649120150635255300e-02,
     1.6455766606752408875991e-02,
-    4.1401939758805017532950e-03,
-    1.0404542658237758701034e-03,
-    2.6092642011144029368097e-04,
-    6.5341950618025279595713e-05,
-    1.6349832811846098934438e-05,
-    4.0892860380115081397889e-06,
-    1.0225521651641145126632e-06
+    4.1401939758809458425048e-03,
+    1.0404542658224436024739e-03,
+    2.6092642011366073973022e-04,
+    6.5341950615804833546463e-05,
+    1.6349832813400411168914e-05,,
+    4.0892860184715829063862e-06,
+
 ]
-
-
 
 
 slope, intercept = np.polyfit(np.log(h), np.log(norms), 1)
