@@ -2,7 +2,9 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax)
+                    configuration, SubDomain, norm)
+
+from devito.finite_differences.differentiable import EvalDerivative
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -90,10 +92,6 @@ ksp_iters = []
 so = 2
 
 
-import numpy as np
-from devito import Grid, TimeFunction, Eq, Operator, solve
-from devito.finite_differences.differentiable import EvalDerivative
-
 
 for n in n_values:
     grid = Grid(
@@ -103,8 +101,6 @@ for n in n_values:
     u = Function(name='u', grid=grid, space_order=so)
     f = Function(name='f', grid=grid, space_order=so)
     bc = Function(name='bc', grid=grid, space_order=so)
-
-    ##### 9-point stencil #####
 
     x, y = grid.dimensions
     h_x = x.spacing
@@ -138,7 +134,6 @@ for n in n_values:
     Y, X = np.meshgrid(tmpx, tmpy)
 
     f.data[:] = 0.0
-
 
     bc.data[:, 0] = 0.
     bc.data[:, -1] = np.float64(np.sin(np.pi*tmpx))
