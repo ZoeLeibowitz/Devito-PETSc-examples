@@ -2,7 +2,8 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax)
+                    configuration, SubDomain, norm)
+from devito.finite_differences.differentiable import EvalDerivative
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -13,7 +14,8 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 laplace_6th_order.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# python3 poisson_collatz.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# ref - https://pdf.sciencedirectassets.com/272570/1-s2.0-S0021999100X02033/1-s2.0-0021999184900226/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjELj%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFQy5wqN8Qzb%2FdGuSbFRGSrbApV%2F6XmfLeQ8FEmkaD7AAiAYSK4zEefc95Igcd%2BpFS3477XMDvXbM%2FLstz7EbJ21uCq8BQjR%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAUaDDA1OTAwMzU0Njg2NSIMsyWCF9OHFhbLJfSAKpAFVcic7HhOkv4Lq4rQEiA48irK8rI9gKD3fcpuPLe%2F4oL2H709cXc8TVdwm%2FXTIyZFW6pjnqRX9Q3oXGNiFte3A3wMcSusW2A3EpYpPw%2BHi9ZXwB3WyVeYeS1FmBHvqOfe803tZRxMFI%2BSetCtWwfnOLkOUln5l5Me1L4ufFOGFQiqIu258%2F%2FvSpB62K%2FjzqjkiFEP6SxfWyB%2BbxReH46jGE6zyoYAUyfyZ8QveKRjMO38U2Wk5jkuostmvONwmJsfbfLDzrBTWvnY01lh9tcfPF6GhYVHx92TzSclUNY46mI39MvgozABQneceYAeNpMdqECcX5aSRCegGacIsB4OGTsT8lq04yjQ4YNOFvztWSvbzw9dtDEViFzAm3WDQVEYLP6He9hQuKA6xiSZZsBVQGdnSioJG%2BBhmtv1UpDfFgg6qnoMydtxmf112qJtd9fGKLkuR2HU8bfrSy1WxM6lAfq%2Fw2ET1V%2FhlJCQx4%2FTdWLE83XSi18ML4EZ291UXV81J48fw7Q3KvNYT0dlxxlcuU2XeYIFrKXBBP0x%2FDQm4q0e%2BeiqKguW6fcD8K5vcl5g%2B2zg%2FNItHVT2AqacPvEFt1DP9uyaMmHXxBV2g0v3fuGG2vVnESS9mabYZj04qYWnEtmny%2FEx1GbQ4bNAO5VcVxZowWS%2FmFp7iq%2B8KTJ%2B4V1fPa4wM3aA6Zkfs9xiHrWPsUHF0%2BcIvGujEj8SFzDrjKxU%2F6b7UzqNGbRm4ME3kGTFkHR9H8Mnm75H8XQVBNHqWoFhLF8G%2F27ROlABYDYeZbECAAscwrd9VVE0TNVRDapZrBYdTMjLB%2FWb8TyZ2cpM5s4lDJtC7fxKti6JQpZGFjP1XY4XFDA3Y8QmKK7JTbQw3uD3wwY6sgGd2zuWzi7sbhsOT3PxpsuUIoHcMCurHaT83Kq5hMoRef17aN8JnFe0IACENyKX3pD1y4k3xq0U5AywQtI%2FlfxfK3lJpDlBKdPrm28a9gEySfDD3EhHb8V7CiW9q5%2F2Nve10xAfmVYFIFWtm1buOhkAlq3QkPUkCxLbtgV0qan1pzjuRZJUQ3hZUhiXJg4KTsh9GpBznicQY6%2BEeCMkV3035AWG9oRn8Vz55rJid%2BmZpUSi&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250721T082320Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTYZNTJILVC%2F20250721%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=19b1223011648d50d624d6a9aebcace081f1583c24cb86ac6f1d3485d8c5d866&hash=f54ddef1298fe426f37f14dead5eb8cad80473bd7550f05ac4262b82eaffe93a&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=0021999184900226&tid=spdf-eb012c0c-d331-46fb-a50f-478e4494ac76&sid=397998d868be274a822ae3254cd5195e41f1gxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&rh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=010c5b52535951050c&rr=96294bb2feadeb19&cc=gb
 
 
 PetscInitialize()
@@ -58,8 +60,6 @@ sub4 = SubRight()
 
 subdomains = (sub1, sub2, sub3, sub4)
 
-# def exact(x, y):
-#     return np.float64(np.exp(-y*np.pi)) * np.float64(np.sin(np.pi*x))
 
 def exact(x, y, k1=1, k2=1):
     tmp1 = np.float64(np.pi/8.0) * np.float64(np.pi/8.0)
@@ -70,17 +70,13 @@ def exact(x, y, k1=1, k2=1):
     tmp6 = np.float64(np.sin((np.pi*y*k2)/8.0))
     return tmp4*tmp5*tmp6
 
-Lx = np.float64(1.)
-Ly = np.float64(1.)
+Lx = np.float64(16.)
+Ly = np.float64(16.)
 
-# n = 9, 17, 33, 65, 129, 257, 513, 1025, 2049, 4097
-n_values = [2**k + 1 for k in range(3, 13)]
+# n = 9, 17, 33, 65, 129, 257
+# for higher n -> round off error starts to dominate
+n_values = [2**k + 1 for k in range(3, 9)]
 
-# n_values = [2**k + 1 for k in range(3, 10)]
-# n_values = [13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]
-n_values = [5]
-
-# n = []
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -88,11 +84,6 @@ ksp_iters = []
 
 # Not acc really used
 so = 2
-
-
-import numpy as np
-from devito import Grid, TimeFunction, Eq, Operator, solve
-from devito.finite_differences.differentiable import EvalDerivative
 
 
 for n in n_values:
@@ -105,7 +96,6 @@ for n in n_values:
     bc = Function(name='bc', grid=grid, space_order=so)
 
     ##### 9-point stencil #####
-
     x, y = grid.dimensions
     h_x = x.spacing
     h_x = x.spacing
@@ -149,9 +139,8 @@ for n in n_values:
     weights = [0., 1./12., 0., 1./12., 8./12., 1./12., 0., 1./12., 0.]
     nine_point_stencil_rhs = EvalDerivative(*[w*p for w, p in zip(weights, points)], base=f)
 
-    # from IPython import embed; embed()
     eqn = Eq(nine_point_stencil_lhs, nine_point_stencil_rhs, subdomain=grid.interior)
-    # from IPython import embed; embed()
+
     tmpx = np.linspace(0, Lx, n).astype(np.float64)
     tmpy = np.linspace(0, Ly, n).astype(np.float64)
 
@@ -174,12 +163,16 @@ for n in n_values:
 
     exprs = [eqn] + bcs
 
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-8})
+    # Can play around with initial guess -> if it's zero then cg just converges in 1 iteration because
+    # the rhs is an eigenvector of the matrix -> I think?
+    u.data[:] = 0.001
+
+    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
-    print(op.ccode)
+
     iters = summary.petsc[('section0', None)].KSPGetIterationNumber
     ksp_iters.append(iters)
 
@@ -190,7 +183,6 @@ for n in n_values:
     diff.data[:] = u_exact.data[:] - u.data[:]
 
     # Compute infinity norm using numpy
-    # TODO: Figure out how to compute the infinity norm using Devito
     infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
     infinity_norms.append(infinity_norm)
     print(infinity_norm)
@@ -201,34 +193,29 @@ for n in n_values:
     discrete_l2_norms.append(discrete_l2_norm)
     print(discrete_l2_norm)
 
-# print(op.ccode)
+
 print(infinity_norms)
-# print(ksp_iters)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
-# from IPython import embed; embed()
 
-print(slope)
 
-# print(slope)
 # assert slope > 3.9
 # assert slope < 4.1
 
-# # Plot
-# plt.figure(figsize=(6, 5))
-# plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-# plt.loglog(
-#     h, np.exp(intercept) * h**4,
-#     'k--',
-#     label=r'Reference slope $O(h^4)$'
-# )
-# plt.xlabel(r'Grid spacing h')
-# plt.ylabel(r'$\infty$-norm error')
-# plt.title('Convergence Plot')
-# plt.legend()
-# plt.tight_layout()
-# plt.savefig("3_1_7.png", dpi=200)
-# plt.show()
-
+# Plot
+plt.figure(figsize=(6, 5))
+plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**4,
+    'k--',
+    label=r'Reference slope $O(h^4)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'$\infty$-norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("3_1_7.png", dpi=200)
+plt.show()
 
 
 
@@ -289,5 +276,5 @@ for ax in [ax0, ax1]:
 plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
 
 # Save output
-plt.savefig("4thorder_compare.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.savefig("poisson_collatz_compare.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
 plt.show()
