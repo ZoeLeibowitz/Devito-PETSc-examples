@@ -212,7 +212,7 @@ Ly = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 15)]
-n_values = [4]
+n_values = [17]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -232,7 +232,9 @@ for n in n_values:
     f.data[:] = (8.*(np.pi**2))*np.cos(2.*np.pi*X)*np.cos(2.*np.pi*Y)
 
     eqn = Eq(-u.laplace, f, subdomain=grid.interior)
-
+    
+    # Scaling to preserve symmetry of matrix
+    # See https://www.math.uci.edu/~chenlong/226/FDM.pdf
     bcs1 = neumann_top(eqn, sub1)
     bcs1 = Eq(0.5*bcs1.lhs, 0.5*bcs1.rhs, subdomain=sub1)
     bcs2 = neumann_bottom(eqn, sub2)

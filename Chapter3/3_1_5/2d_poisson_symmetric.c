@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD,&(size)));
 
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,2049,2049,1,1,1,2,NULL,NULL,&(da0)));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_GHOSTED,DM_BOUNDARY_GHOSTED,DMDA_STENCIL_BOX,33,33,1,1,1,2,NULL,NULL,&(da0)));
   PetscCall(DMSetUp(da0));
   PetscCall(DMSetMatType(da0,MATSHELL));
   PetscCall(SNESCreate(PETSC_COMM_WORLD,&(snes0)));
@@ -94,8 +94,8 @@ int main(int argc, char **argv)
   // PetscCall(MatNullSpaceRemove(nullspace, xglobal0));
 //   PetscCall(MatNullSpaceRemove(nullspace, bglobal0));
 
-  PetscCall(VecSet(xglobal0, 0.001));
-  PetscCall(MatNullSpaceRemove(nullspace, xglobal0));
+  // PetscCall(VecSet(xglobal0, 0.001));
+  // PetscCall(MatNullSpaceRemove(nullspace, xglobal0));
   PetscCall(SNESSolve(snes0,bglobal0,xglobal0));
 
   // PetscCall(VecView(xglobal0,PETSC_VIEWER_STDOUT_WORLD));
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "error |u-uexact|_inf = %.22e\n", errinf));
 
-  PetscCall(MatNullSpaceDestroy(&nullspace));
+  // PetscCall(MatNullSpaceDestroy(&nullspace));
   PetscCall(VecDestroy(&(bglobal0)));
   PetscCall(VecDestroy(&(xglobal0)));
   PetscCall(VecDestroy(&(exact)));
@@ -448,8 +448,7 @@ PetscErrorCode FormRHS0(DM dm0, Vec B)
   PetscCall(DMLocalToGlobalBegin(dm0,blocal0,INSERT_VALUES,B));
   PetscCall(DMLocalToGlobalEnd(dm0,blocal0,INSERT_VALUES,B));
 
-
-  PetscCall(VecShift(B, 0.01));
+  // PetscCall(VecShift(B, 5.0));
   PetscCall(VecRestoreArray(blocal0,&b_u_vec));
   PetscCall(DMRestoreLocalVector(dm0,&(blocal0)));
 

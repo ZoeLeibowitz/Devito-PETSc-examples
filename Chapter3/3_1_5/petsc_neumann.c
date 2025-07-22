@@ -133,13 +133,13 @@ PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx)
 
   /* force right-hand side to be consistent for singular matrix */
   /* note this is really a hack, normally the model would provide you with a consistent right handside */
-  if (user->bcType == NEUMANN) {
-    MatNullSpace nullspace;
+  // if (user->bcType == NEUMANN) {
+  //   MatNullSpace nullspace;
 
-    PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
-    PetscCall(MatNullSpaceRemove(nullspace, b));
-    PetscCall(MatNullSpaceDestroy(&nullspace));
-  }
+  //   PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
+  //   PetscCall(MatNullSpaceRemove(nullspace, b));
+  //   PetscCall(MatNullSpaceDestroy(&nullspace));
+  // }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -250,13 +250,13 @@ PetscErrorCode ComputeMatrixBackwardFirstOrder(KSP ksp, Mat J, Mat jac, void *ct
     PetscCall(MatViewFromOptions(J2, NULL, "-view_conv_err"));
     PetscCall(MatDestroy(&J2));
   }
-  if (user->bcType == NEUMANN) {
-    MatNullSpace nullspace;
+  // if (user->bcType == NEUMANN) {
+  //   MatNullSpace nullspace;
 
-    PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
-    PetscCall(MatSetNullSpace(J, nullspace));
-    PetscCall(MatNullSpaceDestroy(&nullspace));
-  }
+  //   PetscCall(MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, 0, &nullspace));
+  //   PetscCall(MatSetNullSpace(J, nullspace));
+  //   PetscCall(MatNullSpaceDestroy(&nullspace));
+  // }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
