@@ -4,6 +4,7 @@ import numpy as np
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 from devito.finite_differences.differentiable import EvalDerivative
+from devito.symbolics import retrieve_functions, INT
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -21,6 +22,44 @@ os.environ['CC'] = 'mpicc'
 PetscInitialize()
 
 
+def modified_left(eq, subdomain):
+    lhs, rhs = eq.evaluate.args
+
+    # Get horizontal subdimension and its parent
+    xfs = subdomain.dimensions[0]
+    x = xfs.parent
+
+    yfs = subdomain.dimensions[1]
+    y = yfs.parent
+
+    # Functions present in stencil
+    funcs = retrieve_functions(lhs-rhs)
+
+    for f in funcs:
+        xind = f.indices[-2]
+        yind = f.indices[-1]
+        h_x = f.grid.spacing_symbols[0]
+        if xind == x + h_x:
+            u_2_h_x = f
+        elif xind == x and yind == y:
+            u_h_x = f
+        else:
+            continue
+    mapper = {}
+    for f in funcs:
+        # Get the x index
+        xind = f.indices[-2]
+        h_x = f.grid.spacing_symbols[0]
+        if xind == x - 2*h_x:
+            a3 = (u_2_h_x - 2.*u_h_x) / (6.*h_x**3)
+            a1 = (u_h_x - a3*(h_x**3)) / h_x
+
+            new = -1.*a1*h_x - a3*(h_x**3)
+
+            mapper.update({f: new})
+    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+
+
 def exact(x, y, k1=1, k2=1):
     tmp1 = np.float64(np.pi/8.0) * np.float64(np.pi/8.0)
     tmp2 = k1**2 + k2**2
@@ -36,7 +75,7 @@ Ly = np.float64(16.)
 # n = 9, 17, 33, 65, 129, 257
 # for higher n -> round off error starts to dominate
 # n_values = [2**k + 1 for k in range(3, 9)]
-n_values = [6]
+n_values = [5]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
@@ -209,7 +248,7 @@ for n in n_values:
     f = Function(name='f', grid=grid, space_order=so)
     bc = Function(name='bc', grid=grid, space_order=so)
 
-    eqn = Eq(u.laplace, f, subdomain=grid.interior)
+    eqn = Eq(u.laplace, f, subdomain=sub5)
 
     tmpx = np.linspace(0, Lx, n).astype(np.float64)
     tmpy = np.linspace(0, Ly, n).astype(np.float64)
@@ -226,20 +265,14 @@ for n in n_values:
     bc.data[-1, :] = 0.
 
     # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u, 1., subdomain=sub1)] # top boundary
-    bcs += [EssentialBC(u, 2., subdomain=sub2)] # bottom boundary
-    bcs += [EssentialBC(u, 3., subdomain=sub3)] # left boundary
-    bcs += [EssentialBC(u, 4., subdomain=sub4)] # right boundary
+    bcs = [EssentialBC(u, bc, subdomain=sub1)] # top boundary
+    bcs += [EssentialBC(u, bc, subdomain=sub2)] # bottom boundary
+    bcs += [EssentialBC(u, bc, subdomain=sub3)] # left boundary
+    bcs += [EssentialBC(u, bc, subdomain=sub4)] # right boundary
 
-    bcs += [EssentialBC(u, 5.0, subdomain=sub5)] # main interior
-    bcs += [EssentialBC(u, 6.0, subdomain=sub6)] # top modified
-    bcs += [EssentialBC(u, 7.0, subdomain=sub7)] # left modified
-    bcs += [EssentialBC(u, 8.0, subdomain=sub8)] # bottom modified
-    bcs += [EssentialBC(u, 9.0, subdomain=sub9)] # right modified
-    bcs += [EssentialBC(u, 10.0, subdomain=sub10)] # top left modified
-    bcs += [EssentialBC(u, 11.0, subdomain=sub11)] # bottom left modified
-    bcs += [EssentialBC(u, 12.0, subdomain=sub12)] # top right modified
-    bcs += [EssentialBC(u, 13.0, subdomain=sub13)] # bottom right modified
+    bcs += [modified_left(eqn, sub7)]  # Left modify
+
+    # from IPython import embed; embed()
 
     exprs = [eqn] + bcs
 
