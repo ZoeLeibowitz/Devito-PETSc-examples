@@ -137,6 +137,7 @@ for n in n_values:
         bottom_left, bottom_middle, bottom_right
     ]
     weights = [0., 1./12., 0., 1./12., 8./12., 1./12., 0., 1./12., 0.]
+    # TODO: don't use EvalDerivative?
     nine_point_stencil_rhs = EvalDerivative(*[w*p for w, p in zip(weights, points)], base=f)
 
     eqn = Eq(nine_point_stencil_lhs, nine_point_stencil_rhs, subdomain=grid.interior)

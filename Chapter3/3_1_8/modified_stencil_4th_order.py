@@ -15,7 +15,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
 
 
@@ -56,7 +56,114 @@ def modified_left(eq, subdomain):
 
             new = -1.*a1*h_x - a3*(h_x**3)
 
-            mapper.update({f: new})
+            # from IPython import embed; embed()  # Debugging lin
+            mapper.update({f: -f.subs({xind: u_h_x.indices[0]})})
+            # mapper.update({f: -f})
+
+    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+
+
+
+def modified_right(eq, subdomain):
+    lhs, rhs = eq.evaluate.args
+
+    # Get horizontal subdimension and its parent
+    xfs = subdomain.dimensions[0]
+    x = xfs.parent
+
+    yfs = subdomain.dimensions[1]
+    y = yfs.parent
+
+    # Functions present in stencil
+    funcs = retrieve_functions(lhs-rhs)
+
+    for f in funcs:
+        xind = f.indices[-2]
+        yind = f.indices[-1]
+        h_x = f.grid.spacing_symbols[0]
+        if xind == x and yind == y:
+            u_minus_h_x = f
+        else:
+            continue
+    mapper = {}
+    for f in funcs:
+        # Get the x index
+        xind = f.indices[-2]
+        h_x = f.grid.spacing_symbols[0]
+        if xind == x + 2*h_x:
+
+            new = u_minus_h_x
+
+            mapper.update({f: -f.subs({xind: u_minus_h_x.indices[0]})})
+            # mapper.update({f: -f})
+    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+
+
+def modified_bottom(eq, subdomain):
+    lhs, rhs = eq.evaluate.args
+
+    # Get horizontal subdimension and its parent
+    xfs = subdomain.dimensions[0]
+    x = xfs.parent
+
+    yfs = subdomain.dimensions[1]
+    y = yfs.parent
+
+    # Functions present in stencil
+    funcs = retrieve_functions(lhs-rhs)
+
+    for f in funcs:
+        xind = f.indices[-2]
+        yind = f.indices[-1]
+        h_y = f.grid.spacing_symbols[1]
+        if xind == x and yind == y:
+            tmp = f
+        else:
+            continue
+    mapper = {}
+    for f in funcs:
+        # Get the x index
+        yind = f.indices[-1]
+        h_y = f.grid.spacing_symbols[1]
+        if yind == y - 2*h_y:
+            new = -tmp
+
+            mapper.update({f: -f.subs({yind: tmp.indices[-1]})})
+            # mapper.update({f: -f})
+    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+
+
+
+def modified_top(eq, subdomain):
+    lhs, rhs = eq.evaluate.args
+
+    # Get horizontal subdimension and its parent
+    xfs = subdomain.dimensions[0]
+    x = xfs.parent
+
+    yfs = subdomain.dimensions[1]
+    y = yfs.parent
+
+    # Functions present in stencil
+    funcs = retrieve_functions(lhs-rhs)
+
+    for f in funcs:
+        xind = f.indices[-2]
+        yind = f.indices[-1]
+        h_x = f.grid.spacing_symbols[0]
+        if xind == x and yind == y:
+            tmp = f
+        else:
+            continue
+    mapper = {}
+    for f in funcs:
+        # Get the y index
+        yind = f.indices[-1]
+        h_y = f.grid.spacing_symbols[1]
+        if yind == y + 2*h_y:
+
+            mapper.update({f: -f.subs({yind: tmp.indices[-1]})})
+            # mapper.update({f: -f})
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
@@ -74,8 +181,10 @@ Ly = np.float64(16.)
 
 # n = 9, 17, 33, 65, 129, 257
 # for higher n -> round off error starts to dominate
-# n_values = [2**k + 1 for k in range(3, 9)]
-n_values = [5]
+n_values = [2**k + 1 for k in range(3, 9)]
+# n_values = [33, 43, 53, 63, 73, 83]
+n_values = [33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 97]
+# n_values = [6]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
@@ -232,6 +341,7 @@ for n in n_values:
     sub7 = SubLeftModify(n)
     sub8 = SubBottomModify(n)
     sub9 = SubRightModify(n)
+
     sub10 = SubTopLeftModify(n)
     sub11 = SubBottomLeftModify(n)
     sub12 = SubTopRightModify(n)
@@ -271,14 +381,24 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub4)] # right boundary
 
     bcs += [modified_left(eqn, sub7)]  # Left modify
+    bcs += [modified_right(eqn, sub9)]  # Right modify
+    bcs += [modified_bottom(eqn, sub8)]  # Bottom modify
+    bcs += [modified_top(eqn, sub6)]  # Top modify
+
+    bcs += [modified_left(modified_top(eqn, sub10), sub10)]  # Top left modify
+    bcs += [modified_right(modified_top(eqn, sub12), sub12)]  # Top right modify
+    bcs += [modified_left(modified_bottom(eqn, sub11), sub11)]  # Bottom left modify
+    bcs += [modified_right(modified_bottom(eqn, sub13), sub13)]  # Bottom right modify
 
     # from IPython import embed; embed()
 
     exprs = [eqn] + bcs
 
+    # exprs = bcs
+
     # Can play around with initial guess -> if it's zero then cg just converges in 1 iteration because
     # the rhs is an eigenvector of the matrix -> I think?
-    u.data[:] = 0.001
+    # u.data[:] = 0.001
 
     petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
@@ -296,101 +416,154 @@ for n in n_values:
     diff.data[:] = u_exact.data[:] - u.data[:]
 
 
-    print(u.data[:])
+    # print(u.data[:])
 
-#     # Compute infinity norm using numpy
-#     infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-#     infinity_norms.append(infinity_norm)
-#     print(infinity_norm)
 
-#     # Compute discrete L2 norm (RMS error)
-#     n_interior = np.prod([s - 1 for s in grid.shape])
-#     discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-#     discrete_l2_norms.append(discrete_l2_norm)
-#     print(discrete_l2_norm)
+    # Compute infinity norm using numpy
+    infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
+    infinity_norms.append(infinity_norm)
+    print(infinity_norm)
+
+    # Compute discrete L2 norm (RMS error)
+    n_interior = np.prod([s - 1 for s in grid.shape])
+    discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
+    discrete_l2_norms.append(discrete_l2_norm)
+    print(discrete_l2_norm)
+
+    # print(op.ccode)
 
 
 # print(infinity_norms)
-# slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
+slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
-
+print(slope)
 # # assert slope > 3.9
 # # assert slope < 4.1
 
-# # Plot
-# plt.figure(figsize=(6, 5))
-# plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-# plt.loglog(
-#     h, np.exp(intercept) * h**4,
-#     'k--',
-#     label=r'Reference slope $O(h^4)$'
-# )
-# plt.xlabel(r'Grid spacing h')
-# plt.ylabel(r'$\infty$-norm error')
-# plt.title('Convergence Plot')
-# plt.legend()
-# plt.tight_layout()
-# plt.savefig("3_1_8.png", dpi=200)
-# plt.show()
+# Plot
+plt.figure(figsize=(6, 5))
+plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**4,
+    'k--',
+    label=r'Reference slope $O(h^4)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'$\infty$-norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("3_1_8.png", dpi=200)
+plt.show()
 
 
 
-# import matplotlib.pyplot as plt
-# import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 
-# plt.rcParams.update({
-#     'font.size': 75, 
-#     'axes.titlesize': 90,
-#     'axes.labelsize': 85,
-#     'xtick.labelsize': 60,
-#     'ytick.labelsize': 60,   
-#     'legend.fontsize': 70  
-# })
+plt.rcParams.update({
+    'font.size': 75, 
+    'axes.titlesize': 90,
+    'axes.labelsize': 85,
+    'xtick.labelsize': 60,
+    'ytick.labelsize': 60,   
+    'legend.fontsize': 70  
+})
 
 
-# # Create large figure
-# fig = plt.figure(figsize=(75, 35))  # Massive size
+# Create large figure
+fig = plt.figure(figsize=(75, 35))  # Massive size
 
-# # Use GridSpec for layout
-# gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
+# Use GridSpec for layout
+gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
 
-# # Subplots
-# ax0 = plt.subplot(gs[0])
-# ax1 = plt.subplot(gs[1])
-# cax = plt.subplot(gs[2])  # For colorbar
+# Subplots
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1])
+cax = plt.subplot(gs[2])  # For colorbar
 
-# # Devito solution
-# c1 = ax0.contourf(X, Y, u.data[:], levels=100, cmap='viridis')
-# ax0.set_title('Devito Solution')
-# ax0.set_xlabel('x')
-# ax0.set_ylabel('y')
+# Devito solution
+c1 = ax0.contourf(X, Y, u.data[:], levels=100, cmap='viridis')
+ax0.set_title('Devito Solution')
+ax0.set_xlabel('x')
+ax0.set_ylabel('y')
 
-# # Analytical solution
-# c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
-# ax1.set_title('Analytical Solution')
-# ax1.set_xlabel('x')
-# ax1.set_ylabel('y')
+# Analytical solution
+c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
+ax1.set_title('Analytical Solution')
+ax1.set_xlabel('x')
+ax1.set_ylabel('y')
 
-# # Sync color scales
+# Sync color scales
+vmin = min(u.data[:].min(), u_exact.data[:].min())
+vmax = max(u.data[:].max(), u_exact.data[:].max())
+c1.set_clim(vmin, vmax)
+c2.set_clim(vmin, vmax)
+
+# Colorbar
+cb = fig.colorbar(c2, cax=cax)
+cb.set_label('Field u')
+
+
+for ax in [ax0, ax1]:
+    ax.tick_params(axis='x', pad=20)
+    ax.tick_params(axis='y', pad=20)
+
+# Layout adjustment
+plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
+
+# Save output
+plt.savefig("compare.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.show()
+
+
+
+
+# plot the difference on a single plot
+
+# Create large figure
+fig = plt.figure(figsize=(75, 35))  # Massive size
+
+# Use GridSpec for layout
+gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
+
+# Subplots
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1])
+cax = plt.subplot(gs[2])  # For colorbar
+
+# Devito solution
+c1 = ax0.contourf(X, Y, diff.data[:], levels=100, cmap='viridis')
+ax0.set_title('diff')
+ax0.set_xlabel('x')
+ax0.set_ylabel('y')
+
+# Analytical solution
+c2 = ax1.contourf(X, Y, diff.data[:], levels=100, cmap='viridis')
+ax1.set_title('diff')
+ax1.set_xlabel('x')
+ax1.set_ylabel('y')
+
+# Sync color scales
 # vmin = min(u.data[:].min(), u_exact.data[:].min())
 # vmax = max(u.data[:].max(), u_exact.data[:].max())
 # c1.set_clim(vmin, vmax)
 # c2.set_clim(vmin, vmax)
 
-# # Colorbar
-# cb = fig.colorbar(c2, cax=cax)
-# cb.set_label('Field u')
+# Colorbar
+cb = fig.colorbar(c2, cax=cax)
+cb.set_label('Field u')
 
 
-# for ax in [ax0, ax1]:
-#     ax.tick_params(axis='x', pad=20)
-#     ax.tick_params(axis='y', pad=20)
+for ax in [ax0, ax1]:
+    ax.tick_params(axis='x', pad=20)
+    ax.tick_params(axis='y', pad=20)
 
-# # Layout adjustment
-# plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
+# Layout adjustment
+plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
 
-# # Save output
-# plt.savefig("compare.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
-# plt.show()
+# Save output
+plt.savefig("diff.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.show()
