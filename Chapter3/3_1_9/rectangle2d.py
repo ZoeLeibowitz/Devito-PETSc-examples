@@ -14,7 +14,16 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 tmp.py -ksp_converged_reason -ksp_type gmres -pc_type none -ksp_max_it 50000 -ksp_rtol 1e-10
+# python3 rectangle2d.py -ksp_converged_reason -ksp_type gmres -pc_type none -ksp_max_it 500000 -ksp_rtol 1e-11
+
+# solves laplace equation in 2D with dirichlet and neumann boundary conditions
+# u(0,y) = 0
+# u(2,y) = cos(pi*y)
+# du/dy(x,0) = 0
+# du/dy(x,1) = 0
+
+# yields analytical solution:
+# u(x,y) = (1/sinh(2*pi)) * cos(pi*y) * sinh(pi*x)
 
 
 PetscInitialize()
@@ -164,11 +173,12 @@ for nx, ny in zip(nx_values, ny_values):
     # Create boundary condition expressions using subdomains
     bcs = [EssentialBC(u, bc, subdomain=sub3)]
     bcs += [EssentialBC(u, bc, subdomain=sub4)]
+    # TODO: maintain symmetry by dividing?
     bcs += [neumann_bottom(eqn, sub2)]
     bcs += [neumann_top(eqn, sub1)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-10})
+    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
@@ -217,7 +227,7 @@ plt.ylabel(r'$\infty$-norm error')
 plt.title('Convergence Plot')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_10.png", dpi=200)
+plt.savefig("3_1_9.png", dpi=200)
 plt.show()
 
 

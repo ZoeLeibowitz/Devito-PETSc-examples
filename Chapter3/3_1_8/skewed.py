@@ -15,7 +15,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
+# python3 skewed.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
 
 
@@ -184,7 +184,8 @@ Ly = np.float64(16.)
 n_values = [2**k + 1 for k in range(3, 9)]
 # n_values = [33, 43, 53, 63, 73, 83]
 n_values = [33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 97]
-# n_values = [6]
+# n_values = [33]
+n_values = [33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
@@ -380,15 +381,33 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub3)] # left boundary
     bcs += [EssentialBC(u, bc, subdomain=sub4)] # right boundary
 
-    bcs += [modified_left(eqn, sub7)]  # Left modify
-    bcs += [modified_right(eqn, sub9)]  # Right modify
-    bcs += [modified_bottom(eqn, sub8)]  # Bottom modify
-    bcs += [modified_top(eqn, sub6)]  # Top modify
+    # bcs += [modified_left(eqn, sub7)]  # Left modify
+    # bcs += [modified_right(eqn, sub9)]  # Right modify
+    # bcs += [modified_bottom(eqn, sub8)]  # Bottom modify
+    # bcs += [modified_top(eqn, sub6)]  # Top modify
 
-    bcs += [modified_left(modified_top(eqn, sub10), sub10)]  # Top left modify
-    bcs += [modified_right(modified_top(eqn, sub12), sub12)]  # Top right modify
-    bcs += [modified_left(modified_bottom(eqn, sub11), sub11)]  # Bottom left modify
-    bcs += [modified_right(modified_bottom(eqn, sub13), sub13)]  # Bottom right modify
+    # bcs += [modified_left(modified_top(eqn, sub10), sub10)]  # Top left modify
+    # bcs += [modified_right(modified_top(eqn, sub12), sub12)]  # Top right modify
+    # bcs += [modified_left(modified_bottom(eqn, sub11), sub11)]  # Bottom left modify
+    # bcs += [modified_right(modified_bottom(eqn, sub13), sub13)]  # Bottom right modify
+
+    h_x = grid.spacing[0]
+    h_y = grid.spacing[1]
+    bcs += [Eq((1./h_x)*u.dxr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]) + u.dy2, f, subdomain=sub7)] # left modify
+    bcs += [Eq((1./h_x)*u.dxl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]) + u.dy2, f, subdomain=sub9)] # right modify
+
+    bcs += [Eq((1./h_y)*u.dyr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]) + u.dx2, f, subdomain=sub8)] # bottom modify
+    bcs += [Eq((1./h_y)*u.dyl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]) + u.dx2, f, subdomain=sub6)] # top modify
+
+    bcs += [Eq((1./h_y)*u.dyl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]) + (1./h_x)*u.dxr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]), f, subdomain=sub10)] # top left modify
+    bcs += [Eq((1./h_y)*u.dyl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]) + (1./h_x)*u.dxl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]), f, subdomain=sub12)] # top right modify
+
+    bcs += [Eq((1./h_y)*u.dyr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]) + (1./h_x)*u.dxl(weights=[-1./12., 1./3., 1./2., -5./3, 11./12.]), f, subdomain=sub13)] # bottom right modify
+
+    bcs += [Eq((1./h_y)*u.dyr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]) + (1./h_x)*u.dxr(weights=[11./12., -5./3., 1./2., 1./3., -1./12.]), f, subdomain=sub11)] # bottom left modify
+
+
+
 
     # from IPython import embed; embed()
 
