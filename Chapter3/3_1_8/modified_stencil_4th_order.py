@@ -15,7 +15,9 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-13 -pc_type none
+
+# THIS IS RUN WITH _PRECISON = 18
+# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
 
 
@@ -409,7 +411,7 @@ for n in n_values:
     # the rhs is an eigenvector of the matrix -> I think?
     # u.data[:] = 0.001
 
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-13})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')

@@ -15,7 +15,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 force_exact_bcs.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
+# python3 force_exact_bcs.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
 
 
@@ -37,13 +37,8 @@ def exact(x, y, k1=1., k2=1.):
 Lx = np.float64(16.)
 Ly = np.float64(16.)
 
-n_values = list(range(33, 76, 4))
-# n_values = [72]
-# n_values = [33, 35, 37, 39]
-# n_values = [76]
 
-n_values = [370, 380, 390, 400, 410]
-# n_values = np.arange(370, 730, 10)
+n_values = [900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
@@ -225,7 +220,7 @@ for n in n_values:
     print(discrete_l2_norm)
 
 
-# print(infinity_norms)
+print(infinity_norms)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 # print(op.ccode)
 # print(op.arguments())
@@ -249,4 +244,28 @@ plt.tight_layout()
 plt.savefig("3_1_8_forced.png", dpi=200)
 plt.show()
 
+
+
+
+
+
+
+# for comparison, plot the pure petsc code:
+# ./fish -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# infinity_norms = [3.004e-09,
+#                   ]
+plt.figure(figsize=(6, 5))
+plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**4,
+    'k--',
+    label=r'Reference slope $O(h^4)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'$\infty$-norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("pure_petsc.png", dpi=200)
+plt.show()
 

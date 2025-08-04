@@ -20,7 +20,8 @@ static PetscReal u_exact_2Dmanupoly(PetscReal x, PetscReal y, PetscReal z, void 
 }
 
 static PetscReal u_exact_2Dmanuexp(PetscReal x, PetscReal y, PetscReal z, void *ctx) {
-    return - x * PetscExpReal(y);
+    PetscReal tmp = -1./((PETSC_PI*PETSC_PI)/32.0);
+    return tmp * PetscSinReal(PETSC_PI*x/8.0) * PetscSinReal(PETSC_PI*y/8.0);
 }
 
 static PetscReal zero(PetscReal x, PetscReal y, PetscReal z, void *ctx) {
@@ -40,7 +41,7 @@ static PetscReal f_rhs_2Dmanupoly(PetscReal x, PetscReal y, PetscReal z, void *c
 }
 
 static PetscReal f_rhs_2Dmanuexp(PetscReal x, PetscReal y, PetscReal z, void *ctx) {
-    return x * PetscExpReal(y);  // note  f = - (u_xx + u_yy) = - u
+    return -1.0*PetscSinReal(PETSC_PI*x/8.0) * PetscSinReal(PETSC_PI*y/8.0);
 }
 
 // functions simply to put u_exact()=g_bdry() into a grid
@@ -87,8 +88,8 @@ int main(int argc,char **argv) {
 
     PetscCall(PetscInitialize(&argc,&argv,NULL,help));
 
-    user.Lx = 1.0;
-    user.Ly = 1.0;
+    user.Lx = 16.0;
+    user.Ly = 16.0;
 
     user.cx = 1.0;
     user.cy = 1.0;
@@ -96,7 +97,7 @@ int main(int argc,char **argv) {
     user.g_bdry = g_bdry_ptr[0][problem];
     user.f_rhs = f_rhs_ptr[0][problem];
 
-    PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_STAR,65,65,PETSC_DECIDE,PETSC_DECIDE,1,2,NULL,NULL,&da));
+    PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_STAR,1300,1300,PETSC_DECIDE,PETSC_DECIDE,1,2,NULL,NULL,&da));
     
     PetscCall(DMSetApplicationContext(da,&user));
     PetscCall(DMSetFromOptions(da));
@@ -140,7 +141,7 @@ int main(int argc,char **argv) {
 
     PetscCall((*getuexact)(&info,u_exact,&user));
     //view u_exact
-    PetscCall(VecView(u_exact,PETSC_VIEWER_STDOUT_WORLD));
+    // PetscCall(VecView(u_exact,PETSC_VIEWER_STDOUT_WORLD));
     PetscCall(VecAXPY(u,-1.0,u_exact));   // u <- u + (-1.0) uexact
     PetscCall(VecDestroy(&u_exact));      // no longer needed
     PetscCall(VecNorm(u,NORM_INFINITY,&errinf));
