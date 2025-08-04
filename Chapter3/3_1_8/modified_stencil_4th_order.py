@@ -15,9 +15,13 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
+# python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-13 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
 
+
+
+# solve for inner 
+# set the analytical solution on the outer 2 layers
 
 PetscInitialize()
 
@@ -183,8 +187,13 @@ Ly = np.float64(16.)
 # for higher n -> round off error starts to dominate
 n_values = [2**k + 1 for k in range(3, 9)]
 # n_values = [33, 43, 53, 63, 73, 83]
-n_values = [33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 97]
-# n_values = [6]
+n_values = [33, 35, 37, 39]
+n_values = [470, 480, 490, 500, 510, 530, 550]
+n_values = [900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300]
+# n_values = [530]
+# n_values = list(range(33, 76, 4))
+
+# n_values = np.arange(470, 730, 20)
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
