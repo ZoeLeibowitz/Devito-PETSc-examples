@@ -246,26 +246,3 @@ plt.show()
 
 
 
-
-
-
-
-# for comparison, plot the pure petsc code:
-# ./fish -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
-# infinity_norms = [3.004e-09,
-#                   ]
-plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-plt.loglog(
-    h, np.exp(intercept) * h**4,
-    'k--',
-    label=r'Reference slope $O(h^4)$'
-)
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
-plt.legend()
-plt.tight_layout()
-plt.savefig("pure_petsc.png", dpi=200)
-plt.show()
-
