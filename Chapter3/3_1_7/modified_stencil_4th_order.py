@@ -22,9 +22,6 @@ os.environ['CC'] = 'mpicc'
 
 
 
-# solve for inner 
-# set the analytical solution on the outer 2 layers
-
 PetscInitialize()
 
 
