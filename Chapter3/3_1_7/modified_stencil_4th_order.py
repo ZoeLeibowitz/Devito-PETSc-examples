@@ -182,17 +182,9 @@ def exact(x, y, k1=1, k2=1):
 Lx = np.float64(16.)
 Ly = np.float64(16.)
 
-# n = 9, 17, 33, 65, 129, 257
-# for higher n -> round off error starts to dominate
-n_values = [2**k + 1 for k in range(3, 9)]
-# n_values = [33, 43, 53, 63, 73, 83]
-n_values = [33, 35, 37, 39]
-n_values = [470, 480, 490, 500, 510, 530, 550]
-n_values = [900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300]
-# n_values = [530]
-# n_values = list(range(33, 76, 4))
 
-# n_values = np.arange(470, 730, 20)
+# n = 9, 17, 33, 65, 129, 257, 513
+n_values = [2**k + 1 for k in range(3, 10)]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
@@ -423,11 +415,6 @@ for n in n_values:
     diff = Function(name='diff', grid=grid, space_order=so)
     diff.data[:] = u_exact.data[:] - u.data[:]
 
-
-    # print(u.data[:])
-    # from IPython import embed; embed()  # Debugging lin
-
-
     # Compute infinity norm using numpy
     infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
     infinity_norms.append(infinity_norm)
@@ -462,7 +449,23 @@ plt.ylabel(r'$\infty$-norm error')
 plt.title('Convergence Plot')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_8.png", dpi=200)
+plt.savefig("3_1_7.png", dpi=200)
+plt.show()
+
+
+plt.figure(figsize=(6, 5))
+plt.loglog(h, discrete_l2_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**4,
+    'k--',
+    label=r'Reference slope $O(h^4)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'discrete l2 norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("3_1_7_discrete_l2_norm.png", dpi=200)
 plt.show()
 
 
