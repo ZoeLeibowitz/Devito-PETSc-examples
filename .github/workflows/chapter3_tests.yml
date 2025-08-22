@@ -1,4 +1,4 @@
-name: Run 1D Poisson & Commit Plots
+name: Run Chapter 3 & Commit Plots
 
 on:
   push:
@@ -7,13 +7,15 @@ on:
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
       - 'Chapter3/3_1_1/*.png'
+      - 'Chapter3/3_1_2/*.png'
+      - 'Chapter3/3_1_3/*.png'
   schedule:
     # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
   workflow_dispatch:  # allow manual trigger
 
 jobs:
-  run-poisson:
+  run-chapter3:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +35,7 @@ jobs:
       run: docker pull zoeleibowitz/petsc_devito_image:latest
 
     # Run 3_1_1 - serial
-    - name: Run 3_1_1
+    - name: Run 3_1_1 - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
@@ -42,16 +44,25 @@ jobs:
           zoeleibowitz/petsc_devito_image:latest \
           python3 1d_poisson.py
 
-    # Run 3_1_1 - parallel
-    - name: Run 1d_poisson_mpi.py with MPI
+    # Run 3_1_2 - serial
+    - name: Run 3_1_2 - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_1 \
-          -e DEVITO_MPI=1 \
+          -w /workspace/Chapter3/3_1_2 \
           -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
-          mpiexec -n 4 python3 1d_poisson_mpi.py
+          python3 2d_poisson.py
+
+    # Run 3_1_3 - serial
+    - name: Run 3_1_3 - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_3 \
+          -u $(id -u):$(id -g) \
+          zoeleibowitz/petsc_devito_image:latest \
+          python3 3d_poisson.py
 
     # Configure Git for commits
     - name: Configure git
@@ -63,5 +74,7 @@ jobs:
     - name: Commit and push plots
       run: |
         git add Chapter3/3_1_1/*.png
+        git add Chapter3/3_1_2/*.png
+        git add Chapter3/3_1_3/*.png
         git commit -m "Update plots from workflow" || echo "No changes to commit"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}

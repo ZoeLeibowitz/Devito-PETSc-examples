@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax)
@@ -7,13 +8,9 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
-import matplotlib.pyplot as plt
-
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
-
-# python3 3d_poisson.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
 
 # 3D test
 # Solving -u_xx - u_yy - u_zz = f(x,y,z)
@@ -158,16 +155,18 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub5)]  # subback
     bcs += [EssentialBC(u, bc, subdomain=sub6)]  # subfront
 
-    # exprs = bcs
     exprs = [eqn] + bcs
-    # TODO: set ksp type to CG
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = PETScSolve(
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='poisson_3d'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'poisson_3d')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)

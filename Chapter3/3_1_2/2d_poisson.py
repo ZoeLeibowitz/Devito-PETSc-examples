@@ -13,8 +13,6 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 2d_poisson.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
-
 # 2D test
 # Solving -u_xx - u_yy = f(x,y)
 # Dirichlet BCs: u(0,y) = 0, u(1,y)=-e^y, u(x,0) = -x, u(x,1)=-xe
@@ -106,14 +104,17 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub4)]
 
     exprs = [eqn] + bcs
-    # TODO: set ksp type to CG
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = PETScSolve(
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='poisson_2d'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
