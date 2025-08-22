@@ -13,8 +13,6 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 1d_poisson.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
-
 # 1D test
 # Solving -u.laplace = f(x)
 # Dirichlet BCs: u(0) = -1, u(1) = -e
