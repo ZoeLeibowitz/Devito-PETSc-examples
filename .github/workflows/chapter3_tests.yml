@@ -38,6 +38,7 @@ jobs:
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
+          -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
           python3 Chapter3/3_1_1/1d_poisson.py
 
