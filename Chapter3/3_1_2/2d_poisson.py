@@ -212,8 +212,8 @@ petsc4pdes_l2_norms = [
     1.1364183941767951440089e-08,  # n=513
     2.8410842375103498718711e-09,  # n=1025
 ]
-formatted_petsc4pdes_l2_norms = [f"{v:.5e}" for v in petsc4pdes_l2_norms]
-formatted_devito_l2_norms = [f"{v:.5e}" for v in discrete_l2_norms]
+formatted_petsc4pdes_l2_norms = [f"{v:.4e}" for v in petsc4pdes_l2_norms]
+formatted_devito_l2_norms = [f"{v:.4e}" for v in discrete_l2_norms]
 
 
 # print infinity norms to screen with a line break
