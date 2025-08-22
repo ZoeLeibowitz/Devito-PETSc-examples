@@ -108,7 +108,6 @@ for n in n_values:
         op = Operator(petsc, language='petsc')
         summary = op.apply(dt=dt)
 
-
         print(op.ccode)
 
     # u_exact = Function(name='u_exact', grid=grid, space_order=2)

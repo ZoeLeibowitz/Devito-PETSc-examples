@@ -121,7 +121,7 @@ jobs:
           -w /workspace/Chapter3/3_1_9 \
           -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
-          python3 rectangle_2d.py
+          python3 rectangle2d.py
 
     # Configure Git for commits
     - name: Configure git
