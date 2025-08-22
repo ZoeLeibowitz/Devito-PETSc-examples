@@ -1,10 +1,6 @@
 name: Run Chapter 3 - 3_1_3 & Commit Plots
 
 on:
-  push:
-    # Ignore commits to PNG files to prevent workflow loops
-    paths-ignore:
-      - 'Chapter3/3_1_3/*.png'
   schedule:
     # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
