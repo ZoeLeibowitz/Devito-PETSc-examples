@@ -1,4 +1,4 @@
-name: Run Chapter 3 - 3_1_1 & Commit Plots
+name: Run Chapter 3 & Commit Plots
 
 on:
   schedule:
@@ -46,5 +46,5 @@ jobs:
     - name: Commit and push plots
       run: |
         git add Chapter3/3_1_1/*.png
-        git commit -m "Update plots for Chapter3/3_1_1 from workflow" || echo "No changes to commit"
+        git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
