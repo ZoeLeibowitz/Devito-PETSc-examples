@@ -1,10 +1,13 @@
 name: Run Chapter 3 & Commit Plots
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
-  workflow_dispatch:  # allow manual trigger
+  workflow_dispatch:  # manual trigger
+
 
 jobs:
   run-chapter3:
