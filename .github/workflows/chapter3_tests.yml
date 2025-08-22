@@ -52,6 +52,8 @@ jobs:
     # Commit and push generated PNGs
     - name: Commit and push plots
       run: |
+        BRANCH_NAME="update-ch3-$(date +%s)"
+        git checkout -b $BRANCH_NAME
         git add Chapter3/3_1_1/*.png
         git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
-        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
+        git push --set-upstream https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} $BRANCH_NAME
