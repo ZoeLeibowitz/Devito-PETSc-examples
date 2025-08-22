@@ -37,10 +37,10 @@ jobs:
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
+          -w /workspace/Chapter3/3_1_1 \
           -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
-          python3 Chapter3/3_1_1/1d_poisson.py
+          python3 1d_poisson.py
 
     # 5. Configure Git for commits
     - name: Configure git
