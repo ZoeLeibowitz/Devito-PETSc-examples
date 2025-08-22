@@ -64,7 +64,8 @@ dx = np.array([Lx/(n-1) for n in n_values])
 alpha = 0.1
 ti = 0.
 tf = 5.0
-fourier = 0.53
+# For this explicit scheme, fourier=0.53 becomes unstable
+fourier = 0.49
 dt = fourier * dx[0]**2 / alpha
 nt = int((tf - ti) / dt)
 
@@ -77,7 +78,7 @@ for n in n_values:
         shape=(n,), extent=(Lx,), subdomains=subdomains, dtype=np.float64
     )
 
-    T = TimeFunction(name='T', grid=grid, space_order=2)
+    T = TimeFunction(name='T', grid=grid, space_order=2, save=nt+1)
     bc = Function(name='bc', grid=grid, space_order=2)
     sigma = Function(name='sigma', grid=grid, space_order=2)
 
@@ -105,7 +106,7 @@ for n in n_values:
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
-        summary = op.apply(time=nt, dt=dt)
+        summary = op.apply(dt=dt)
 
 
         print(op.ccode)
@@ -138,15 +139,19 @@ pyplot.rcParams['font.size'] = 16
 
 
 # Plot the temperature along the rod.
-pyplot.figure(figsize=(6.0, 4.0))
+pyplot.figure(figsize=(10.0, 5.0))
 pyplot.xlabel('Distance [m]')
 pyplot.ylabel('Temperature [C]')
-pyplot.grid()
-pyplot.plot(X, T.data[-1], color='C0', linestyle='-', linewidth=2)
-pyplot.plot(X, u_exact.data[:], color='C1', linestyle='--', linewidth=2)
+# add title
+pyplot.title('Heat Transport with Forward Euler Scheme - forward finite differences', fontsize=13)
+pyplot.grid(False)
+pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
+pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
+pyplot.plot(X, u_exact.data[:], color='C1', linestyle='dotted', linewidth=2, label='Exact solution at $t=5$')
 pyplot.xlim(0.0, 1.)
-pyplot.ylim(-1.0, 2.3)
+pyplot.ylim(-1.2, 2.3)
+pyplot.legend(fontsize=10)
 
-# save fig
+# Save fig
 fig_path = '1d_heat_explicit.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)

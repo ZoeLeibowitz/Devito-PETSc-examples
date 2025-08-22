@@ -178,7 +178,7 @@ for n in n_values:
     petsc = PETScSolve(
         exprs, target=u,
         solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'cg', 'pc_type': 'none'},
-        optimization='poisson_collatz'
+        options_prefix='poisson_collatz'
     )
 
     with switchconfig(log_level='DEBUG'):
