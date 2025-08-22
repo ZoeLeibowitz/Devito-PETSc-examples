@@ -132,7 +132,6 @@ plt.savefig("3_1_1.png", dpi=200)
 plt.show()
 
 
-
 # Error vs iterations plot
 plt.figure(figsize=(6, 5))
 plt.semilogy(ksp_iters, infinity_norms, 'o-', color='darkgreen')

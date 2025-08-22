@@ -12,7 +12,6 @@ on:
     - cron: "0 0 * * 1"
   workflow_dispatch:  # allow manual trigger
 
-
 jobs:
   run-chapter3:
     runs-on: ubuntu-latest
@@ -49,21 +48,19 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Commit plots to new branch
+    - name: Commit plots and create PR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         BRANCH_NAME="update-ch3-$(date +%s)"
         git checkout -b $BRANCH_NAME
         git add Chapter3/3_1_1/*.png
         git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
-        git push --set-upstream https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} $BRANCH_NAME
-
-    - name: Create Pull Request
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
+        git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
         gh auth setup-git
         gh pr create \
           --title "Update plots for Chapter3" \
           --body "Generated automatically by workflow." \
           --base main \
           --head $BRANCH_NAME
+
