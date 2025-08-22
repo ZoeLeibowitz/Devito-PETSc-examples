@@ -1,4 +1,4 @@
-name: Run Chapter 3 3_1_1 & Commit Plots
+name: Run Chapter 3 - 3_1_1 & Commit Plots
 
 on:
   push:
