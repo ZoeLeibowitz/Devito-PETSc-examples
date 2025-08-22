@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+    # Ignore commits to PNG files to prevent workflow loops
+    paths-ignore:
+      - 'Chapter3/3_1_1/*.png'
   schedule:
+    # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
-  workflow_dispatch:  # manual trigger
+  workflow_dispatch:  # allow manual trigger
 
 
 jobs:
