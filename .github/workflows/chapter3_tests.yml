@@ -1,30 +1,38 @@
-name: Weekly-petsc-run
+name: Run 1D Poisson & Commit Plots
 
 on:
-  push:           # run on every push to any branch
+  push:
+    branches:
+      - main
+    # Ignore commits to PNG files to prevent workflow loops
+    paths-ignore:
+      - 'Chapter3/3_1_1/*.png'
   schedule:
     # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
-  workflow_dispatch:  # allow manual trigger as well
+  workflow_dispatch:  # allow manual trigger
 
 jobs:
   run-poisson:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    # 1. Checkout repository
+    - name: Checkout repo
       uses: actions/checkout@v4
 
+    # 2. Log in to DockerHub
     - name: Log in to DockerHub
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    # 3. Pull Docker image
     - name: Pull prebuilt Docker image
-      run: |
-        docker pull zoeleibowitz/petsc_devito_image:latest
+      run: docker pull zoeleibowitz/petsc_devito_image:latest
 
+    # 4. Run the Python script in Docker
     - name: Run 1d_poisson.py
       run: |
         docker run --rm -t \
@@ -32,3 +40,16 @@ jobs:
           -w /workspace \
           zoeleibowitz/petsc_devito_image:latest \
           python3 Chapter3/3_1_1/1d_poisson.py
+
+    # 5. Configure Git for commits
+    - name: Configure git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    # 6. Commit and push generated PNGs
+    - name: Commit and push plots
+      run: |
+        git add Chapter3/3_1_1/*.png
+        git commit -m "Update 1d_poisson plots from workflow" || echo "No changes to commit"
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
