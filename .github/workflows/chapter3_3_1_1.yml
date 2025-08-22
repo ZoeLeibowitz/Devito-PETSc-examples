@@ -2,8 +2,6 @@ name: Run Chapter 3 - 3_1_1 & Commit Plots
 
 on:
   push:
-    branches:
-      - main
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
       - 'Chapter3/3_1_1/*.png'

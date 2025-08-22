@@ -1,10 +1,10 @@
-name: Run Chapter 3 - 3_1_2 & Commit Plots
+name: Run Chapter 3 - 3_1_3 & Commit Plots
 
 on:
   push:
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
-      - 'Chapter3/3_1_2/*.png'
+      - 'Chapter3/3_1_3/*.png'
   schedule:
     # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
@@ -30,15 +30,15 @@ jobs:
     - name: Pull prebuilt Docker image
       run: docker pull zoeleibowitz/petsc_devito_image:latest
 
-    # Run 3_1_2 - serial
-    - name: Run 3_1_2 - serial
+    # Run 3_1_3 - serial
+    - name: Run 3_1_3 - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_2 \
+          -w /workspace/Chapter3/3_1_3 \
           -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
-          python3 2d_poisson.py
+          python3 3d_poisson.py
 
     # Configure Git for commits
     - name: Configure git
@@ -49,6 +49,6 @@ jobs:
     # Commit and push generated PNGs
     - name: Commit and push plots
       run: |
-        git add Chapter3/3_1_2/*.png
-        git commit -m "Update plots for Chapter3/3_1_2 from workflow" || echo "No changes to commit"
+        git add Chapter3/3_1_3/*.png
+        git commit -m "Update plots for Chapter3/3_1_3 from workflow" || echo "No changes to commit"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
