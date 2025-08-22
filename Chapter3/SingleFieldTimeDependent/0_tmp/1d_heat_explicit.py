@@ -14,14 +14,18 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# TODO: which solver?
-# python3 1d_heat_explicit.py -ksp_converged_reason -ksp_type gmres -ksp_rtol 1e-12 -pc_type none
+# TODO: which solver to use?
+# python3 1d_heat_explicit.py
 
 # 1D test
 # Solving u.dt = alpha * u.laplace + f(x)
 # Dirichlet BCs: u(0, t) = 0, u(L, t) = 0
+
+# NB ref -> https://github.com/numerical-mooc/numerical-mooc/blob/master/lessons/04_spreadout/04_01_Heat_Equation_1D_Explicit.ipynb
+
+# COULD USE THIS:
 # Manufactured solution: u(x, t) = 5tx(L - x), with corresponding RHS f(x) = 5x(L - x) + 10*alpha*t
-# ref - https://hplgit.github.io/fdm-book/doc/pub/book/pdf/fdm-book-4print.pdf
+# ref - https://hplgit.github.io/fdm-book/doc/pub/book/pdf/fdm-book-4print.pdf - page 247
 
 PetscInitialize()
 
@@ -82,10 +86,10 @@ n_values = [51]
 dx = np.array([Lx/(n-1) for n in n_values])
 
 alpha = 1.22e-3
-# sigma = 0.5
-sigma = 5.0
+sigma = 0.5
+# sigma = 5.0
 dt = sigma * dx[0]**2 / alpha
-nt = 100
+nt = 1000
 
 infinity_norms = []
 discrete_l2_norms = []
@@ -101,7 +105,7 @@ for n in n_values:
 
     u.data[0][0] = 100.  # Initial condition
 
-    eqn = Eq(u.dt, alpha*u.forward.laplace, subdomain=grid.interior)
+    eqn = Eq(u.dt, alpha*u.laplace, subdomain=grid.interior)
 
     X = np.linspace(0, Lx, n).astype(np.float64)
 
@@ -112,7 +116,12 @@ for n in n_values:
     bcs += [neumann_right(eqn, sub2)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(exprs, target=u.forward, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = PETScSolve(
+        exprs,
+        target=u.forward,
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'gmres', 'pc_type': 'none'},
+        options_prefix='heat_explicit'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
