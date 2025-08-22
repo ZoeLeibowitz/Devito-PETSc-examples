@@ -1,14 +1,13 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax)
+                    configuration, SubDomain, norm)
 from devito.symbolics import retrieve_functions, INT
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
-
-import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
@@ -178,13 +177,17 @@ for nx, ny in zip(nx_values, ny_values):
     bcs += [neumann_top(eqn, sub1)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
+    petsc = PETScSolve(
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'gmres', 'pc_type': 'none', 'ksp_max_it': 500000},
+        options_prefix='rectangle_2d'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'rectangle_2d')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
@@ -204,15 +207,15 @@ for nx, ny in zip(nx_values, ny_values):
     discrete_l2_norms.append(discrete_l2_norm)
 
     print(infinity_norm)
-    # from IPython import embed; embed()
     # print(op.ccode)
     
 print(infinity_norms)
 # print(ksp_iters)
+
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 print(slope)
-# assert slope > 1.9
-# assert slope < 2.1
+assert slope > 1.9
+assert slope < 2.1
 
 # Plot
 plt.figure(figsize=(6, 5))
@@ -434,4 +437,3 @@ fig.colorbar(surf, shrink=0.5, aspect=10, pad=0.1)
 # Save
 plt.savefig("diff_contour.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
 plt.show()
-

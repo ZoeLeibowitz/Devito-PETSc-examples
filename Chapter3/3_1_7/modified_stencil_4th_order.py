@@ -1,25 +1,25 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
-from devito.finite_differences.differentiable import EvalDerivative
-from devito.symbolics import retrieve_functions, INT
+from devito.symbolics import retrieve_functions
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
-import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
+# Increase the precision of finite difference weights to avoid numerical issues
+# since we are using a 4th order stencil
+import devito.finite_differences.finite_difference as fdiff
+fdiff._PRECISION = 18
 
-
-# THIS IS RUN WITH _PRECISON = 18
 # python3 modified_stencil_4th_order.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
 # modify the equations near boundaries -> 4th order discretisation
-
 
 
 PetscInitialize()
@@ -390,8 +390,6 @@ for n in n_values:
     bcs += [modified_left(modified_bottom(eqn, sub11), sub11)]  # Bottom left modify
     bcs += [modified_right(modified_bottom(eqn, sub13), sub13)]  # Bottom right modify
 
-    # from IPython import embed; embed()
-
     exprs = [eqn] + bcs
 
     # exprs = bcs
@@ -400,13 +398,17 @@ for n in n_values:
     # the rhs is an eigenvector of the matrix -> I think?
     # u.data[:] = 0.001
 
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-13})
+    petsc = PETScSolve(
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='modified_4th_order'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'modified_4th_order')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=so)
@@ -433,8 +435,8 @@ for n in n_values:
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
 print(slope)
-# # assert slope > 3.9
-# # assert slope < 4.1
+assert slope > 3.9
+assert slope < 4.1
 
 # Plot
 plt.figure(figsize=(6, 5))

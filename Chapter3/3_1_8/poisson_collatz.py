@@ -14,6 +14,9 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
+import devito.finite_differences.finite_difference as fdiff
+fdiff._PRECISION = 18
+
 # python3 poisson_collatz.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
 # ref - https://pdf.sciencedirectassets.com/272570/1-s2.0-S0021999100X02033/1-s2.0-0021999184900226/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjELj%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFQy5wqN8Qzb%2FdGuSbFRGSrbApV%2F6XmfLeQ8FEmkaD7AAiAYSK4zEefc95Igcd%2BpFS3477XMDvXbM%2FLstz7EbJ21uCq8BQjR%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAUaDDA1OTAwMzU0Njg2NSIMsyWCF9OHFhbLJfSAKpAFVcic7HhOkv4Lq4rQEiA48irK8rI9gKD3fcpuPLe%2F4oL2H709cXc8TVdwm%2FXTIyZFW6pjnqRX9Q3oXGNiFte3A3wMcSusW2A3EpYpPw%2BHi9ZXwB3WyVeYeS1FmBHvqOfe803tZRxMFI%2BSetCtWwfnOLkOUln5l5Me1L4ufFOGFQiqIu258%2F%2FvSpB62K%2FjzqjkiFEP6SxfWyB%2BbxReH46jGE6zyoYAUyfyZ8QveKRjMO38U2Wk5jkuostmvONwmJsfbfLDzrBTWvnY01lh9tcfPF6GhYVHx92TzSclUNY46mI39MvgozABQneceYAeNpMdqECcX5aSRCegGacIsB4OGTsT8lq04yjQ4YNOFvztWSvbzw9dtDEViFzAm3WDQVEYLP6He9hQuKA6xiSZZsBVQGdnSioJG%2BBhmtv1UpDfFgg6qnoMydtxmf112qJtd9fGKLkuR2HU8bfrSy1WxM6lAfq%2Fw2ET1V%2FhlJCQx4%2FTdWLE83XSi18ML4EZ291UXV81J48fw7Q3KvNYT0dlxxlcuU2XeYIFrKXBBP0x%2FDQm4q0e%2BeiqKguW6fcD8K5vcl5g%2B2zg%2FNItHVT2AqacPvEFt1DP9uyaMmHXxBV2g0v3fuGG2vVnESS9mabYZj04qYWnEtmny%2FEx1GbQ4bNAO5VcVxZowWS%2FmFp7iq%2B8KTJ%2B4V1fPa4wM3aA6Zkfs9xiHrWPsUHF0%2BcIvGujEj8SFzDrjKxU%2F6b7UzqNGbRm4ME3kGTFkHR9H8Mnm75H8XQVBNHqWoFhLF8G%2F27ROlABYDYeZbECAAscwrd9VVE0TNVRDapZrBYdTMjLB%2FWb8TyZ2cpM5s4lDJtC7fxKti6JQpZGFjP1XY4XFDA3Y8QmKK7JTbQw3uD3wwY6sgGd2zuWzi7sbhsOT3PxpsuUIoHcMCurHaT83Kq5hMoRef17aN8JnFe0IACENyKX3pD1y4k3xq0U5AywQtI%2FlfxfK3lJpDlBKdPrm28a9gEySfDD3EhHb8V7CiW9q5%2F2Nve10xAfmVYFIFWtm1buOhkAlq3QkPUkCxLbtgV0qan1pzjuRZJUQ3hZUhiXJg4KTsh9GpBznicQY6%2BEeCMkV3035AWG9oRn8Vz55rJid%2BmZpUSi&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250721T082320Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTYZNTJILVC%2F20250721%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=19b1223011648d50d624d6a9aebcace081f1583c24cb86ac6f1d3485d8c5d866&hash=f54ddef1298fe426f37f14dead5eb8cad80473bd7550f05ac4262b82eaffe93a&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=0021999184900226&tid=spdf-eb012c0c-d331-46fb-a50f-478e4494ac76&sid=397998d868be274a822ae3254cd5195e41f1gxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&rh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=010c5b52535951050c&rr=96294bb2feadeb19&cc=gb
 
@@ -172,13 +175,17 @@ for n in n_values:
     # the rhs is an eigenvector of the matrix -> I think?
     u.data[:] = 0.001
 
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-13})
+    petsc = PETScSolve(
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'cg', 'pc_type': 'none'},
+        optimization='poisson_collatz'
+    )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'poisson_collatz')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=so)
@@ -203,8 +210,8 @@ print(infinity_norms)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
 
-# assert slope > 3.9
-# assert slope < 4.1
+assert slope > 3.9
+assert slope < 4.1
 
 # Plot
 plt.figure(figsize=(6, 5))

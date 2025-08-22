@@ -16,9 +16,6 @@ os.environ['CC'] = 'mpicc'
 # Ref - https://www.firedrakeproject.org/demos/helmholtz.py.html
 
 
-# RUN WITH CG if you're ensuring the matrix is symmetric
-# run with: python3 2d_modified_helmholtz.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-8
-
 PetscInitialize()
 
 
@@ -254,7 +251,11 @@ for n in n_values:
     bcs8 = Eq(0.25*bcs8.lhs, 0.25*bcs8.rhs, subdomain=sub8)
     bcs = [bcs1, bcs2, bcs3, bcs4, bcs5, bcs6, bcs7, bcs8]
 
-    solver = PETScSolve([eqn]+bcs, target=u, solver_parameters={'ksp_rtol': 1e-8})
+    solver = PETScSolve(
+        [eqn]+bcs, target=u,
+        solver_parameters={'ksp_rtol': 1e-8, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='helmholtz_2d'
+    )
 
     with switchconfig(openmp=False, language='petsc'):
         op = Operator(solver)
@@ -280,20 +281,20 @@ assert slope > 1.9
 assert slope < 2.1
 
 
-# plt.figure(figsize=(6, 5))
-# plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-# plt.loglog(
-#     h, np.exp(intercept) * h**2,
-#     'k--',
-#     label=r'Reference slope $O(h^2)$'
-# )
-# plt.xlabel(r'Grid spacing h')
-# plt.ylabel(r'$\infty$-norm error')
-# plt.title('Convergence Plot')
-# plt.legend()
-# plt.tight_layout()
-# plt.savefig("3_1_6.png", dpi=200)
-# plt.show()
+plt.figure(figsize=(6, 5))
+plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(
+    h, np.exp(intercept) * h**2,
+    'k--',
+    label=r'Reference slope $O(h^2)$'
+)
+plt.xlabel(r'Grid spacing h')
+plt.ylabel(r'$\infty$-norm error')
+plt.title('Convergence Plot')
+plt.legend()
+plt.tight_layout()
+plt.savefig("3_1_6.png", dpi=200)
+plt.show()
 
 
 
