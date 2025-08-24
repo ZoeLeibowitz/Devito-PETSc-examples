@@ -14,7 +14,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 1d_heat_explicit.py
+# python3 1d_heat_implicit.py
 
 # 1D test
 # Solving T.dt = alpha * T.laplace + sigma(x, t)
@@ -64,8 +64,8 @@ dx = np.array([Lx/(n-1) for n in n_values])
 alpha = 0.1
 ti = 0.
 tf = 5.0
-# For this explicit scheme, fourier=0.53 becomes unstable
-fourier = 0.49
+# For this implicit scheme, we can use a larger time step
+fourier = 0.7
 dt = fourier * dx[0]**2 / alpha
 nt = int((tf - ti) / dt)
 
@@ -86,7 +86,7 @@ for n in n_values:
 
     T.data[0] = np.sin(2.0 * np.pi * X)  # Initial condition
 
-    eqn = Eq(T.dt, alpha*T.laplace + sigma, subdomain=grid.interior)
+    eqn = Eq(T.dt, alpha*T.forward.laplace + sigma, subdomain=grid.interior)
 
     bc.data[:] = np.float64(0.0)
 
@@ -101,7 +101,7 @@ for n in n_values:
         exprs,
         target=T.forward,
         solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
-        options_prefix='heat_explicit'
+        options_prefix='heat_implicit'
     )
 
     with switchconfig(log_level='DEBUG'):
@@ -141,7 +141,7 @@ pyplot.figure(figsize=(10.0, 5.0))
 pyplot.xlabel('Distance [m]')
 pyplot.ylabel('Temperature [C]')
 # add title
-pyplot.title('Heat Transport with Forward Euler Scheme - forward finite differences', fontsize=13)
+pyplot.title('Heat Transport with Backward Euler Scheme - backward finite differences', fontsize=13)
 pyplot.grid(False)
 pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
 pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
@@ -151,5 +151,5 @@ pyplot.ylim(-1.2, 2.3)
 pyplot.legend(fontsize=10)
 
 # Save fig
-fig_path = '1d_heat_explicit.png'
+fig_path = '1d_heat_implicit.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
