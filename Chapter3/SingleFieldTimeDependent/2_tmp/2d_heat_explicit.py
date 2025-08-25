@@ -142,7 +142,9 @@ u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y)
 
 
-# from IPython import embed; embed()
+diff = Function(name='diff', grid=grid, space_order=2)
+tmp = np.abs(u_exact.data[:, int((n-1)/2)] - u.data[-1, :, int((n-1)/2)])
+
 
 from matplotlib import pyplot
 
@@ -150,23 +152,43 @@ from matplotlib import pyplot
 pyplot.rcParams['font.family'] = 'serif'
 pyplot.rcParams['font.size'] = 16
 
-
+# from IPython import embed; embed()
+n = 21
 # Plot the temperature along the rod.
 pyplot.figure(figsize=(10.0, 5.0))
-pyplot.xlabel('Distance [m]')
-pyplot.ylabel('Temperature [C]')
+pyplot.xlabel('x')
+pyplot.ylabel('u(x,0.5,T)')
 # add title
-pyplot.title('2D Heat Trans', fontsize=13)
+pyplot.title('FTCS vs Exact at y=0.5 (T=1)', fontsize=13)
 pyplot.grid(False)
 # plot cross section at y=0.5
-pyplot.plot(X, u.data[-1, :, int((n-1)/2)], color='C1', linewidth=2, label=f'$t={dt*(n-1)}$')
+pyplot.plot(tmpx, u.data[-1, :, int((n-1)/2)].squeeze(), color='C1', linewidth=2, label='FTCS')
 # pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
 # pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
-pyplot.plot(X, u_exact.data[:, int((n-1)/2)], color='C1', linestyle='dotted', linewidth=2, label='Exact solution at $t=5$')
+pyplot.plot(tmpx, u_exact.data[:, int((n-1)/2)], color='C1', linestyle='dotted', linewidth=2, label='Exact')
 pyplot.xlim(0.0, 1.)
 pyplot.ylim(0., 3.0e-9)
 pyplot.legend(fontsize=10)
 
 # Save fig
 fig_path = '2d_heat_explicit.png'
+pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
+
+
+
+############ plot diff ###############
+pyplot.figure(figsize=(10.0, 5.0))
+pyplot.xlabel('x')
+pyplot.ylabel('Absolute Error')
+# add title
+pyplot.title('Error |FTCS - Exact| at y=0.5 (T=1)', fontsize=13)
+pyplot.grid(False)
+# plot cross section at y=0.5
+pyplot.plot(tmpx, tmp, color='C1', linewidth=2)
+pyplot.xlim(0.0, 1.)
+pyplot.ylim(0., 1.5e-10)
+# pyplot.legend(fontsize=10)
+
+# Save fig
+fig_path = 'diff.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
