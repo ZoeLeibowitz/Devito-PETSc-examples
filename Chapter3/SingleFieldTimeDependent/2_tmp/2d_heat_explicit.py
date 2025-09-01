@@ -67,7 +67,7 @@ Ly = np.float64(1.)
 
 alpha = 1.0
 dt = 0.0005
-nt = nt = int(1. / dt)
+nt = int(1. / dt)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]

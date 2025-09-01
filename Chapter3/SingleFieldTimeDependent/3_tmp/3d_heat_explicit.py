@@ -4,7 +4,7 @@ import sympy as sp
 import matplotlib.pyplot as plt
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax, TimeFunction)
+                    configuration, SubDomain, norm, mmax, TimeFunction, sin)
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -94,10 +94,11 @@ Lz = np.float64(1.)
 
 dt = 0.0001
 n = 33
+nt = int(1.0 / dt)
 
 # n = 9, 17, 33, 65, 129, 257
 n_values = [2**k + 1 for k in range(3, 9)]
-n_values = [33]
+n_values = [n]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
@@ -108,15 +109,14 @@ grid = Grid(
     shape=(n, n, n), extent=(Lx, Ly, Lz), subdomains=subdomains, dtype=np.float64
 )
 
-u = TimeFunction(name='u', grid=grid, space_order=2)
-bc = TimeFunction(name='bc', grid=grid, space_order=2)
+# u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
+u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
+# bc = TimeFunction(name='bc', grid=grid, space_order=2)
 
 x, y, z = grid.dimensions
-eqn = Eq(u.dt, u.laplace + u.time_dim, subdomain=grid.interior)
+eqn = Eq(u.dt, u.laplace, subdomain=grid.interior)
 
 t = grid.time_dim
-
-# from IPython import embed; embed()
 
 tmpx = np.linspace(0, Lx, n).astype(np.float64)
 tmpy = np.linspace(0, Ly, n).astype(np.float64)
@@ -129,45 +129,46 @@ X_Y, Z_Y = np.meshgrid(tmpx, tmpz, indexing="ij")  # For faces where y varies
 X_Z, Y_Z = np.meshgrid(tmpx, tmpy, indexing="ij")  # For faces where z varies
 Y_X, Z_X = np.meshgrid(tmpy, tmpz, indexing="ij")  # For faces where x varies
 
-# u(0,y,z,t) = 
-# bc.data[0, :, :] = 0.0
+u.data[0] = np.sin((np.pi/3.)*(X + Y + Z)) + X*Y*Z  # Initial condition
 
 
-# # u(1,y,z) = -exp(y+z)
-# bc.data[-1, :, :] = -np.exp(Y_X + Z_X)
+h_x, h_y, h_z = grid.spacing
 
-# # u(x,0,z) = -x*exp(z)
-# bc.data[:, 0, :] = -X_Y * np.exp(Z_Y)
-
-# # u(x,1,z) = -x*exp(1+z)
-# bc.data[:, -1, :] = -X_Y * np.exp(1.0 + Z_Y)
-
-# # u(x,y,0) = -x*exp(y)
-# bc.data[:, :, 0] = -X_Z * np.exp(Y_Z)
-
-# # u(x,y,1) = -x*exp(y+1)
-# bc.data[:, :, -1] = -X_Z * np.exp(Y_Z + 1.0)
-
-# # Create boundary condition expressions using subdomains
+# Create boundary condition expressions using subdomains
 bcs = []
-# bcs += [EssentialBC(u.forward, grid.time_dim, subdomain=sub1)]  # top
-# bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]  # bottom
-# bcs += [EssentialBC(u.forward, bc, subdomain=sub3)]  # subleft
-# bcs += [EssentialBC(u.forward, bc, subdomain=sub4)]  # subright
-# bcs += [EssentialBC(u.forward, bc, subdomain=sub5)]  # subback
-# bcs += [EssentialBC(u.forward, bc, subdomain=sub6)]  # subfront
+
+
+# TODO: CHECK.. IS IT DEFINITELY SUPPOSED TO BE T+1?
+# left: u(0,y,z,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
+
+# # right: u(1,y,z,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(1.+y*h_y+z*h_z)/3.) + y*h_y*z*h_z, subdomain=sub4)]
+
+# # front: u(x,0,z,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+z*h_z)/3.), subdomain=sub6)]
+
+# # back: u(x,1,z,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+1.+z*h_z)/3.) + x*h_x*z*h_z, subdomain=sub5)]
+
+# # bottom: u(x,y,0,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y)/3.), subdomain=sub2)]
+
+# # top: u(x,y,1,t)
+bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y+1.)/3.) + x*h_x*y*h_y, subdomain=sub1)]
+
 
 exprs = [eqn] + bcs
 petsc = PETScSolve(
     exprs, target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
     options_prefix='heat_explicit_3d'
 )
 
-with switchconfig(log_level='DEBUG'):
+with switchconfig():
     op = Operator(petsc, language='petsc')
-    # summary = op.apply()
-    print(op.ccode)
+    summary = op.apply(dt=dt)
+    # print(op.ccode)
 
 # iters = summary.petsc[('section0', 'heat_explicit_3d')].KSPGetIterationNumber
 # ksp_iters.append(iters)
@@ -187,5 +188,53 @@ with switchconfig(log_level='DEBUG'):
 # n_interior = np.prod([s - 1 for s in grid.shape])
 # discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
 # discrete_l2_norms.append(discrete_l2_norm)
+
+# from IPython import embed; embed()
+
+
+u_exact = Function(name='u_exact', grid=grid, space_order=2)
+u_exact.data[:] = exact(X, Y, Z, dt*nt)
+
+# print('exact is:', u_exact.data[0,:,:])
+
+
+# print('numerical is', u.data[1,0,:,:])
+# print('numerical is', u.data[1,0,:,:])
+
+
+# from IPython import embed; embed()
+
+
+from matplotlib import pyplot
+
+# Set the font family and size to use for Matplotlib figures.
+pyplot.rcParams['font.family'] = 'serif'
+pyplot.rcParams['font.size'] = 16
+
+# from IPython import embed; embed()
+# n = 21
+# Plot the temperature along the rod.
+pyplot.figure(figsize=(10.0, 5.0))
+pyplot.xlabel('x')
+pyplot.ylabel('u(x,0.5,T)')
+# add title
+pyplot.title('FTCS vs Exact at y=0.5 (T=1)', fontsize=13)
+pyplot.grid(False)
+# plot cross section at y=0.5
+# from IPython import embed; embed()
+pyplot.plot(tmpz, u.data[-1, int((n-1)/2), int((n-1)/2), :].squeeze(), color='C1', linewidth=2, label='t=1.0')
+
+pyplot.plot(tmpz, u.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='C1', linewidth=2, label='t=0.05')
+
+# pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
+# pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
+# pyplot.plot(tmpx, u_exact.data[:, int((n-1)/2)], color='C1', linestyle='dotted', linewidth=2, label='Exact')
+pyplot.xlim(0.0, 1.)
+pyplot.ylim(0., 1.7)
+pyplot.legend(fontsize=10)
+
+# Save fig
+fig_path = '3d_heat_explicit.png'
+pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
 
 
