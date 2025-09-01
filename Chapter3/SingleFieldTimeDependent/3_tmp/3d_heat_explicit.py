@@ -96,22 +96,14 @@ dt = 0.0001
 n = 33
 nt = int(1.0 / dt)
 
-# n = 9, 17, 33, 65, 129, 257
-n_values = [2**k + 1 for k in range(3, 9)]
 n_values = [n]
-h = np.array([Lx/(n-1) for n in n_values])
-infinity_norms = []
-discrete_l2_norms = []
-ksp_iters = []
 
 
 grid = Grid(
     shape=(n, n, n), extent=(Lx, Ly, Lz), subdomains=subdomains, dtype=np.float64
 )
 
-# u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
 u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
-# bc = TimeFunction(name='bc', grid=grid, space_order=2)
 
 x, y, z = grid.dimensions
 eqn = Eq(u.dt, u.laplace, subdomain=grid.interior)
@@ -192,17 +184,16 @@ with switchconfig():
 # from IPython import embed; embed()
 
 
-u_exact = Function(name='u_exact', grid=grid, space_order=2)
-u_exact.data[:] = exact(X, Y, Z, dt*nt)
+u_exact = TimeFunction(name='u_exact', grid=grid, space_order=2, save=nt+1)
+# u_exact at t=0.05
+u_exact.data[500] = exact(X, Y, Z, dt*500)
+# u_exact at t=0.25
+u_exact.data[2500] = exact(X, Y, Z, dt*2500)
+# u_exact at t=0.5
+u_exact.data[5000] = exact(X, Y, Z, dt*5000)
+# u_exact at t=1.0
+u_exact.data[10000] = exact(X, Y, Z, dt*10000)
 
-# print('exact is:', u_exact.data[0,:,:])
-
-
-# print('numerical is', u.data[1,0,:,:])
-# print('numerical is', u.data[1,0,:,:])
-
-
-# from IPython import embed; embed()
 
 
 from matplotlib import pyplot
@@ -211,30 +202,105 @@ from matplotlib import pyplot
 pyplot.rcParams['font.family'] = 'serif'
 pyplot.rcParams['font.size'] = 16
 
-# from IPython import embed; embed()
-# n = 21
-# Plot the temperature along the rod.
-pyplot.figure(figsize=(10.0, 5.0))
-pyplot.xlabel('x')
-pyplot.ylabel('u(x,0.5,T)')
-# add title
-pyplot.title('FTCS vs Exact at y=0.5 (T=1)', fontsize=13)
+pyplot.figure(figsize=(10.0, 7.0))
+pyplot.xlabel('z')
+pyplot.ylabel('Temperature')
 pyplot.grid(False)
-# plot cross section at y=0.5
-# from IPython import embed; embed()
-pyplot.plot(tmpz, u.data[-1, int((n-1)/2), int((n-1)/2), :].squeeze(), color='C1', linewidth=2, label='t=1.0')
 
-pyplot.plot(tmpz, u.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='C1', linewidth=2, label='t=0.05')
+pyplot.plot(tmpz, u.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, label=' FD t=0.05')
+pyplot.plot(tmpz, u_exact.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', marker='*', linestyle='none', markersize=8, label='Exa t=0.05')
 
-# pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
-# pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
-# pyplot.plot(tmpx, u_exact.data[:, int((n-1)/2)], color='C1', linestyle='dotted', linewidth=2, label='Exact')
+pyplot.plot(tmpz, u.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, label=' FD t=0.25')
+pyplot.plot(tmpz, u_exact.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='g', marker='*', linestyle='none', markersize=8, label='Exa t=0.25')
+
+pyplot.plot(tmpz, u.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, label=' FD t=0.5')
+pyplot.plot(tmpz, u_exact.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='y', marker='*', linestyle='none', markersize=8, label='Exa t=0.5')
+
+pyplot.plot(tmpz, u.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=' FD t=1.0')
+pyplot.plot(tmpz, u_exact.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label='Exa t=1.0')
+
+
 pyplot.xlim(0.0, 1.)
-pyplot.ylim(0., 1.7)
-pyplot.legend(fontsize=10)
+pyplot.ylim(0., 1.6)
+pyplot.legend(fontsize=10, loc='upper left')
 
 # Save fig
 fig_path = '3d_heat_explicit.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
 
 
+
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+
+# Example arrays (replace with your real data)
+# u.shape = (time_steps, nx, ny, nz)
+time_indices = [500, 2500, 5000, 10000]
+time_labels = ['0.05', '0.25', '0.5', '1.0']
+
+nrows, ncols = 4, 2
+fig = plt.figure(figsize=(12, 16))
+
+# Normalize across dataset
+# vmin = min(u.data.min(), u_exact.data.min())
+# vmax = max(u.data.max(), u_exact.data.max())
+norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
+cmap = plt.cm.jet
+
+X, Y, Z = np.meshgrid(tmpx, tmpy, tmpz, indexing='ij')
+
+def plot_cube_faces(ax, data):
+    # x=0 face
+    ax.plot_surface(X[0,:,:], Y[0,:,:], Z[0,:,:],
+                    facecolors=cmap(norm(data[0,:,:])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+    # x=max face
+    ax.plot_surface(X[-1,:,:], Y[-1,:,:], Z[-1,:,:],
+                    facecolors=cmap(norm(data[-1,:,:])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+    # y=0 face
+    ax.plot_surface(X[:,0,:], Y[:,0,:], Z[:,0,:],
+                    facecolors=cmap(norm(data[:,0,:])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+    # y=max face
+    ax.plot_surface(X[:,-1,:], Y[:,-1,:], Z[:,-1,:],
+                    facecolors=cmap(norm(data[:,-1,:])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+    # z=0 face
+    ax.plot_surface(X[:,:,0], Y[:,:,0], Z[:,:,0],
+                    facecolors=cmap(norm(data[:,:,0])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+    # z=max face
+    ax.plot_surface(X[:,:,-1], Y[:,:,-1], Z[:,:,-1],
+                    facecolors=cmap(norm(data[:,:,-1])),
+                    rstride=1, cstride=1, shade=False, alpha=0.95)
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_zlim(0, 1)
+
+
+for i, t_idx in enumerate(time_indices):
+    # FD (left column)
+    ax1 = fig.add_subplot(nrows, ncols, i*2 + 1, projection='3d')
+    plot_cube_faces(ax1, u.data[t_idx])
+    ax1.set_title(f'Finite Volume Solution (t={time_labels[i]})')
+    ax1.set_xlabel("x"); ax1.set_ylabel("y"); ax1.set_zlabel("z")
+    # ax1.view_init(elev=26, azim=25)
+    mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    fig.colorbar(mappable, ax=ax1, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
+
+    # Exact (right column)
+    ax2 = fig.add_subplot(nrows, ncols, i*2 + 2, projection='3d')
+    plot_cube_faces(ax2, u_exact.data[t_idx])
+    ax2.set_title(f'Exact Solution (t={time_labels[i]})')
+    ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
+    # ax2.view_init(elev=26, azim=25)
+    mappable2 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
+
+plt.tight_layout()
+plt.savefig("3d_contour_cube_faces.png", dpi=300)
+# plt.show()
