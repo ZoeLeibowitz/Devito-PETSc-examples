@@ -286,7 +286,7 @@ for i, t_idx in enumerate(time_indices):
     # FD (left column)
     ax1 = fig.add_subplot(nrows, ncols, i*2 + 1, projection='3d')
     plot_cube_faces(ax1, u.data[t_idx])
-    ax1.set_title(f'Finite Volume Solution (t={time_labels[i]})')
+    ax1.set_title(f'Finite Difference Solution (t={time_labels[i]})')
     ax1.set_xlabel("x"); ax1.set_ylabel("y"); ax1.set_zlabel("z")
     # ax1.view_init(elev=26, azim=25)
     mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
