@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, TimeFunction, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm)
+                    configuration, SubDomain)
 from devito.symbolics import retrieve_functions, INT
 
 from devito.petsc import PETScSolve, EssentialBC
@@ -126,6 +126,7 @@ for n in n_values:
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply(time=nt, dt=dt)
+        print(op.ccode)
 
     # u_exact = Function(name='u_exact', grid=grid, space_order=2)
     # u_exact.data[:] = exact(X)

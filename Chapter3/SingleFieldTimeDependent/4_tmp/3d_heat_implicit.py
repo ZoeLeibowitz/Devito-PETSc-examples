@@ -3,8 +3,8 @@ import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
 
-from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax, TimeFunction, sin)
+from devito import (Grid, Eq, Operator, switchconfig,
+                    configuration, SubDomain, norm, TimeFunction, sin)
 
 from devito.petsc import PETScSolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -15,7 +15,7 @@ os.environ['CC'] = 'mpicc'
 
 # 3D test
 # Solving u.dt = u.laplace
-# Dirichlet BCs (time dependent)
+# Dirichlet BCs
 # ref -> file:///Users/zoeleibowitz/Downloads/IJM2C_Volume11_Issue1WINTER_Pages49-60.pdf
 
 
@@ -106,7 +106,7 @@ grid = Grid(
 u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
 
 x, y, z = grid.dimensions
-eqn = Eq(u.dt, u.laplace, subdomain=grid.interior)
+eqn = Eq(u.dt, u.forward.laplace, subdomain=grid.interior)
 
 t = grid.time_dim
 
@@ -130,7 +130,7 @@ h_x, h_y, h_z = grid.spacing
 bcs = []
 
 
-# TODO: CHECK.. IS IT DEFINITELY SUPPOSED TO BE T+1?
+# TODO: CHECK... IS IT DEFINITELY SUPPOSED TO BE T+1?
 # left: u(0,y,z,t)
 bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
 
@@ -154,10 +154,10 @@ exprs = [eqn] + bcs
 petsc = PETScSolve(
     exprs, target=u.forward,
     solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='heat_explicit_3d'
+    options_prefix='heat_implicit_3d'
 )
 
-with switchconfig(log_level='DEBUG'):
+with switchconfig():
     op = Operator(petsc, language='petsc')
     summary = op.apply(dt=dt)
     # print(op.ccode)
@@ -225,7 +225,7 @@ pyplot.ylim(0., 1.6)
 pyplot.legend(fontsize=10, loc='upper left')
 
 # Save fig
-fig_path = '3d_heat_explicit.png'
+fig_path = '3d_heat_implicit.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
 
 
@@ -302,5 +302,5 @@ for i, t_idx in enumerate(time_indices):
     fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
 plt.tight_layout()
-plt.savefig("3d_contour_cube_faces.png", dpi=300)
+plt.savefig("3d_contour_cube_faces_implicit.png", dpi=300)
 # plt.show()
