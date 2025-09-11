@@ -159,5 +159,5 @@ plt.tight_layout()
 plt.tick_params(axis='both', which='major', labelsize=8)
 
 # Save fig
-fig_path = 'additive3.png'
+fig_path = 'additive.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
