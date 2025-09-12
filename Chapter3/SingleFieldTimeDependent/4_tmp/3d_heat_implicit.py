@@ -131,6 +131,7 @@ bcs = []
 
 
 # TODO: CHECK... IS IT DEFINITELY SUPPOSED TO BE T+1?
+# I THINK IT should be for implicit but only t for explicit?
 # left: u(0,y,z,t)
 bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
 
