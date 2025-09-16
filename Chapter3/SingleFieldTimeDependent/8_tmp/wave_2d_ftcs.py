@@ -88,7 +88,6 @@ dy = Ly/(n-1)
 
 ti = 0.
 tf = 18.0
-# tf = 1.0
 
 c = 1.5
 stability_limit = (1/np.float64(c))*(1/np.sqrt(1/dx**2 + 1/dy**2))
@@ -110,19 +109,13 @@ grid = Grid(
 u = TimeFunction(name='u', grid=grid, space_order=2, time_order=2, save=nt+1)
 bc = Function(name='bc', grid=grid, space_order=2)
 
-# X = np.linspace(0, Lx, n).astype(np.float64)
-
 tmpx = np.linspace(0, Lx, n).astype(np.float64)
 tmpy = np.linspace(0, Ly, n).astype(np.float64)
 
 Y, X = np.meshgrid(tmpx, tmpy)
 
 u.data[0] = I(X, Y)
-# u.data[0][0] = 0.
-# u.data[0][-1] = 0.
 
-
-# from IPython import embed; embed()
 lap = (
     u.data[0][1:-1, :-2] +  # left
     u.data[0][1:-1, 2:]  +  # right
@@ -178,7 +171,8 @@ u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y, t_to_compare, Lx, Ly)
 
 diff = Function(name='diff', grid=grid, space_order=2)
-diff.data[:] = u_exact.data[:] - u.data[idx][:]
+# diff.data[:] = u_exact.data[:] - u.data[idx][:]
+diff.data[:] = u.data[idx][:] - u_exact.data[:]
 
 # Compute infinity norm using numpy
 infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
@@ -190,42 +184,73 @@ discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
 discrete_l2_norms.append(discrete_l2_norm)
 
 print(f"Infinity norm: {infinity_norm}")
-
 print(f"Discrete L2 norm: {discrete_l2_norm}")
 
 
-
 # save exact solution as plt.imshow plot to file
-plt.imshow(u_exact.data[:], extent=[0, Lx, 0, Ly], origin='lower', cmap='viridis')
+plt.imshow(diff.data[:], extent=[0, Lx, 0, Ly], origin='lower', cmap='viridis')
 plt.colorbar(label='u_exact')
-plt.title(f'Exact Solution at t={t_to_compare:.2f}')
+plt.title(f'Error at t={t_to_compare:.2f}')
 plt.xlabel('x')
 plt.ylabel('y')
-plt.savefig('2d_wave_exact.png', dpi=300)
+plt.savefig('wave_2d_ftcs_error.png', dpi=300)
 
 
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
-# from matplotlib import pyplot
-# # from IPython import embed; embed()
-# # Set the font family and size to use for Matplotlib figures.
-# pyplot.rcParams['font.family'] = 'serif'
-# pyplot.rcParams['font.size'] = 16
+plt.rcParams.update({
+    'font.size': 75, 
+    'axes.titlesize': 90,
+    'axes.labelsize': 85,
+    'xtick.labelsize': 60,
+    'ytick.labelsize': 60,   
+    'legend.fontsize': 70  
+})
 
 
-# pyplot.figure(figsize=(10.0, 5.0))
-# pyplot.xlabel('...')
-# pyplot.ylabel('...')
-# # add title
-# pyplot.title('1D Wave Equation', fontsize=13)
-# pyplot.grid(False)
-# pyplot.plot(X, u.data[0], color='C2', linewidth=2, label='Initial condition')
-# pyplot.plot(X, u.data[idx], color='brown',linewidth=2, label=f'$t={tf}$')
-# pyplot.plot(X, u_exact.data[:], color='C1', linestyle='dotted', linewidth=2, label='Exact solution at $t=...$')
-# # pyplot.xlim(0.0, 1.)
-# # pyplot.ylim(-1.2, 2.3)
-# pyplot.legend(fontsize=10)
+# Create large figure
+fig = plt.figure(figsize=(75, 35))  # Massive size
 
-# # Save fig
-# fig_path = '2d_wave_ftcs.png'
-# pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
+# Use GridSpec for layout
+gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
+
+# Subplots
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1])
+cax = plt.subplot(gs[2])  # For colorbar
+
+# Devito solution
+c1 = ax0.contourf(X, Y, u.data[idx][:], levels=100, cmap='viridis')
+ax0.set_title(f'Devito Solution at t={t_to_compare:.2f}')
+ax0.set_xlabel('$x$')
+ax0.set_ylabel('$y$')
+
+# Analytical solution
+c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
+ax1.set_title(f'Analytical Solution at t={t_to_compare:.2f}')
+ax1.set_xlabel('$x$')
+ax1.set_ylabel('$y$')
+
+# Sync color scales
+vmin = min(u.data[idx][:].min(), u_exact.data[:].min())
+vmax = max(u.data[idx][:].max(), u_exact.data[:].max())
+c1.set_clim(vmin, vmax)
+c2.set_clim(vmin, vmax)
+
+# Colorbar
+cb = fig.colorbar(c2, cax=cax)
+cb.set_label('$u$')
+
+
+for ax in [ax0, ax1]:
+    ax.tick_params(axis='x', pad=20)
+    ax.tick_params(axis='y', pad=20)
+
+# Layout adjustment
+plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
+
+# Save output
+plt.savefig("wave_2d_ftcs.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.show()
