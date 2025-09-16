@@ -88,11 +88,11 @@ dy = Ly/(n-1)
 
 ti = 0.
 tf = 18.0
+c = 2.0
 
-c = 1.5
-stability_limit = (1/np.float64(c))*(1/np.sqrt(1/dx**2 + 1/dy**2))
-
-dt = stability_limit
+# For implicit, can use much larger dt
+dt = 5.0
+print(f"dt: {dt}")
 
 C = c*dt*(1/dx)  # Courant number
 nt = int((tf - ti) / dt)
@@ -140,7 +140,7 @@ x,y = grid.dimensions
 h_x, h_y = grid.spacing
 
 # Should it be t or t+1? - i think t for explicit, t+1 for implicit
-eqn = Eq(u.dt2, (c**2)*u.laplace + 2.*(1. + 0.5*(t*dt))*((y*h_y)*(Ly-(y*h_y))+(x*h_x)*(Lx-(x*h_x)))*(c**2), subdomain=grid.interior)
+eqn = Eq(u.dt2, (c**2)*u.forward.laplace + 2.*(1. + 0.5*((t+1)*dt))*((y*h_y)*(Ly-(y*h_y))+(x*h_x)*(Lx-(x*h_x)))*(c**2), subdomain=grid.interior)
 
 bc.data[:] = np.float64(0.0)
 
@@ -155,7 +155,7 @@ petsc = PETScSolve(
     exprs,
     target=u.forward,
     solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='wave_2d_explicit'
+    options_prefix='wave_2d_btcs'
 )
 
 with switchconfig(log_level='DEBUG'):
@@ -163,7 +163,7 @@ with switchconfig(log_level='DEBUG'):
     summary = op.apply(dt=dt)
     print(op.arguments(dt=dt))
 
-idx = 91
+idx = 3
 
 t_to_compare = idx*dt
 
@@ -171,7 +171,6 @@ u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y, t_to_compare, Lx, Ly)
 
 diff = Function(name='diff', grid=grid, space_order=2)
-# diff.data[:] = u_exact.data[:] - u.data[idx][:]
 diff.data[:] = u.data[idx][:] - u_exact.data[:]
 
 # Compute infinity norm using numpy
@@ -186,14 +185,13 @@ discrete_l2_norms.append(discrete_l2_norm)
 print(f"Infinity norm: {infinity_norm}")
 print(f"Discrete L2 norm: {discrete_l2_norm}")
 
-
 # save exact solution as plt.imshow plot to file
 plt.imshow(diff.data[:].T, extent=[0, Lx, 0, Ly], origin='lower', cmap='viridis')
 plt.colorbar(label='u_exact')
 plt.title(f'Error at t={t_to_compare:.2f}')
 plt.xlabel('x')
 plt.ylabel('y')
-plt.savefig('wave_2d_ftcs_error.png', dpi=300)
+plt.savefig('wave_2d_btcs_error.png', dpi=300)
 
 
 import matplotlib.pyplot as plt
@@ -252,5 +250,5 @@ for ax in [ax0, ax1]:
 plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
 
 # Save output
-plt.savefig("wave_2d_ftcs.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.savefig("wave_2d_btcs.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
 plt.show()
