@@ -21,6 +21,8 @@ os.environ['CC'] = 'mpicc'
 # with some convergence plots
 
 # This file reproduces figure 4 from the reference paper
+# solution seems stable, but only because the duration of the simulation is not long enough
+# for the instability to become apparent
 
 
 PetscInitialize()
@@ -145,6 +147,7 @@ pyplot.plot(X, u_exact.data[:], color='C1',linewidth=2, label=f'Exact at $t={tf}
 pyplot.xlim(0.0, 1.)
 pyplot.ylim(0.0, 0.7)
 pyplot.legend(fontsize=10)
+
 
 # Save fig
 fig_path = '1d_heat_explicit_reproduce_figure4.png'

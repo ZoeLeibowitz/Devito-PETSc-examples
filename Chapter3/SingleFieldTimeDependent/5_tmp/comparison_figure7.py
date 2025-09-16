@@ -19,6 +19,10 @@ os.environ['CC'] = 'mpicc'
 # https://web.cecs.pdx.edu/~gerry/class/ME448/notes/1Dmodels/pdf/CN_slides.pdf
 
 
+# Further reductions in dt to not reduce the error for the crank nicolson scheme because
+# the contributution from the spatial error is fixed (dx is fixed).
+
+
 PetscInitialize()
 
 # Subdomains to implement BCs

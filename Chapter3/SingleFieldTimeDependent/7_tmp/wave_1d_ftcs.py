@@ -116,7 +116,7 @@ exprs = [eqn] + bcs
 petsc = PETScSolve(
     exprs,
     target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
     options_prefix='wave_explicit'
 )
 
@@ -169,5 +169,5 @@ pyplot.plot(X, u_exact.data[:], color='C1', linestyle='dotted', linewidth=2, lab
 pyplot.legend(fontsize=10)
 
 # Save fig
-fig_path = '1d_wave.png'
+fig_path = '1d_wave_ftcs.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)

@@ -22,6 +22,8 @@ os.environ['CC'] = 'mpicc'
 
 # This file reproduces figure 5 from the reference paper
 
+# ftcs SOLUTION TO heat equation at t=1 obtained with r=2. The instability is now obvious.
+
 
 PetscInitialize()
 
@@ -145,6 +147,7 @@ pyplot.ylim(0.0, 1.05)
 pyplot.legend(fontsize=8)
 # make the y axis go up in 0.1
 pyplot.yticks(np.arange(0, 1.1, 0.1))
+
 
 # Save fig
 fig_path = '1d_heat_explicit_reproduce_figure5.png'

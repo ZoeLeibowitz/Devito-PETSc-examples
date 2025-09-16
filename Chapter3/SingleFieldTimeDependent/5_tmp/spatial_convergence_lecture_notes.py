@@ -21,6 +21,10 @@ os.environ['CC'] = 'mpicc'
 # This file reproduces the spatial convergence plot from the lecture notes
 # page 9
 
+# reduces both dx and dt within the FTCS stabilility limit
+
+# dt proportional to dx**2
+
 
 PetscInitialize()
 

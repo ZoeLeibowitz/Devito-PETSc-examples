@@ -21,6 +21,7 @@ os.environ['CC'] = 'mpicc'
 # with some convergence plots
 
 # This file reproduces figure 6 from the reference paper
+# Shows that the BTCS scheme is stable at t=1 and r=2 (FTCS is not)
 
 
 PetscInitialize()
@@ -84,7 +85,7 @@ X = np.linspace(0, Lx, n).astype(np.float64)
 
 u.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
 
-# FTCS scheme used in figure 6
+# BTCS scheme used in figure 6
 eqn = Eq(u.dt, alpha * u.forward.laplace, subdomain=grid.interior)
 
 # If you want to try CN, use:

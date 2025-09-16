@@ -19,6 +19,7 @@ os.environ['CC'] = 'mpicc'
 # Considered one of the most common non-linear PDEs
 # ref - file:///Users/zoeleibowitz/Downloads/axioms-12-00982.pdf
 # name ref - A Comparative Study of the Explicit Finite Difference Method and Physics-Informed Neural Networks for Solving the Burgers’ Equation
+# test problem 3 in paper
 
 
 PetscInitialize()
