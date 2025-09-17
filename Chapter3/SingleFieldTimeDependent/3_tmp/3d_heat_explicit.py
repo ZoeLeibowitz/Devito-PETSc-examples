@@ -235,7 +235,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-# Example arrays (replace with your real data)
+
 # u.shape = (time_steps, nx, ny, nz)
 time_indices = [500, 2500, 5000, 10000]
 time_labels = ['0.05', '0.25', '0.5', '1.0']

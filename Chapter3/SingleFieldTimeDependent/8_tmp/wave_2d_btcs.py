@@ -187,7 +187,7 @@ print(f"Discrete L2 norm: {discrete_l2_norm}")
 
 # save exact solution as plt.imshow plot to file
 plt.imshow(diff.data[:].T, extent=[0, Lx, 0, Ly], origin='lower', cmap='viridis')
-plt.colorbar(label='u_exact')
+plt.colorbar(label='difference')
 plt.title(f'Error at t={t_to_compare:.2f}')
 plt.xlabel('x')
 plt.ylabel('y')
