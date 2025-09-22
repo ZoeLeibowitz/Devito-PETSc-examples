@@ -5,7 +5,7 @@ from devito import (Grid, Function, TimeFunction, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 from devito.symbolics import retrieve_functions, INT
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -113,7 +113,7 @@ bcs = [EssentialBC(u.forward, bc, subdomain=sub1)]
 bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]
 
 exprs = [eqn] + bcs
-petsc = PETScSolve(
+petsc = petscsolve(
     exprs,
     target=u.forward,
     solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},

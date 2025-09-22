@@ -7,7 +7,7 @@ import matplotlib.gridspec as gridspec
 from devito.symbolics import retrieve_functions, INT
 from devito import (configuration, Operator, Eq, Grid, Function,
                     SubDomain, switchconfig, norm)
-from devito.petsc import PETScSolve
+from devito.petsc import petscsolve
 from devito.petsc.initialize import PetscInitialize
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
@@ -251,7 +251,7 @@ for n in n_values:
     bcs8 = Eq(0.25*bcs8.lhs, 0.25*bcs8.rhs, subdomain=sub8)
     bcs = [bcs1, bcs2, bcs3, bcs4, bcs5, bcs6, bcs7, bcs8]
 
-    solver = PETScSolve(
+    solver = petscsolve(
         [eqn]+bcs, target=u,
         solver_parameters={'ksp_rtol': 1e-8, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='helmholtz_2d'

@@ -4,7 +4,7 @@ import numpy as np
 from devito import (Grid, Function, TimeFunction, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -115,7 +115,7 @@ for n in n_values:
     bcs2 += [EssentialBC(u2.forward, bc, subdomain=sub2)]
 
     ftcs_exprs = [eqn0] + bcs0
-    ftcs_solver = PETScSolve(
+    ftcs_solver = petscsolve(
         ftcs_exprs,
         target=u0.forward,
         solver_parameters={'ksp_rtol': 1e-7, 'pc_type': 'none'},
@@ -123,7 +123,7 @@ for n in n_values:
     )
 
     btcs_exprs = [eqn1] + bcs1
-    btcs_solver = PETScSolve(
+    btcs_solver = petscsolve(
         btcs_exprs,
         target=u1.forward,
         solver_parameters={'ksp_rtol': 1e-7, 'pc_type': 'none'},
@@ -131,7 +131,7 @@ for n in n_values:
     )
 
     cn_exprs = [eqn2] + bcs2
-    cn_solver = PETScSolve(
+    cn_solver = petscsolve(
         cn_exprs,
         target=u2.forward,
         solver_parameters={'ksp_rtol': 1e-7, 'pc_type': 'none'},

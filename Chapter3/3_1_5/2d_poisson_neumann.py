@@ -5,7 +5,7 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 from devito.symbolics import retrieve_functions, INT
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -245,7 +245,7 @@ for n in n_values:
     # u.data[:] = 0.1
     exprs = [eqn] + bcs
     # TODO: Use GMRES since mirroring along boundary ruins symmetry
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')

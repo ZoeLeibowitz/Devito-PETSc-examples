@@ -4,7 +4,7 @@ import numpy as np
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 from devito.mpi.distributed import MPI
@@ -109,7 +109,7 @@ for n in n_values:
 
     exprs = [eqn] + bcs
     # TODO: set ksp type to CG
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')

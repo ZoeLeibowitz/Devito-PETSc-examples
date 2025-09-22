@@ -6,7 +6,7 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
 from devito.finite_differences.differentiable import EvalDerivative
 from devito.mpi.distributed import MPI
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -167,7 +167,7 @@ for n in n_values:
     # the rhs is an eigenvector of the matrix -> I think?
     u.data[:] = 0.001
 
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')

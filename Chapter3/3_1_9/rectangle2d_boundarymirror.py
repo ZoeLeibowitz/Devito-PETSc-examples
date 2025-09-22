@@ -5,7 +5,7 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax)
 from devito.symbolics import retrieve_functions, INT
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -180,7 +180,7 @@ for nx, ny in zip(nx_values, ny_values):
     # bcs += [neumann_top(eqn, sub1)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
+    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')

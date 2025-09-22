@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax, TimeFunction, sin)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 configuration['compiler'] = 'custom'
@@ -151,7 +151,7 @@ bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h
 
 
 exprs = [eqn] + bcs
-petsc = PETScSolve(
+petsc = petscsolve(
     exprs, target=u.forward,
     solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
     options_prefix='heat_explicit_3d'

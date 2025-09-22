@@ -6,7 +6,7 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 from devito.symbolics import retrieve_functions
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 
@@ -398,7 +398,7 @@ for n in n_values:
     # the rhs is an eigenvector of the matrix -> I think?
     # u.data[:] = 0.001
 
-    petsc = PETScSolve(
+    petsc = petscsolve(
         exprs, target=u,
         solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='modified_4th_order'

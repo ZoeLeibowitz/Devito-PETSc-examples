@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm, mmax)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 configuration['compiler'] = 'custom'
@@ -107,7 +107,7 @@ for n in n_values:
 
     exprs = [eqn] + bcs
 
-    petsc = PETScSolve(
+    petsc = petscsolve(
         exprs, target=u,
         solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='laplace_2d'

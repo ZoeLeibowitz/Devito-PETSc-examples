@@ -4,7 +4,7 @@ import numpy as np
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 from devito.mpi.distributed import MPI
@@ -84,7 +84,7 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub2)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(
+    petsc = petscsolve(
         exprs, target=u,
         solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'},
         options_prefix='poisson_1d'

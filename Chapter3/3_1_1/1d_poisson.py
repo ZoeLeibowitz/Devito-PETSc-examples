@@ -4,7 +4,7 @@ import numpy as np
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
 
-from devito.petsc import PETScSolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
 import matplotlib.pyplot as plt
@@ -80,7 +80,7 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub2)]
 
     exprs = [eqn] + bcs
-    petsc = PETScSolve(
+    petsc = petscsolve(
         exprs, target=u,
         solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='poisson_1d'
