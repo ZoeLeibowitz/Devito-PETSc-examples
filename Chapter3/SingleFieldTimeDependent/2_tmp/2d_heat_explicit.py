@@ -15,6 +15,9 @@ os.environ['CC'] = 'mpicc'
 
 # 2D test - explicit heat equation 
 # ref -> https://www.scirp.org/pdf/jamp_1724227.pdf
+# ref -> An Efficient Explicit Scheme for Solving the 2D
+# Heat Equation with Stability and Convergence
+# Analysis
 
 PetscInitialize()
 
