@@ -150,5 +150,5 @@ pyplot.yticks(np.arange(0, 1.1, 0.1))
 
 
 # Save fig
-fig_path = '1d_heat_explicit_reproduce_figure5.png'
+fig_path = '3_2_1.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
