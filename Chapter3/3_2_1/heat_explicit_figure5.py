@@ -108,8 +108,8 @@ with switchconfig(log_level='DEBUG'):
     summary = op.apply(dt=dt)
 
 
-u_exact = Function(name='u_exact', grid=grid, space_order=2)
-u_exact.data[:] = exact(X, tf, alpha)
+u_exact = Function(name='u', grid=grid, space_order=2)
+u_exact.data[:] = exact(X, dt*19, alpha)
 
 diff = Function(name='diff', grid=grid, space_order=2)
 diff.data[:] = u_exact.data[:] - u.data[19]
@@ -136,12 +136,12 @@ pyplot.ylabel('$u$')
 # add title
 # pyplot.title('', fontsize=13)
 pyplot.grid(False)
-pyplot.plot(X, u.data[0], color='blue',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={0*dt:.2f}$')
+pyplot.plot(X, u.data[0], color='blue', linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={0*dt:.2f}$')
 pyplot.plot(X, u.data[4], color='red',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={4*dt:.2f}$')
 pyplot.plot(X, u.data[9], color='orange',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={9*dt:.2f}$')
 pyplot.plot(X, u.data[14], color='green',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={14*dt:.2f}$')
-pyplot.plot(X, u.data[19], color='brown',linestyle='-', marker='o', markersize=5, linewidth=2, label=f'FTCS at $t={19*dt:.2f}$')
-# pyplot.plot(X, u_exact.data[:], color='C1',linewidth=2, label=f'Exact at $t={tf}$')
+pyplot.plot(X, u.data[19], color='brown',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={19*dt:.2f}$')
+
 pyplot.xlim(0.0, 1.)
 pyplot.ylim(0.0, 1.05)
 pyplot.legend(fontsize=8)
@@ -150,5 +150,5 @@ pyplot.yticks(np.arange(0, 1.1, 0.1))
 
 
 # Save fig
-fig_path = '3_2_1.png'
+fig_path = '3_2_1_ftcs_unstable.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
