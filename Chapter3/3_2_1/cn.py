@@ -20,9 +20,7 @@ os.environ['CC'] = 'mpicc'
 # comparison between FTCS (forward in time, centered in space), BTCS (backward time, centered in space) and Crank-Nicolson schemes for 1D heat equation
 # with some convergence plots
 
-# This file reproduces figure 5 from the reference paper
-
-# ftcs SOLUTION TO heat equation at t=1 obtained with r=2. The instability is now obvious.
+# Shows that the CN scheme is stable at t=1 and r=2 (FTCS is not)
 
 
 PetscInitialize()
@@ -66,11 +64,11 @@ tf = 1.0
 
 nt = 20
 dt = tf/(nt-1)
-print(dt)
+print(f"dt = {dt}")
+
 r = alpha * dt / dx**2
 print(f"r = {r}")
 
-print(dt)
 infinity_norms = []
 discrete_l2_norms = []
 ksp_iters = []
@@ -79,28 +77,28 @@ grid = Grid(
     shape=(n,), extent=(Lx,), subdomains=subdomains, dtype=np.float64
 )
 
-u = TimeFunction(name='u', grid=grid, space_order=2, save=nt)
+phi = TimeFunction(name='phi', grid=grid, space_order=2, save=nt)
 bc = Function(name='bc', grid=grid, space_order=2)
 
 X = np.linspace(0, Lx, n).astype(np.float64)
 
-u.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
+phi.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
 
-# FTCS scheme used in figure 5
-eqn = Eq(u.dt, alpha * u.laplace, subdomain=grid.interior)
+# If you want to try CN, use:
+eqn = Eq(phi.dt, (alpha/2.)*(phi.laplace + phi.forward.laplace), subdomain=grid.interior)
 
 bc.data[:] = np.float64(0.0)
 
 # Create boundary condition expressions using subdomains
-bcs = [EssentialBC(u.forward, bc, subdomain=sub1)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]
+bcs = [EssentialBC(phi.forward, bc, subdomain=sub1)]
+bcs += [EssentialBC(phi.forward, bc, subdomain=sub2)]
 
 exprs = [eqn] + bcs
 petsc = petscsolve(
     exprs,
-    target=u.forward,
+    target=phi.forward,
     solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='heat_explicit'
+    options_prefix='heat_cn'
 )
 
 with switchconfig(log_level='DEBUG'):
@@ -108,11 +106,11 @@ with switchconfig(log_level='DEBUG'):
     summary = op.apply(dt=dt)
 
 
-u_exact = Function(name='u', grid=grid, space_order=2)
-u_exact.data[:] = exact(X, dt*19, alpha)
+phi_exact = Function(name='phi_exact', grid=grid, space_order=2)
+phi_exact.data[:] = exact(X, tf, alpha)
 
 diff = Function(name='diff', grid=grid, space_order=2)
-diff.data[:] = u_exact.data[:] - u.data[19]
+diff.data[:] = phi_exact.data[:] - phi.data[19]
 
 # Compute norm
 n_interior = np.prod([s - 1 for s in grid.shape])
@@ -132,23 +130,22 @@ pyplot.rcParams['font.size'] = 16
 
 pyplot.figure()
 pyplot.xlabel('$x$')
-pyplot.ylabel('$u$')
+pyplot.ylabel(r'$\phi$')
 # add title
 # pyplot.title('', fontsize=13)
 pyplot.grid(False)
-pyplot.plot(X, u.data[0], color='blue', linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={0*dt:.2f}$')
-pyplot.plot(X, u.data[4], color='red',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={4*dt:.2f}$')
-pyplot.plot(X, u.data[9], color='orange',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={9*dt:.2f}$')
-pyplot.plot(X, u.data[14], color='green',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={14*dt:.2f}$')
-pyplot.plot(X, u.data[19], color='brown',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'FTCS at $t={19*dt:.2f}$')
-
+pyplot.plot(X, phi.data[0], color='blue',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'CN at $t={0*dt:.2f}$')
+pyplot.plot(X, phi.data[4], color='red',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'CN at $t={4*dt:.2f}$')
+pyplot.plot(X, phi.data[9], color='orange',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'CN at $t={9*dt:.2f}$')
+pyplot.plot(X, phi.data[14], color='green',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'CN at $t={14*dt:.2f}$')
+pyplot.plot(X, phi.data[19], color='brown',linestyle='-', marker='o', markersize=3, linewidth=2, label=f'CN at $t={19*dt:.2f}$')
+# pyplot.plot(X, u_exact.data[:], color='C1',linewidth=2, label=f'Exact at $t={tf}$')
 pyplot.xlim(0.0, 1.)
 pyplot.ylim(0.0, 1.05)
 pyplot.legend(fontsize=8)
 # make the y axis go up in 0.1
 pyplot.yticks(np.arange(0, 1.1, 0.1))
 
-
 # Save fig
-fig_path = '3_2_1_ftcs_unstable.png'
+fig_path = '3_2_1_cn.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)

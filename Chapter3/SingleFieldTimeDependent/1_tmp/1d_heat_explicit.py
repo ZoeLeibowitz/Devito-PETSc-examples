@@ -151,5 +151,5 @@ pyplot.ylim(-1.2, 2.3)
 pyplot.legend(fontsize=10)
 
 # Save fig
-fig_path = '1d_heat_explicit.png'
+fig_path = '3_1_1_heat_ftcs_1d.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
