@@ -62,6 +62,47 @@ print("time_range; ", time_range)
 p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=2)
 q = Function(name="q", grid=model.grid, space_order=8)
 
+damping = Function(name="damping", grid=model.grid, space_order=2)
+
+nx, ny = damping.shape
+taper_width = 10
+min_val, max_val = 0.97, 1.0
+
+# Coordinates
+x = np.arange(nx)
+y = np.arange(ny)
+X, Y = np.meshgrid(x, y, indexing="ij")
+
+# Distance to nearest edge (for tapering)
+dist = np.minimum.reduce([X, nx-1-X, Y, ny-1-Y])
+
+# Normalized [0,1] distance into taper region
+mask = np.clip(dist / taper_width, 0, 1)
+
+# Cosine taper profile
+taper = min_val + (max_val - min_val) * 0.5 * (1 - np.cos(np.pi * mask))
+
+damping.data[:] = taper
+
+# from IPython import embed; embed()
+
+fig, ax = plt.subplots(figsize=(6, 6))
+
+# Plot damping
+cax = ax.imshow(damping.data[:], vmin=0, vmax=1, cmap="viridis", origin="lower")
+
+# Add colorbar
+cbar = fig.colorbar(cax, ax=ax, fraction=0.046, pad=0.04)
+cbar.set_label("Damping Value")
+
+# Add labels & title
+ax.set_title("Damping Field with Cosine Taper")
+ax.set_xlabel("X grid index")
+ax.set_ylabel("Y grid index")
+
+# Save to file
+plt.savefig("damping.png", dpi=300, bbox_inches="tight")
+
 # Main equations
 term1_p = (1 + 2*delta*(sintheta**2)*(costheta**2) + 2*epsilon*costheta**4)*q.dx4
 term2_p = (1 + 2*delta*(sintheta**2)*(costheta**2) + 2*epsilon*sintheta**4)*q.dy4
@@ -82,6 +123,9 @@ t = model.grid.stepping_dim
 
 update_q = Eq( pp[t+1,x,z],((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2)))
+
+# update_q = Eq( pp[t+1,x,z],damping*(((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
+#          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2))))
 
 bc = [Eq(pp[t+1,x, 0], 0.)]
 bc += [Eq(pp[t+1,x, shape[1]+2*nbl-1], 0.)]
@@ -116,7 +160,7 @@ print(optime.ccode)
 
 # NBVAL_IGNORE_OUTPUT
 psave =np.empty ((time_range.num,model.grid.shape[0],model.grid.shape[1]))
-niter_poisson = 1200
+niter_poisson = 4200
 
 
 # from IPython import embed; embed()
@@ -146,7 +190,8 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 
 # Plot the wavefields, each normalized to scaled maximum of last time step
 kt = (time_range.num - 2) - 1
-amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
+# amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
+amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
@@ -155,7 +200,9 @@ fig, axes = plt.subplots(2, 5, figsize=(18, 7), sharex=True)
 fig.suptitle("Snapshots", size=14)
 for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
-    ax.imshow(np.transpose(psave[snapshot,:,:]), cmap="seismic",
+    # ax.imshow(np.transpose(psave[snapshot,:,:]), cmap="seismic",
+    #            vmin=-amax, vmax=+amax, extent=plt_extent)
+    ax.imshow(np.transpose(p.data[snapshot,:,:]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")

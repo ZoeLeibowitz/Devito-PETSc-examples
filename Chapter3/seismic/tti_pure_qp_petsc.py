@@ -1,10 +1,18 @@
 import numpy as np
+import os
 from devito import (Function, TimeFunction, cos, sin, solve,
                     Eq, Operator, configuration, norm, SubDomain, switchconfig)
 from examples.seismic import TimeAxis, RickerSource, Receiver, demo_model
 from matplotlib import pyplot as plt
 
-from devito.petsc import petscsolve
+from devito.petsc import petscsolve, EssentialBC
+
+from devito.petsc.initialize import PetscInitialize
+
+configuration['compiler'] = 'custom'
+os.environ['CC'] = 'mpicc'
+
+PetscInitialize()
 
 
 # Subdomains to implement BCs
@@ -56,7 +64,7 @@ origin  = (0.,0.)
 nbl = 0  # number of pad points
 
 model = demo_model('layers-tti', spacing=spacing, space_order=8,
-                   shape=shape, nbl=nbl, nlayers=1, subdomains=subdomains)
+                   shape=shape, nbl=nbl, nlayers=1, subdomains=subdomains, dtype=np.float64)
 
 # initialize Thomsem parameters to those used in Mu et al., (2020)
 model.update('vp', np.ones(shape)*3.6) # km/s
@@ -93,6 +101,7 @@ dvalue = min(spacing)
 # Compute the dt and set time range
 t0 = 0.   #  Simulation time start
 tn = 150. #  Simulation time end (0.15 second = 150 msec)
+# tn = 135.
 dt = (dvalue/(np.pi*vmax))*np.sqrt(1/(1+etamax*(max_cos_sin)**2)) # eq. above (cell 3)
 time_range = TimeAxis(start=t0,stop=tn,step=dt)
 print("time_range; ", time_range)
@@ -112,26 +121,52 @@ term5_p = (-delta*sin4theta - 4*epsilon*sin2theta*sintheta**2)*((q.dy3).dx)
 stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p), p.forward)
 update_p = Eq(p.forward, stencil_p)
 
-# Poisson eq. (following notebook 6 from CFD examples)
-b = Function(name='b', grid=model.grid, space_order=2)
-pp = TimeFunction(name='pp', grid=model.grid, space_order=2)
 
 # Create stencil and boundary condition expressions
 x, z = model.grid.dimensions
 t = model.grid.stepping_dim
 
-update_q = Eq( pp[t+1,x,z],((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
-         b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2)))
+
+bc_p = [Eq(p[t+1,x, 0], 0.)]
+bc_p += [Eq(p[t+1,x, shape[1]+2*nbl-1], 0.)]
+bc_p += [Eq(p[t+1,0, z], 0.)]
+bc_p += [Eq(p[t+1,shape[0]-1+2*nbl, z], 0.)]
 
 
-bc = [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subtop'])]
-bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subbottom'])]
-bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subleft'])]
-bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subright'])]
+bc = [EssentialBC(q, 0., subdomain=model.grid.subdomains['subtop'])]
+bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subbottom'])]
+bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subleft'])]
+bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subright'])]
 
 
-update_q = Eq(q.laplace, p)
-petsc = petscsolve([update_q, bc], target=q)
+damping = Function(name="damping", grid=model.grid, space_order=2)
+
+nx, ny = damping.shape
+taper_width = 10
+min_val, max_val = 0.97, 1.0
+
+# Coordinates
+x = np.arange(nx)
+y = np.arange(ny)
+X, Y = np.meshgrid(x, y, indexing="ij")
+
+# Distance to nearest edge (for tapering)
+dist = np.minimum.reduce([X, nx-1-X, Y, ny-1-Y])
+
+# Normalized [0,1] distance into taper region
+mask = np.clip(dist / taper_width, 0, 1)
+
+# Cosine taper profile
+taper = min_val + (max_val - min_val) * 0.5 * (1 - np.cos(np.pi * mask))
+
+damping.data[:] = taper
+
+
+update_q = Eq(q.laplace, p.forward, subdomain=model.grid.interior)
+petsc = petscsolve([update_q] + bc, target=q, solver_parameters={'ksp_type': 'cg'}, options_prefix='poisson')
+
+
+damping_eqn = Eq(q, damping*q, subdomain=model.grid.interior)
 
 
 # set source and receivers
@@ -152,12 +187,16 @@ rec_term = rec.interpolate(expr=p.forward)
 # oppres=Operator([update_q] + bc)
 
 
-op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
+# op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
 
-with switchconfig(language='petsc'):
-    op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
-
+with switchconfig():
+    op_all = Operator([update_p] + src_term + rec_term + [petsc], language='petsc')
+    # op_all = Operator([update_p] + src_term + rec_term + [petsc] + [damping_eqn], language='petsc')
+    # op_all = Operator([update_p, petsc], language='petsc')
+    # print(op_all.ccode)
     op_all(time_m=0, time_M=time_range.num-2, dt=dt)
+    # op_all(time_m=0, time_M=100, dt=dt)
+
 
 
 
@@ -167,7 +206,7 @@ with switchconfig(language='petsc'):
 
 
 # NBVAL_IGNORE_OUTPUT
-psave =np.empty ((time_range.num,model.grid.shape[0],model.grid.shape[1]))
+# psave =np.empty ((time_range.num,model.grid.shape[0],model.grid.shape[1]))
 niter_poisson = 1200
 
 
@@ -203,16 +242,20 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 
 # Plot the wavefields, each normalized to scaled maximum of last time step
 kt = (time_range.num - 2) - 1
-amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
+amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
 
+
+
+# from IPython import embed; embed()
 fig, axes = plt.subplots(2, 5, figsize=(18, 7), sharex=True)
 fig.suptitle("Snapshots", size=14)
 for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
-    ax.imshow(np.transpose(q[snapshot,:,:]), cmap="seismic",
+    # from IPython import embed; embed()
+    ax.imshow(np.transpose(p.data[snapshot,:,:]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")
