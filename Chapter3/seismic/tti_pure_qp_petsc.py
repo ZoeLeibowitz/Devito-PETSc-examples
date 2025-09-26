@@ -1,8 +1,51 @@
 import numpy as np
 from devito import (Function, TimeFunction, cos, sin, solve,
-                    Eq, Operator, configuration, norm)
+                    Eq, Operator, configuration, norm, SubDomain, switchconfig)
 from examples.seismic import TimeAxis, RickerSource, Receiver, demo_model
 from matplotlib import pyplot as plt
+
+from devito.petsc import petscsolve
+
+
+# Subdomains to implement BCs
+class SubTop(SubDomain):
+    name = 'subtop'
+
+    def define(self, dimensions):
+        x, y = dimensions
+        return {x: ('middle', 1, 1), y: ('right', 1)}
+
+
+class SubBottom(SubDomain):
+    name = 'subbottom'
+
+    def define(self, dimensions):
+        x, y = dimensions
+        return {x: ('middle', 1, 1), y: ('left', 1)}
+
+
+class SubLeft(SubDomain):
+    name = 'subleft'
+
+    def define(self, dimensions):
+        x, y = dimensions
+        return {x: ('left', 1), y: y}
+
+
+class SubRight(SubDomain):
+    name = 'subright'
+
+    def define(self, dimensions):
+        x, y = dimensions
+        return {x: ('right', 1), y: y}
+    
+
+sub1 = SubTop()
+sub2 = SubBottom()
+sub3 = SubLeft()
+sub4 = SubRight()
+
+subdomains = (sub1, sub2, sub3, sub4)
 
 
 # NBVAL_IGNORE_OUTPUT   
@@ -13,7 +56,7 @@ origin  = (0.,0.)
 nbl = 0  # number of pad points
 
 model = demo_model('layers-tti', spacing=spacing, space_order=8,
-                   shape=shape, nbl=nbl, nlayers=1)
+                   shape=shape, nbl=nbl, nlayers=1, subdomains=subdomains)
 
 # initialize Thomsem parameters to those used in Mu et al., (2020)
 model.update('vp', np.ones(shape)*3.6) # km/s
@@ -55,9 +98,6 @@ time_range = TimeAxis(start=t0,stop=tn,step=dt)
 print("time_range; ", time_range)
 
 
-
-# NBVAL_IGNORE_OUTPUT
-
 # time stepping 
 p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=2)
 q = Function(name="q", grid=model.grid, space_order=8)
@@ -83,13 +123,16 @@ t = model.grid.stepping_dim
 update_q = Eq( pp[t+1,x,z],((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2)))
 
-bc = [Eq(pp[t+1,x, 0], 0.)]
-bc += [Eq(pp[t+1,x, shape[1]+2*nbl-1], 0.)]
-bc += [Eq(pp[t+1,0, z], 0.)]
-bc += [Eq(pp[t+1,shape[0]-1+2*nbl, z], 0.)]
+
+bc = [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subtop'])]
+bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subbottom'])]
+bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subleft'])]
+bc += [Eq(pp.forward, 0, subdomain=model.grid.subdomains['subright'])]
 
 
-# from IPython import embed; embed()
+update_q = Eq(q.laplace, p)
+petsc = petscsolve([update_q, bc], target=q)
+
 
 # set source and receivers
 src = RickerSource(name='src',grid=model.grid,f0=0.02,npoint=1,time_range=time_range)
@@ -105,11 +148,20 @@ rec.coordinates.data[:, 1] = 2*spacing[1]
 rec_term = rec.interpolate(expr=p.forward)
 
 # Operators
-optime=Operator([update_p] + src_term + rec_term)
-oppres=Operator([update_q] + bc)
+# optime=Operator([update_p] + src_term + rec_term)
+# oppres=Operator([update_q] + bc)
 
 
-print(optime.ccode)
+op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
+
+with switchconfig(language='petsc'):
+    op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
+
+    op_all(time_m=0, time_M=time_range.num-2, dt=dt)
+
+
+
+# print(optime.ccode)
 
 # you can print the generated code for both operators by typing print(optime) and print(oppres)
 
@@ -121,13 +173,18 @@ niter_poisson = 1200
 
 # from IPython import embed; embed()
 # This is the time loop.
-for step in range(0,time_range.num-2):
-    q.data[:,:]=pp.data[(niter_poisson+1)%2,:,:]
-    optime(time_m=step, time_M=step, dt=dt)
-    pp.data[:,:]=0.
-    b.data[:,:]=p.data[(step+1)%3,:,:]
-    oppres(time_M = niter_poisson)
-    psave[step,:,:]=p.data[(step+1)%3,:,:]
+# for step in range(0,time_range.num-2):
+#     q.data[:,:]=pp.data[(niter_poisson+1)%2,:,:]
+#     optime(time_m=step, time_M=step, dt=dt)
+#     pp.data[:,:]=0.
+#     b.data[:,:]=p.data[(step+1)%3,:,:]
+#     oppres(time_M = niter_poisson)
+#     psave[step,:,:]=p.data[(step+1)%3,:,:]
+
+
+# op = Operator([update_p] + src_term + rec_term)
+
+
 
 
 # Some useful definitions for plotting if nbl is set to any other value than zero
@@ -155,7 +212,7 @@ fig, axes = plt.subplots(2, 5, figsize=(18, 7), sharex=True)
 fig.suptitle("Snapshots", size=14)
 for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
-    ax.imshow(np.transpose(psave[snapshot,:,:]), cmap="seismic",
+    ax.imshow(np.transpose(q[snapshot,:,:]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")
@@ -168,4 +225,4 @@ for ax in axes[:, 0]:
     ax.set_ylabel("Z Coordinate (m)",fontsize=10)
 
 
-plt.savefig('tti_pure_qp_original.png', dpi=300)
+plt.savefig('tti_pure_qp_petsc.png', dpi=300)
