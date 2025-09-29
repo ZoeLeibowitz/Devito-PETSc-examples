@@ -84,16 +84,11 @@ t = model.grid.stepping_dim
 update_q = Eq( pp[t+1,x,z],((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2)))
 
-# update_q = Eq( pp[t+1,x,z],damping*(((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
-#          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2))))
-
 bc = [Eq(pp[t+1,x, 0], 0.)]
 bc += [Eq(pp[t+1,x, shape[1]+2*nbl-1], 0.)]
 bc += [Eq(pp[t+1,0, z], 0.)]
 bc += [Eq(pp[t+1,shape[0]-1+2*nbl, z], 0.)]
 
-
-# from IPython import embed; embed()
 
 # set source and receivers
 src = RickerSource(name='src',grid=model.grid,f0=0.02,npoint=1,time_range=time_range)

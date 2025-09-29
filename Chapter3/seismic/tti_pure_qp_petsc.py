@@ -61,7 +61,7 @@ subdomains = (sub1, sub2, sub3, sub4)
 shape   = (101,101) # 101x101 grid
 spacing = (10.,10.) # spacing of 10 meters
 origin  = (0.,0.)  
-nbl = 0  # number of pad points
+nbl = 20  # number of pad points
 
 model = demo_model('layers-tti', spacing=spacing, space_order=8,
                    shape=shape, nbl=nbl, nlayers=1, subdomains=subdomains, dtype=np.float64)
@@ -101,14 +101,15 @@ dvalue = min(spacing)
 # Compute the dt and set time range
 t0 = 0.   #  Simulation time start
 tn = 150. #  Simulation time end (0.15 second = 150 msec)
-# tn = 135.
 dt = (dvalue/(np.pi*vmax))*np.sqrt(1/(1+etamax*(max_cos_sin)**2)) # eq. above (cell 3)
 time_range = TimeAxis(start=t0,stop=tn,step=dt)
 print("time_range; ", time_range)
 
+kt = (time_range.num - 2) - 1
+print("dt: ", dt, " nt: ", time_range.num, " kt: ", kt)
 
 # time stepping 
-p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=2)
+p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=2, save=time_range.num)
 q = Function(name="q", grid=model.grid, space_order=8)
 
 # Main equations
@@ -118,7 +119,7 @@ term3_p = (2-delta*(sin2theta)**2 + 3*epsilon*(sin2theta)**2 + 2*delta*(cos2thet
 term4_p = ( delta*sin4theta - 4*epsilon*sin2theta*costheta**2)*((q.dy).dx3)
 term5_p = (-delta*sin4theta - 4*epsilon*sin2theta*sintheta**2)*((q.dy3).dx)
 
-stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p), p.forward)
+stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p) + model.damp*p.dt, p.forward)
 update_p = Eq(p.forward, stencil_p)
 
 
@@ -139,34 +140,9 @@ bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subleft'])]
 bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subright'])]
 
 
-damping = Function(name="damping", grid=model.grid, space_order=2)
-
-nx, ny = damping.shape
-taper_width = 10
-min_val, max_val = 0.97, 1.0
-
-# Coordinates
-x = np.arange(nx)
-y = np.arange(ny)
-X, Y = np.meshgrid(x, y, indexing="ij")
-
-# Distance to nearest edge (for tapering)
-dist = np.minimum.reduce([X, nx-1-X, Y, ny-1-Y])
-
-# Normalized [0,1] distance into taper region
-mask = np.clip(dist / taper_width, 0, 1)
-
-# Cosine taper profile
-taper = min_val + (max_val - min_val) * 0.5 * (1 - np.cos(np.pi * mask))
-
-damping.data[:] = taper
-
 
 update_q = Eq(q.laplace, p.forward, subdomain=model.grid.interior)
 petsc = petscsolve([update_q] + bc, target=q, solver_parameters={'ksp_type': 'cg'}, options_prefix='poisson')
-
-
-damping_eqn = Eq(q, damping*q, subdomain=model.grid.interior)
 
 
 # set source and receivers
@@ -182,23 +158,11 @@ rec.coordinates.data[:, 1] = 2*spacing[1]
 # Create interpolation expression for receivers
 rec_term = rec.interpolate(expr=p.forward)
 
-# Operators
-# optime=Operator([update_p] + src_term + rec_term)
-# oppres=Operator([update_q] + bc)
-
-
-# op_all = Operator([update_p] + src_term + rec_term + [update_q] + bc)
 
 with switchconfig():
     op_all = Operator([update_p] + src_term + rec_term + [petsc], language='petsc')
-    # op_all = Operator([update_p] + src_term + rec_term + [petsc] + [damping_eqn], language='petsc')
-    # op_all = Operator([update_p, petsc], language='petsc')
-    # print(op_all.ccode)
-    op_all(time_m=0, time_M=time_range.num-2, dt=dt)
-    # op_all(time_m=0, time_M=100, dt=dt)
-
-
-
+    # op_all(time_m=0, time_M=time_range.num-2, dt=dt)
+    op_all(dt=dt)
 
 
 # Some useful definitions for plotting if nbl is set to any other value than zero
@@ -208,7 +172,6 @@ origin_pad  = tuple([o - s*nbl for o, s in zip(origin, spacing)])
 extent_pad  = tuple([s*(n-1) for s, n in zip(spacing, shape_pad)])
 
 
-
 # NBVAL_IGNORE_OUTPUT
 
 # Note: flip sense of second dimension to make the plot positive downwards
@@ -216,12 +179,11 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
               origin_pad[1] + extent_pad[1], origin_pad[1]]
 
 # Plot the wavefields, each normalized to scaled maximum of last time step
-kt = (time_range.num - 2) - 1
-amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
+# amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
+amax = np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
-
 
 
 # from IPython import embed; embed()
@@ -229,8 +191,7 @@ fig, axes = plt.subplots(2, 5, figsize=(18, 7), sharex=True)
 fig.suptitle("Snapshots", size=14)
 for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
-    # from IPython import embed; embed()
-    ax.imshow(np.transpose(p.data[-1,:,:]), cmap="seismic",
+    ax.imshow(np.transpose(p.data[snapshot,nbl:-nbl,nbl:-nbl]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")
