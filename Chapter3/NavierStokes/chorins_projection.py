@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from devito import (Grid, TimeFunction, Constant, Eq,
+from devito import (Grid, TimeFunction, Constant, Eq, Function, solve,
                     Operator, SubDomain, switchconfig, configuration)
 from devito.symbolics import retrieve_functions, INT
 
@@ -132,7 +132,7 @@ def neumann_bottom(eq, subdomain):
         # Get the y index
         yind = f.indices[-1]
         if (yind - y).as_coeff_Mul()[0] < 0:
-            if f.name == 'pn1':
+            if f.name == 'p':
                 mapper.update({f: f.subs({yind: INT(abs(yind))})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
@@ -155,7 +155,7 @@ def neumann_top(eq, subdomain):
         if (yind - y).as_coeff_Mul()[0] > 0:
             # Symmetric mirror
             tmp = y - INT(abs(y.symbolic_max - yind))
-            if f.name == 'pn1':
+            if f.name == 'p':
                 mapper.update({f: f.subs({yind: tmp})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
@@ -179,7 +179,7 @@ def neumann_left(eq, subdomain):
             # Symmetric mirror
             # Substitute where index is negative for +ve
             # where index is positive
-            if f.name == 'pn1':
+            if f.name == 'p':
                 mapper.update({f: f.subs({xind: INT(abs(xind))})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
@@ -201,7 +201,7 @@ def neumann_right(eq, subdomain):
         xind = f.indices[-2]
         if (xind - x).as_coeff_Mul()[0] > 0:
             tmp = x - INT(abs(x.symbolic_max - xind))
-            if f.name == 'pn1':
+            if f.name == 'p':
                 mapper.update({f: f.subs({xind: tmp})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
@@ -230,74 +230,71 @@ dt = 1e-3
 t_end = 1.
 ns = int(t_end/dt)
 
-u1 = TimeFunction(name='u1', grid=grid, space_order=2, dtype=np.float64)
-v1 = TimeFunction(name='v1', grid=grid, space_order=2, dtype=np.float64)
-pn1 = TimeFunction(name='pn1', grid=grid, space_order=2, dtype=np.float64)
+u = TimeFunction(name='u', grid=grid, space_order=2, dtype=np.float64)
+v = TimeFunction(name='v', grid=grid, space_order=2, dtype=np.float64)
+p = Function(name='p', grid=grid, space_order=2, dtype=np.float64)
 
-eq_pn1 = Eq(pn1.forward.laplace, rho*(1./dt*(u1.forward.dxc+v1.forward.dyc)),
+eq_p = Eq(p.laplace, rho*(1./dt*(u.forward.dxc+v.forward.dyc)),
             subdomain=grid.interior)
 
 
-bc_pn1 = [neumann_top(eq_pn1, sub1)]
-bc_pn1 += [neumann_bottom(eq_pn1, sub2)]
-bc_pn1 += [neumann_left(eq_pn1, sub3)]
-bc_pn1 += [neumann_right(eq_pn1, sub4)]
-bc_pn1 += [EssentialBC(pn1.forward, 0., subdomain=sub5)]
-bc_pn1 += [neumann_right(neumann_bottom(eq_pn1, sub6), sub6)]
-bc_pn1 += [neumann_left(neumann_top(eq_pn1, sub7), sub7)]
-bc_pn1 += [neumann_right(neumann_top(eq_pn1, sub8), sub8)]
+bc_p = [neumann_top(eq_p, sub1)]
+bc_p += [neumann_bottom(eq_p, sub2)]
+bc_p += [neumann_left(eq_p, sub3)]
+bc_p += [neumann_right(eq_p, sub4)]
+bc_p += [EssentialBC(p, 0., subdomain=sub5)]
+bc_p += [neumann_right(neumann_bottom(eq_p, sub6), sub6)]
+bc_p += [neumann_left(neumann_top(eq_p, sub7), sub7)]
+bc_p += [neumann_right(neumann_top(eq_p, sub8), sub8)]
 
+eqn_p = petscsolve([eq_p]+bc_p, p, options_prefix='pressure_solve', solver_parameters={'ksp_type': 'cg'})
 
-eqn_p = petscsolve([eq_pn1]+bc_pn1, pn1.forward, options_prefix='pressure_solve', solver_parameters={'ksp_type': 'cg'})
+# Could use petsc for the "explict" velocity solves but not necessary
+tentu = Eq(u.dt + u*u.dxc + v*u.dyc, nu*u.laplace, subdomain=grid.interior)
+tentv = Eq(v.dt + u*v.dxc + v*v.dyc, nu*v.laplace, subdomain=grid.interior)
+tentu = Eq(u.forward, solve(tentu, u.forward), subdomain=grid.interior)
+tentv = Eq(v.forward, solve(tentv, v.forward), subdomain=grid.interior)
 
-eq_u1 = Eq(u1.dt + u1*u1.dxc + v1*u1.dyc, nu*u1.laplace, subdomain=grid.interior)
-eq_v1 = Eq(v1.dt + u1*v1.dxc + v1*v1.dyc, nu*v1.laplace, subdomain=grid.interior)
-
-update_u = Eq(u1.forward, u1.forward - (dt/rho)*(pn1.forward.dxc),
+# Velocity correction
+update_u = Eq(u.forward, u.forward - (dt/rho)*(p.dxc),
               subdomain=grid.interior)
 
-update_v = Eq(v1.forward, v1.forward - (dt/rho)*(pn1.forward.dyc),
+update_v = Eq(v.forward, v.forward - (dt/rho)*(p.dyc),
               subdomain=grid.interior)
+
 
 # TODO: Can drop due to initial guess CB
-u1.data[0, :, -1] = np.float64(1.)
-u1.data[1, :, -1] = np.float64(1.)
+u.data[0, :, -1] = np.float64(1.)
+u.data[1, :, -1] = np.float64(1.)
 
 
 # Create Dirichlet BC expressions for velocity
-bc_u = [EssentialBC(u1.forward, 1., subdomain=sub1)]  # top
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub3)]  # left
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub4)]  # right
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub2)]  # bottom
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub5)]  # bottom left
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub6)]  # bottom right
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub7)]  # top left
-bc_u += [EssentialBC(u1.forward, 0., subdomain=sub8)]  # top right
+bc_u = [EssentialBC(u.forward, 1., subdomain=sub1)]  # top
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub3)]  # left
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub4)]  # right
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub2)]  # bottom
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub5)]  # bottom left
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub6)]  # bottom right
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub7)]  # top left
+bc_u += [EssentialBC(u.forward, 0., subdomain=sub8)]  # top right
 
 
-bc_v = [EssentialBC(v1.forward, 0., subdomain=sub3)]  # left
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub4)]  # right
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub1)]  # top
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub2)]  # bottom
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub5)]  # bottom left
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub6)]  # bottom right
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub7)]  # top left
-bc_v += [EssentialBC(v1.forward, 0., subdomain=sub8)]  # top right
+bc_v = [EssentialBC(v.forward, 0., subdomain=sub3)]  # left
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub4)]  # right
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub1)]  # top
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub2)]  # bottom
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub5)]  # bottom left
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub6)]  # bottom right
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub7)]  # top left
+bc_v += [EssentialBC(v.forward, 0., subdomain=sub8)]  # top right
 
 
-tentu = petscsolve([eq_u1]+bc_u, u1.forward)
-tentv = petscsolve([eq_v1]+bc_v, v1.forward)
-
-exprs = [tentu, tentv, eqn_p, update_u, update_v] + bc_u + bc_v
+exprs = [tentu] + bc_u + [tentv] + bc_v + [eqn_p, update_u, update_v] + bc_u + bc_v
 
 with switchconfig(language='petsc'):
     op = Operator(exprs)
-    op.apply(time_m=0, time_M=ns-1, dt=dt)
-
-# Pressure norm check
-tol = 1e-3
-assert np.sum((pn1.data[0]-pn1.data[1])**2/np.maximum(pn1.data[0]**2, 1e-10)) < tol
-
+    print(op.ccode)
+    op.apply(time_M=ns-1, dt=dt)
 
 
 # Import u values at x=L/2 (table 6, column 2 rows 12-26) in Marchi et al.
@@ -350,16 +347,41 @@ y_coord = np.linspace(0, 1, npgrid[1])
 
 fig = pyplot.figure(figsize=(12, 6))
 ax1 = fig.add_subplot(121)
-ax1.plot(u1.data[-1, int(npgrid[0]/2),:],y_coord[:], 'black',label="Devito + PETSc")
+ax1.plot(u.data[-1, int(npgrid[0]/2),:],y_coord[:], 'black',label="Devito + PETSc")
 ax1.plot(Marchi_Re10_u[:,1],Marchi_Re10_u[:,0],'o', color='red', label="Marchi et al. 2009")
 ax1.set_xlabel('$u$')
 ax1.set_ylabel('$y$')
 ax1.legend()
 ax1 = fig.add_subplot(122)
-ax1.plot(x_coord[:],v1.data[-1,:,int(npgrid[1]/2)], 'black', label="Devito + PETSc")
+ax1.plot(x_coord[:],v.data[-1,:,int(npgrid[1]/2)], 'black', label="Devito + PETSc")
 ax1.plot(Marchi_Re10_v[:,0],Marchi_Re10_v[:,1],'o', color='red', label="Marchi et al. 2009")
 ax1.set_xlabel('$x$')
 ax1.set_ylabel('$v$')
-ax1.legend()
 
-pyplot.savefig('chorins_projection.png', format='jpg', dpi=300)
+pyplot.savefig('chorins_projection.png', format='png', dpi=300, transparent=True)
+
+
+
+# Create 2D grid for X and Y
+X, Y = np.meshgrid(x_coord, y_coord)  # Create meshgrid for contour plots
+
+# Create figure
+fig = pyplot.figure(figsize=(12, 6))
+
+# Create first contour plot for u
+ax1 = fig.add_subplot(121)
+contour1 = ax1.contourf(X, Y, u.data[-1, :, :].T, cmap='viridis', levels=100, alpha=0.8)  # Contour plot for u_pred
+fig.colorbar(contour1, ax=ax1)  # Add colorbar for the contour plot
+ax1.set_xlabel('$x$')
+ax1.set_ylabel('$y$')
+ax1.set_title('$u$')
+
+# Create second contour plot for v
+ax2 = fig.add_subplot(122)
+contour2 = ax2.contourf(X, Y, v.data[-1, :, :].T, cmap='viridis', levels=100, alpha=0.8)  # Contour plot for v_pred
+fig.colorbar(contour2, ax=ax2)  # Add colorbar for the contour plot
+ax2.set_xlabel('$x$')
+ax2.set_ylabel('$y$')
+ax2.set_title('$v$')
+
+pyplot.savefig('contour_plots.png', format='png', dpi=300, transparent=True)
