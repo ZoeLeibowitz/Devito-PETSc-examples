@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 shape   = (101,101) # 101x101 grid
 spacing = (10.,10.) # spacing of 10 meters
 origin  = (0.,0.)  
-nbl = 0  # number of pad points
+nbl = 20  # number of pad points
 
 model = demo_model('layers-tti', spacing=spacing, space_order=8,
                    shape=shape, nbl=nbl, nlayers=1)
@@ -62,6 +62,7 @@ print("time_range; ", time_range)
 p = TimeFunction(name="p", grid=model.grid, time_order=2, space_order=2)
 q = Function(name="q", grid=model.grid, space_order=8)
 
+
 # Main equations
 term1_p = (1 + 2*delta*(sintheta**2)*(costheta**2) + 2*epsilon*costheta**4)*q.dx4
 term2_p = (1 + 2*delta*(sintheta**2)*(costheta**2) + 2*epsilon*sintheta**4)*q.dy4
@@ -69,7 +70,7 @@ term3_p = (2-delta*(sin2theta)**2 + 3*epsilon*(sin2theta)**2 + 2*delta*(cos2thet
 term4_p = ( delta*sin4theta - 4*epsilon*sin2theta*costheta**2)*((q.dy).dx3)
 term5_p = (-delta*sin4theta - 4*epsilon*sin2theta*sintheta**2)*((q.dy3).dx)
 
-stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p), p.forward)
+stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p) + model.damp*p.dt, p.forward)
 update_p = Eq(p.forward, stencil_p)
 
 # Poisson eq. (following notebook 6 from CFD examples)
@@ -83,6 +84,8 @@ t = model.grid.stepping_dim
 update_q = Eq( pp[t+1,x,z],((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2)))
 
+# update_q = Eq( pp[t+1,x,z],damping*(((pp[t,x+1,z] + pp[t,x-1,z])*z.spacing**2 + (pp[t,x,z+1] + pp[t,x,z-1])*x.spacing**2 -
+#          b[x,z]*x.spacing**2*z.spacing**2) / (2*(x.spacing**2 + z.spacing**2))))
 
 bc = [Eq(pp[t+1,x, 0], 0.)]
 bc += [Eq(pp[t+1,x, shape[1]+2*nbl-1], 0.)]
@@ -147,7 +150,8 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 
 # Plot the wavefields, each normalized to scaled maximum of last time step
 kt = (time_range.num - 2) - 1
-amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
+# amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
+amax = np.max(np.abs(psave[kt,:,:]))
 # amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
@@ -159,7 +163,7 @@ for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
     # ax.imshow(np.transpose(psave[snapshot,:,:]), cmap="seismic",
     #            vmin=-amax, vmax=+amax, extent=plt_extent)
-    im = ax.imshow(np.transpose(psave[snapshot,:,:]), cmap="seismic",
+    im = ax.imshow(np.transpose(psave[snapshot,nbl:-nbl,nbl:-nbl]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")
@@ -169,14 +173,13 @@ for count, ax in enumerate(axes.ravel()):
 
     # add individual colorbar for this subplot
     fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
-
 for ax in axes[1, :]:
     ax.set_xlabel("X Coordinate (m)",fontsize=10)
 for ax in axes[:, 0]:
     ax.set_ylabel("Z Coordinate (m)",fontsize=10)
 
 
-plt.savefig('tti_pure_qp_original.png', dpi=300)
+plt.savefig(f'tti_pure_qp_original_with_damping.png', dpi=300)
 
 # print norm of p
 print("norm of p: ", norm(p))

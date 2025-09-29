@@ -200,31 +200,6 @@ with switchconfig():
 
 
 
-# print(optime.ccode)
-
-# you can print the generated code for both operators by typing print(optime) and print(oppres)
-
-
-# NBVAL_IGNORE_OUTPUT
-# psave =np.empty ((time_range.num,model.grid.shape[0],model.grid.shape[1]))
-niter_poisson = 1200
-
-
-# from IPython import embed; embed()
-# This is the time loop.
-# for step in range(0,time_range.num-2):
-#     q.data[:,:]=pp.data[(niter_poisson+1)%2,:,:]
-#     optime(time_m=step, time_M=step, dt=dt)
-#     pp.data[:,:]=0.
-#     b.data[:,:]=p.data[(step+1)%3,:,:]
-#     oppres(time_M = niter_poisson)
-#     psave[step,:,:]=p.data[(step+1)%3,:,:]
-
-
-# op = Operator([update_p] + src_term + rec_term)
-
-
-
 
 # Some useful definitions for plotting if nbl is set to any other value than zero
 nxpad,nzpad = shape[0] + 2 * nbl, shape[1] + 2 * nbl
@@ -255,7 +230,7 @@ fig.suptitle("Snapshots", size=14)
 for count, ax in enumerate(axes.ravel()):
     snapshot = factor*count
     # from IPython import embed; embed()
-    ax.imshow(np.transpose(p.data[snapshot,:,:]), cmap="seismic",
+    ax.imshow(np.transpose(p.data[-1,:,:]), cmap="seismic",
                vmin=-amax, vmax=+amax, extent=plt_extent)
     ax.plot(model.domain_size[0]* .5, model.domain_size[1]* .5, \
          'red', linestyle='None', marker='*', markersize=8, label="Source")
@@ -269,3 +244,7 @@ for ax in axes[:, 0]:
 
 
 plt.savefig('tti_pure_qp_petsc.png', dpi=300)
+
+
+# print norm of p
+print("norm of p: ", norm(p))
