@@ -71,6 +71,7 @@ term4_p = ( delta*sin4theta - 4*epsilon*sin2theta*costheta**2)*((q.dy).dx3)
 term5_p = (-delta*sin4theta - 4*epsilon*sin2theta*sintheta**2)*((q.dy3).dx)
 
 stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p) + model.damp*p.dt, p.forward)
+# stencil_p = solve(m*p.dt2 - (term1_p + term2_p + term3_p + term4_p + term5_p), p.forward)
 update_p = Eq(p.forward, stencil_p)
 
 # Poisson eq. (following notebook 6 from CFD examples)

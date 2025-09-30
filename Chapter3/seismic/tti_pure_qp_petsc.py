@@ -128,12 +128,6 @@ x, z = model.grid.dimensions
 t = model.grid.stepping_dim
 
 
-bc_p = [Eq(p[t+1,x, 0], 0.)]
-bc_p += [Eq(p[t+1,x, shape[1]+2*nbl-1], 0.)]
-bc_p += [Eq(p[t+1,0, z], 0.)]
-bc_p += [Eq(p[t+1,shape[0]-1+2*nbl, z], 0.)]
-
-
 bc = [EssentialBC(q, 0., subdomain=model.grid.subdomains['subtop'])]
 bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subbottom'])]
 bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subleft'])]
@@ -161,14 +155,20 @@ rec_term = rec.interpolate(expr=p.forward)
 
 with switchconfig():
     op_all = Operator([update_p] + src_term + rec_term + [petsc], language='petsc')
-    # op_all(time_m=0, time_M=time_range.num-2, dt=dt)
+    print(op_all.ccode)
     op_all(dt=dt)
 
 
+# # Some useful definitions for plotting if nbl is set to any other value than zero
+# nxpad,nzpad = shape[0] + 2 * nbl, shape[1] + 2 * nbl
+# shape_pad   = np.array(shape) + 2 * nbl
+# origin_pad  = tuple([o - s*nbl for o, s in zip(origin, spacing)])
+# extent_pad  = tuple([s*(n-1) for s, n in zip(spacing, shape_pad)])
+
 # Some useful definitions for plotting if nbl is set to any other value than zero
-nxpad,nzpad = shape[0] + 2 * nbl, shape[1] + 2 * nbl
-shape_pad   = np.array(shape) + 2 * nbl
-origin_pad  = tuple([o - s*nbl for o, s in zip(origin, spacing)])
+nxpad,nzpad = shape[0], shape[1]
+shape_pad   = np.array(shape)
+origin_pad  = tuple([o - s*0. for o, s in zip(origin, spacing)])
 extent_pad  = tuple([s*(n-1) for s, n in zip(spacing, shape_pad)])
 
 
@@ -180,7 +180,7 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 
 # Plot the wavefields, each normalized to scaled maximum of last time step
 # amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
-amax = np.max(np.abs(p.data[kt,:,:]))
+amax = 1.0 * np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
@@ -209,3 +209,42 @@ plt.savefig('tti_pure_qp_petsc.png', dpi=300)
 
 # print norm of p
 print("norm of p: ", norm(p))
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+# Create a figure
+fig, ax = plt.subplots(figsize=(8,6))
+im = ax.imshow(np.transpose(p.data[0, nbl:-nbl, nbl:-nbl]),
+               cmap="seismic", vmin=-amax, vmax=+amax,
+               extent=plt_extent)
+
+# Add source marker
+src_plot, = ax.plot(model.domain_size[0]*0.5, model.domain_size[1]*0.5,
+                    'red', linestyle='None', marker='*', markersize=8, label="Source")
+
+# Titles and labels
+ax.set_xlabel("X Coordinate (m)", fontsize=10)
+ax.set_ylabel("Z Coordinate (m)", fontsize=10)
+ax.grid()
+
+title = ax.set_title("Wavefield at t=0.00 ms", fontsize=12)
+
+# Animation update function
+def update(frame):
+    snapshot = frame
+    im.set_data(np.transpose(p.data[snapshot, nbl:-nbl, nbl:-nbl]))
+    title.set_text(f"Wavefield at t={snapshot*dt:.2f} ms")
+    return im, title
+
+# Number of frames
+nframes = p.data.shape[0] 
+
+ani = animation.FuncAnimation(fig, update, frames=range(0, nframes, factor),
+                              blit=False, interval=300)
+ani.save("wavefield.gif", writer="pillow", fps=5)
+
+plt.close(fig)

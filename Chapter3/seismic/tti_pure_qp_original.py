@@ -90,8 +90,6 @@ bc += [Eq(pp[t+1,0, z], 0.)]
 bc += [Eq(pp[t+1,shape[0]-1+2*nbl, z], 0.)]
 
 
-# from IPython import embed; embed()
-
 # set source and receivers
 src = RickerSource(name='src',grid=model.grid,f0=0.02,npoint=1,time_range=time_range)
 src.coordinates.data[:,0] = model.domain_size[0]* .5
@@ -120,7 +118,6 @@ psave =np.empty ((time_range.num,model.grid.shape[0],model.grid.shape[1]))
 niter_poisson = 8000
 
 
-# from IPython import embed; embed()
 # This is the time loop.
 for step in range(0,time_range.num-2):
     q.data[:,:]=pp.data[(niter_poisson+1)%2,:,:]
@@ -148,7 +145,6 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 # Plot the wavefields, each normalized to scaled maximum of last time step
 kt = (time_range.num - 2) - 1
 amax = 0.05 * np.max(np.abs(psave[kt,:,:]))
-# amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
 
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
