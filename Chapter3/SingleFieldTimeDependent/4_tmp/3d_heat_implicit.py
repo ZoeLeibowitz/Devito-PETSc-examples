@@ -154,7 +154,7 @@ bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h
 exprs = [eqn] + bcs
 petsc = petscsolve(
     exprs, target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'cg', 'pc_type': 'none'},
     options_prefix='heat_implicit_3d'
 )
 
@@ -186,15 +186,11 @@ with switchconfig():
 
 
 u_exact = TimeFunction(name='u_exact', grid=grid, space_order=2, save=nt+1)
-# u_exact at t=0.05
-u_exact.data[500] = exact(X, Y, Z, dt*500)
-# u_exact at t=0.25
-u_exact.data[2500] = exact(X, Y, Z, dt*2500)
-# u_exact at t=0.5
-u_exact.data[5000] = exact(X, Y, Z, dt*5000)
-# u_exact at t=1.0
-u_exact.data[10000] = exact(X, Y, Z, dt*10000)
 
+nt = u_exact.data.shape[0]  # total number of time steps
+
+for t_idx in range(nt):
+    u_exact.data[t_idx] = exact(X, Y, Z, dt * t_idx)
 
 
 from matplotlib import pyplot
@@ -289,7 +285,6 @@ for i, t_idx in enumerate(time_indices):
     plot_cube_faces(ax1, u.data[t_idx])
     ax1.set_title(f'Finite Difference Solution (t={time_labels[i]})')
     ax1.set_xlabel("x"); ax1.set_ylabel("y"); ax1.set_zlabel("z")
-    # ax1.view_init(elev=26, azim=25)
     mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     fig.colorbar(mappable, ax=ax1, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
@@ -298,10 +293,108 @@ for i, t_idx in enumerate(time_indices):
     plot_cube_faces(ax2, u_exact.data[t_idx])
     ax2.set_title(f'Exact Solution (t={time_labels[i]})')
     ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
-    # ax2.view_init(elev=26, azim=25)
     mappable2 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
 plt.tight_layout()
 plt.savefig("3d_contour_cube_faces_implicit.png", dpi=300)
 # plt.show()
+
+
+
+# ########### for the animation ###########
+
+# import matplotlib.pyplot as plt
+# import matplotlib as mpl
+# import numpy as np
+# from matplotlib import animation
+
+# X, Y, Z = np.meshgrid(tmpx, tmpy, tmpz, indexing='ij')
+
+# # Normalization
+# norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
+# cmap = plt.cm.jet
+
+# fig = plt.figure(figsize=(12, 6))
+
+# # Left: FD solution
+# ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+# ax1.set_title("Finite Difference Solution", fontsize=10)
+# ax1.set_xlabel("x", fontsize=10); ax1.set_ylabel("y", fontsize=10); ax1.set_zlabel("z", fontsize=10)
+# ax1.set_xlim(0, 1); ax1.set_ylim(0, 1); ax1.set_zlim(0, 1)
+# ax1.tick_params(axis='both', which='major', labelsize=8)
+# ax1.tick_params(axis='both', which='minor', labelsize=6)
+# mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+# cbar1 = fig.colorbar(mappable, ax=ax1, shrink=0.6, aspect=10, pad=0.15)
+# cbar1.set_label("Temperature", fontsize=10)
+# cbar1.ax.tick_params(labelsize=8)
+
+# # Right: Exact solution
+# ax2 = fig.add_subplot(1, 2, 2, projection="3d")
+# ax2.set_title("Exact Solution", fontsize=10)
+# ax2.set_xlabel("x", fontsize=10); ax2.set_ylabel("y", fontsize=10); ax2.set_zlabel("z", fontsize=10)
+# ax2.set_xlim(0, 1); ax2.set_ylim(0, 1); ax2.set_zlim(0, 1)
+# ax2.tick_params(axis='both', which='major', labelsize=8)
+# ax2.tick_params(axis='both', which='minor', labelsize=6)
+# mappable2 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+# cbar2 = fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.15)
+# cbar2.set_label("Temperature", fontsize=10)
+# cbar2.ax.tick_params(labelsize=8)
+
+
+# def plot_cube_faces(ax, data):
+#     faces = []
+#     # x=0 face
+#     faces.append(ax.plot_surface(X[0,:,:], Y[0,:,:], Z[0,:,:],
+#                                  facecolors=cmap(norm(data[0,:,:])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     # x=max face
+#     faces.append(ax.plot_surface(X[-1,:,:], Y[-1,:,:], Z[-1,:,:],
+#                                  facecolors=cmap(norm(data[-1,:,:])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     # y=0 face
+#     faces.append(ax.plot_surface(X[:,0,:], Y[:,0,:], Z[:,0,:],
+#                                  facecolors=cmap(norm(data[:,0,:])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     # y=max face
+#     faces.append(ax.plot_surface(X[:,-1,:], Y[:,-1,:], Z[:,-1,:],
+#                                  facecolors=cmap(norm(data[:,-1,:])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     # z=0 face
+#     faces.append(ax.plot_surface(X[:,:,0], Y[:,:,0], Z[:,:,0],
+#                                  facecolors=cmap(norm(data[:,:,0])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     # z=max face
+#     faces.append(ax.plot_surface(X[:,:,-1], Y[:,:,-1], Z[:,:,-1],
+#                                  facecolors=cmap(norm(data[:,:,-1])),
+#                                  rstride=1, cstride=1, shade=False, alpha=0.95))
+#     return faces
+
+# # Initial plots
+# fd_faces = plot_cube_faces(ax1, u.data[0])
+# exact_faces = plot_cube_faces(ax2, u_exact.data[0])
+
+# def update(frame):
+#     # Clear old surfaces
+#     for f in fd_faces: f.remove()
+#     for f in exact_faces: f.remove()
+
+#     # Redraw with new data
+#     new_fd = plot_cube_faces(ax1, u.data[frame])
+#     new_exact = plot_cube_faces(ax2, u_exact.data[frame])
+
+#     # Replace global handles
+#     fd_faces[:] = new_fd
+#     exact_faces[:] = new_exact
+
+#     ax1.set_title(f"Finite Difference Solution (t={frame*dt:.2f})", fontsize=10)
+#     ax2.set_title(f"Exact Solution (t={frame*dt:.2f})", fontsize=10)
+#     return fd_faces + exact_faces
+
+# # Make animation
+# ani = animation.FuncAnimation(fig, update, frames=range(0, u.data.shape[0], 500),
+#                               blit=False, interval=200)
+
+# ani.save("cube_faces_comparison.gif", writer="pillow", fps=5)
+
+# plt.close(fig)

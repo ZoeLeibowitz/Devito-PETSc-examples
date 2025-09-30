@@ -182,6 +182,8 @@ plt_extent = [origin_pad[0], origin_pad[0] + extent_pad[0],
 # amax = 0.05 * np.max(np.abs(p.data[kt,:,:]))
 amax = 1.0 * np.max(np.abs(p.data[kt,:,:]))
 
+
+# Can play around with this to improve the animation (e.g 25)
 nsnaps = 10
 factor = round(time_range.num/nsnaps)
 
