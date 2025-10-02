@@ -285,7 +285,6 @@ for i, t_idx in enumerate(time_indices):
     plot_cube_faces(ax1, u.data[t_idx])
     ax1.set_title(f'Finite Difference Solution (t={time_labels[i]})')
     ax1.set_xlabel("x"); ax1.set_ylabel("y"); ax1.set_zlabel("z")
-    # ax1.view_init(elev=26, azim=25)
     mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     fig.colorbar(mappable, ax=ax1, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
@@ -294,7 +293,6 @@ for i, t_idx in enumerate(time_indices):
     plot_cube_faces(ax2, u_exact.data[t_idx])
     ax2.set_title(f'Exact Solution (t={time_labels[i]})')
     ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
-    # ax2.view_init(elev=26, azim=25)
     mappable2 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
