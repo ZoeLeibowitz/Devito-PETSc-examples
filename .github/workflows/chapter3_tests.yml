@@ -15,6 +15,7 @@ on:
       - 'Chapter3/3_1_7/*.png'
       - 'Chapter3/3_1_8/*.png'
       - 'Chapter3/3_1_9/*.png'
+      - 'Chapter3/3_2_1/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -123,6 +124,15 @@ jobs:
           zoeleibowitz/petsc_devito_image:latest \
           python3 rectangle2d.py
 
+    - name: Run all .py scripts in 3_2_1 - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_2_1 \
+          -u $(id -u):$(id -g) \
+          zoeleibowitz/petsc_devito_image:latest \
+          bash -c 'for f in *.py; do echo "Running $f..."; python3 "$f"; done'
+
     # Configure Git for commits
     - name: Configure git
       run: |
@@ -144,6 +154,7 @@ jobs:
         git add Chapter3/3_1_7/*.png
         git add Chapter3/3_1_8/*.png
         git add Chapter3/3_1_9/*.png
+        git add Chapter3/3_2_1/*.png
 
         git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
         git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
