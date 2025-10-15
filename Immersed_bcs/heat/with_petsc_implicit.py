@@ -38,17 +38,13 @@ op.apply(dt=dt)
 
 
 ###################### with immersed bcs ######################
-grid = dv.Grid(shape =(101 , 101) , extent =(1. , 1.), dtype=np.float64)
-
-
-sdf = dv. Function(name='sdf', grid=grid , space_order =2)
+grid = dv.Grid(shape=(101 , 101), extent =(1., 1.), dtype=np.float64)
+sdf = dv. Function(name='sdf', grid=grid, space_order=2)
 x_msh , y_msh = np.meshgrid (*[ np.linspace (-0.5, 0.5, 101)
 for d in grid. dimensions ])
 sdf.data [:] = 0.25 - np.sqrt(x_msh **2 + y_msh **2)
-
-
 c = 1. # Diffusion constant
-dt = 0.000025 # Timestep ( stability limit)
+dt = 0.000025 # Timestep
 u1 = dv. TimeFunction (name='u1', grid=grid , space_order =2, save=1000)
 u1.data [0, 40: -40 , 40: -40] = 1.
 #### Boundary setup ####
@@ -61,15 +57,40 @@ boundary = Boundary(bcs , bg)
 subs = boundary . substitutions ((u1.forward.dx2 , u1.forward.dy2))
 # #######################
 #### Substitute stencils into RHS ####
-
 eq = dv.Eq(u1.dt, c*u1.forward.laplace.subs(subs))
 petsc = petscsolve(eq, u1.forward)
-
 # #####################################
 # Run for 1000 timesteps
 op = dv.Operator(petsc, language='petsc')
 print(op.ccode)
 op.apply(dt=dt)
+
+
+
+# grid = dv.Grid(shape=(101 , 101), extent =(1., 1.), dtype=np.float64)
+# sdf = dv.Function(name='sdf', grid=grid, space_order=2)
+# x_msh , y_msh = np.meshgrid(*[np.linspace(-0.5, 0.5, 101) for d in grid.dimensions])
+# sdf.data [:] = 0.25 - np.sqrt(x_msh **2 + y_msh **2)
+# u = dv.TimeFunction(name='u', grid=grid , space_order=2, save=1000)
+# u.data [0, 40: -40 , 40: -40] = 1.
+# zero = sp.core.numbers.Zero()
+# bg = BoundaryGeometry(sdf, cutoff ={( zero , zero): 0.})
+# bcs = BoundaryConditions([dv.Eq(u, 0),
+# dv.Eq(u.laplace , 0)])
+# boundary = Boundary(bcs, bg)
+# subs = boundary.substitutions((u.forward.dx2 , u.forward.dy2))
+# eq = dv.Eq(u.dt, c*u.forward.laplace.subs(subs))
+# petsc = petscsolve(eq, u.forward)
+# op = dv.Operator(petsc, language='petsc')
+# op.apply(dt=dt)
+
+
+
+
+
+
+
+
 
 
 
@@ -81,14 +102,14 @@ fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 # Row 1: without immersed boundaries (u0)
 im0 = axes[0, 0].imshow(u0.data[0].T, origin='lower',
                         extent=[-0.5, 0.5, -0.5, 0.5])
-axes[0, 0].set_title('No IB – Initial condition')
+axes[0, 0].set_title('No Immersed Boundary – Initial condition')
 axes[0, 0].set_xlim(-0.5, 0.5)
 axes[0, 0].set_ylim(-0.5, 0.5)
 plt.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
 
 im1 = axes[0, 1].imshow(u0.data[-1].T, origin='lower',
                         extent=[-0.5, 0.5, -0.5, 0.5], vmax=0.15)
-axes[0, 1].set_title('No IB – Final field')
+axes[0, 1].set_title('No Immersed Boundary – Final field')
 axes[0, 1].set_xlim(-0.5, 0.5)
 axes[0, 1].set_ylim(-0.5, 0.5)
 plt.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
@@ -96,7 +117,7 @@ plt.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
 # Row 2: with immersed boundaries (u1)
 im2 = axes[1, 0].imshow(u1.data[0].T, origin='lower',
                         extent=[-0.5, 0.5, -0.5, 0.5])
-axes[1, 0].set_title('With IB – Initial condition')
+axes[1, 0].set_title('With Immersed Boundary – Initial condition')
 axes[1, 0].contour(sdf.data.T, levels=[0], colors='k',
                    extent=[-0.5, 0.5, -0.5, 0.5])
 axes[1, 0].set_xlim(-0.5, 0.5)
@@ -105,7 +126,7 @@ plt.colorbar(im2, ax=axes[1, 0], fraction=0.046, pad=0.04)
 
 im3 = axes[1, 1].imshow(u1.data[-1].T, origin='lower',
                         extent=[-0.5, 0.5, -0.5, 0.5], vmax=0.15)
-axes[1, 1].set_title('With IB – Final field')
+axes[1, 1].set_title('With Immersed Boundary – Final field')
 axes[1, 1].contour(sdf.data.T, levels=[0], colors='k',
                    extent=[-0.5, 0.5, -0.5, 0.5])
 axes[1, 1].set_xlim(-0.5, 0.5)

@@ -428,7 +428,7 @@ for n in n_values:
     discrete_l2_norms.append(discrete_l2_norm)
     print(discrete_l2_norm)
 
-    # print(op.ccode)
+    print(op.ccode)
 
 
 # print(infinity_norms)
