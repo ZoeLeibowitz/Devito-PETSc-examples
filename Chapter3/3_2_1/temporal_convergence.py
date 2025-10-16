@@ -83,37 +83,37 @@ for dt in dt_values:
         shape=(n,), extent=(Lx,), subdomains=subdomains, dtype=np.float64
     )
 
-    u1 = TimeFunction(name='u1', grid=grid, space_order=2, save=nt+1)
-    u2 = TimeFunction(name='u2', grid=grid, space_order=2, save=nt+1)
+    phi1 = TimeFunction(name='phi1', grid=grid, space_order=2, save=nt+1)
+    phi2 = TimeFunction(name='phi2', grid=grid, space_order=2, save=nt+1)
 
     bc = Function(name='bc', grid=grid, space_order=2)
 
     X = np.linspace(0, Lx, n).astype(np.float64)
 
-    u1.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
-    u2.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
+    phi1.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
+    phi2.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
 
 
     # BTCS scheme
-    eqn1 = Eq(u1.dt, alpha * u1.forward.laplace, subdomain=grid.interior)
+    eqn1 = Eq(phi1.dt, alpha * phi1.forward.laplace, subdomain=grid.interior)
 
     # CN scheme
-    eqn2 = Eq(u2.dt, (alpha/2.)*(u2.laplace + u2.forward.laplace), subdomain=grid.interior)
+    eqn2 = Eq(phi2.dt, (alpha/2.)*(phi2.laplace + phi2.forward.laplace), subdomain=grid.interior)
 
     bc.data[:] = np.float64(0.0)
 
     # Create boundary condition expressions using subdomains
 
-    bcs1 = [EssentialBC(u1.forward, bc, subdomain=sub1)]
-    bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub2)]
+    bcs1 = [EssentialBC(phi1.forward, bc, subdomain=sub1)]
+    bcs1 += [EssentialBC(phi1.forward, bc, subdomain=sub2)]
 
-    bcs2 = [EssentialBC(u2.forward, bc, subdomain=sub1)]
-    bcs2 += [EssentialBC(u2.forward, bc, subdomain=sub2)]
+    bcs2 = [EssentialBC(phi2.forward, bc, subdomain=sub1)]
+    bcs2 += [EssentialBC(phi2.forward, bc, subdomain=sub2)]
 
     btcs_exprs = [eqn1] + bcs1
     btcs_solver = petscsolve(
         btcs_exprs,
-        target=u1.forward,
+        target=phi1.forward,
         solver_parameters={'ksp_rtol': 1e-7, 'pc_type': 'none'},
         options_prefix='btcs'
     )
@@ -121,7 +121,7 @@ for dt in dt_values:
     cn_exprs = [eqn2] + bcs2
     cn_solver = petscsolve(
         cn_exprs,
-        target=u2.forward,
+        target=phi2.forward,
         solver_parameters={'ksp_rtol': 1e-7, 'pc_type': 'none'},
         options_prefix='cn'
     )
@@ -131,15 +131,15 @@ for dt in dt_values:
         summary = op.apply(dt=dt)
 
 
-    u_exact = Function(name='u_exact', grid=grid, space_order=2)
-    u_exact.data[:] = exact(X, tf, alpha)
+    phi_exact = Function(name='phi_exact', grid=grid, space_order=2)
+    phi_exact.data[:] = exact(X, tf, alpha)
 
 
     diff1 = Function(name='diff1', grid=grid, space_order=2)
-    diff1.data[:] = u_exact.data[:] - u1.data[-1]
+    diff1.data[:] = phi_exact.data[:] - phi1.data[-1]
 
     diff2 = Function(name='diff2', grid=grid, space_order=2)
-    diff2.data[:] = u_exact.data[:] - u2.data[-1]
+    diff2.data[:] = phi_exact.data[:] - phi2.data[-1]
 
     # Compute norm
     n_interior = np.prod([s - 1 for s in grid.shape])
@@ -190,7 +190,7 @@ plt.loglog(
     label=r'$E \propto \Delta t$'
 )
 plt.xlabel(r'$\Delta t$', fontsize=12)
-plt.ylabel(r'Error: $\|u - u_e\|_2$', fontsize=12)
+plt.ylabel(r'Error: $\|\phi - \phi_e\|_2$', fontsize=12)
 plt.title(r'$\Delta x = 5.0 \times 10^{-4}$ (constant)', fontsize=12)
 
 plt.legend(fontsize=8)

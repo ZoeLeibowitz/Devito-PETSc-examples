@@ -6,8 +6,8 @@ from devito import (Grid, Function, TimeFunction, Eq, Operator, switchconfig,
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
-
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
@@ -61,7 +61,7 @@ sub4 = SubRight()
 
 subdomains = (sub1, sub2, sub3, sub4)
 
-# just compute final time for now
+# Compute exact solution
 def exact(x, y, T=1., alpha=1.):
     return np.exp(-2.*np.pi**2*T*alpha)*np.sin(np.pi*x)*np.sin(np.pi*y)
 
@@ -118,28 +118,7 @@ for n in n_values:
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply(dt=dt)
-
-    # iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
-    # ksp_iters.append(iters)
-
-    # u_exact = Function(name='u_exact', grid=grid, space_order=2)
-    # u_exact.data[:] = exact(X, Y)
-
-    # diff = Function(name='diff', grid=grid, space_order=2)
-    # diff.data[:] = u_exact.data[:] - u.data[:]
-
-    # # Compute infinity norm using numpy
-    # # TODO: Figure out how to compute the infinity norm using Devito
-    # infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-    # infinity_norms.append(infinity_norm)
-
-    # # Compute discrete L2 norm (RMS error)
-    # n_interior = np.prod([s - 1 for s in grid.shape])
-    # discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-    # discrete_l2_norms.append(discrete_l2_norm)
     
-
-
 
 u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y)
@@ -149,49 +128,57 @@ diff = Function(name='diff', grid=grid, space_order=2)
 tmp = np.abs(u_exact.data[:, int((n-1)/2)] - u.data[-1, :, int((n-1)/2)])
 
 
-from matplotlib import pyplot
 
-# Set the font family and size to use for Matplotlib figures.
-pyplot.rcParams['font.family'] = 'serif'
-pyplot.rcParams['font.size'] = 16
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.size'] = 16
 
-# from IPython import embed; embed()
 n = 21
-# Plot the temperature along the rod.
-pyplot.figure(figsize=(10.0, 5.0))
-pyplot.xlabel('x')
-pyplot.ylabel('u(x,0.5,T)')
-# add title
-pyplot.title('FTCS vs Exact at y=0.5 (T=1)', fontsize=13)
-pyplot.grid(False)
-# plot cross section at y=0.5
-pyplot.plot(tmpx, u.data[-1, :, int((n-1)/2)].squeeze(), color='C1', linewidth=2, label='FTCS')
-# pyplot.plot(X, T.data[0], color='C2', linewidth=2, label='Initial condition')
-# pyplot.plot(X, T.data[-1], color='brown',linewidth=2, label=f'$t={tf}$')
-pyplot.plot(tmpx, u_exact.data[:, int((n-1)/2)], color='C1', linestyle='dotted', linewidth=2, label='Exact')
-pyplot.xlim(0.0, 1.)
-pyplot.ylim(0., 3.0e-9)
-pyplot.legend(fontsize=10)
 
-# Save fig
-fig_path = '2d_heat_explicit.png'
-pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
+# Create a 1x2 plot
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+ax = axes[0]
+ax.set_xlabel('x', fontsize=11)
+ax.set_ylabel('u(x,0.5,T)', fontsize=11)
+ax.set_title('FTCS vs Exact at y=0.5 (T=1)', fontsize=13)
+ax.grid(False)
+ax.plot(tmpx, u.data[-1, :, int((n-1)/2)].squeeze(), color='blue', linewidth=2, label='FTCS')
+ax.plot(tmpx, u_exact.data[:, int((n-1)/2)], color='red', linestyle='dotted', linewidth=2, label='Exact')
+ax.set_xlim(0.0, 1., )
+ax.legend(fontsize=11)
+ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+ax.yaxis.get_offset_text().set_fontsize(11)
+ax.set_ylim(0., 3.0e-9)
+
+ax = axes[1]
+ax.set_xlabel('x', fontsize=11)
+ax.set_ylabel('Absolute Error', fontsize=11)
+ax.set_title('Error |FTCS - Exact| at y=0.5 (T=1)', fontsize=13)
+
+ax.plot(
+    tmpx, tmp,
+    color='k',
+    linewidth=2,
+    linestyle='-',
+    marker='D',
+    markersize=5,
+    markerfacecolor='none',
+    markeredgecolor='k',
+    markeredgewidth=1.0,
+)
+
+ax.set_xlim(0.0, 1.)
+ax.set_ylim(0., 1.5e-10)
+ax.yaxis.set_major_locator(MultipleLocator(0.5e-10))
+ax.yaxis.get_offset_text().set_fontsize(11)
+
+for ax in axes:
+    ax.tick_params(axis='both', labelsize=11)
+
+fig.text(0.25, 0.008, '(a) FTCS and Exact Solution', ha='center', fontsize=12)
+fig.text(0.75, 0.008, '(b) Error', ha='center', fontsize=12)
 
 
-
-############ plot diff ###############
-pyplot.figure(figsize=(10.0, 5.0))
-pyplot.xlabel('x')
-pyplot.ylabel('Absolute Error')
-# add title
-pyplot.title('Error |FTCS - Exact| at y=0.5 (T=1)', fontsize=13)
-pyplot.grid(False)
-# plot cross section at y=0.5
-pyplot.plot(tmpx, tmp, color='C1', linewidth=2)
-pyplot.xlim(0.0, 1.)
-pyplot.ylim(0., 1.5e-10)
-# pyplot.legend(fontsize=10)
-
-# Save fig
-fig_path = 'diff.png'
-pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
+plt.tight_layout()
+plt.savefig('3_2_2_ftcs.png', bbox_inches='tight', dpi=300)
+plt.show()
