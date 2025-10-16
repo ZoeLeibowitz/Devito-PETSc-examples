@@ -2,9 +2,10 @@ import os
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
-from devito import (Grid, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, TimeFunction, sin)
+from devito import (Grid, Function, Eq, Operator, switchconfig,
+                    configuration, SubDomain, norm, mmax, TimeFunction, sin)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -14,9 +15,11 @@ os.environ['CC'] = 'mpicc'
 
 
 # 3D test
-# Solving u.dt = u.laplace
-# Dirichlet BCs
+# Solving 3D heat equation with time dependent BCS
+# Utilising both a FTCS and BTCS scheme
+# Dirichlet BCs (time dependent)
 # ref -> file:///Users/zoeleibowitz/Downloads/IJM2C_Volume11_Issue1WINTER_Pages49-60.pdf
+# ref - A Numerical Solution of Three-Dimensional Unsteady State Heat Equation, E. G. Tsega
 
 
 PetscInitialize()
@@ -83,10 +86,7 @@ sub6 = SubFront()
 subdomains = (sub1, sub2, sub3, sub4, sub5, sub6)
 
 def exact(x, y, z, t):
-    tmp1 = np.exp(-(np.pi**2)*t/3.)
-    tmp2 = np.sin((np.pi/3.)*(x+y+z))
-    tmp3 = x*y*z
-    return tmp1*tmp2 + tmp3
+    return np.exp(-(np.pi**2)*t/3.)*np.sin((np.pi/3.)*(x+y+z)) + x*y*z
 
 Lx = np.float64(1.)
 Ly = np.float64(1.)
@@ -96,17 +96,17 @@ dt = 0.0001
 n = 33
 nt = int(1.0 / dt)
 
-n_values = [n]
-
-
 grid = Grid(
     shape=(n, n, n), extent=(Lx, Ly, Lz), subdomains=subdomains, dtype=np.float64
 )
 
-u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
+u0 = TimeFunction(name='u0', grid=grid, space_order=2, save=nt+1)  # for FTCS solve
+u1 = TimeFunction(name='u1', grid=grid, space_order=2, save=nt+1)  # for BTCS solve
 
 x, y, z = grid.dimensions
-eqn = Eq(u.dt, u.forward.laplace, subdomain=grid.interior)
+
+ftcs_eqn = Eq(u0.dt, u0.laplace, subdomain=grid.interior)
+btcs_eqn = Eq(u1.dt, u1.forward.laplace, subdomain=grid.interior)
 
 t = grid.time_dim
 
@@ -121,68 +121,60 @@ X_Y, Z_Y = np.meshgrid(tmpx, tmpz, indexing="ij")  # For faces where y varies
 X_Z, Y_Z = np.meshgrid(tmpx, tmpy, indexing="ij")  # For faces where z varies
 Y_X, Z_X = np.meshgrid(tmpy, tmpz, indexing="ij")  # For faces where x varies
 
-u.data[0] = np.sin((np.pi/3.)*(X + Y + Z)) + X*Y*Z  # Initial condition
-
+# Initial condition for each scheme
+u0.data[0] = np.sin((np.pi/3.)*(X + Y + Z)) + X*Y*Z
+u1.data[0] = np.sin((np.pi/3.)*(X + Y + Z)) + X*Y*Z
 
 h_x, h_y, h_z = grid.spacing
 
 # Create boundary condition expressions using subdomains
-bcs = []
+bcs_ftcs = []
+bcs_btcs = []
 
-
-# TODO: CHECK... IS IT DEFINITELY SUPPOSED TO BE T+1?
-# I THINK IT should be for implicit but only t for explicit?
+# TODO: CHECK.. pretty sure it's supposed to be t+1?
 # left: u(0,y,z,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(y*h_y+z*h_z)/3.), subdomain=sub3)]
 
-# # right: u(1,y,z,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(1.+y*h_y+z*h_z)/3.) + y*h_y*z*h_z, subdomain=sub4)]
+# right: u(1,y,z,t)
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(1.+y*h_y+z*h_z)/3.) + y*h_y*z*h_z, subdomain=sub4)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(1.+y*h_y+z*h_z)/3.) + y*h_y*z*h_z, subdomain=sub4)]
 
-# # front: u(x,0,z,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+z*h_z)/3.), subdomain=sub6)]
+# front: u(x,0,z,t)
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+z*h_z)/3.), subdomain=sub6)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+z*h_z)/3.), subdomain=sub6)]
 
-# # back: u(x,1,z,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+1.+z*h_z)/3.) + x*h_x*z*h_z, subdomain=sub5)]
+# back: u(x,1,z,t)
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+1.+z*h_z)/3.) + x*h_x*z*h_z, subdomain=sub5)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+1.+z*h_z)/3.) + x*h_x*z*h_z, subdomain=sub5)]
 
-# # bottom: u(x,y,0,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y)/3.), subdomain=sub2)]
+# bottom: u(x,y,0,t)
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y)/3.), subdomain=sub2)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y)/3.), subdomain=sub2)]
 
-# # top: u(x,y,1,t)
-bcs += [EssentialBC(u.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y+1.)/3.) + x*h_x*y*h_y, subdomain=sub1)]
+# top: u(x,y,1,t)
+bcs_ftcs += [EssentialBC(u0.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y+1.)/3.) + x*h_x*y*h_y, subdomain=sub1)]
+bcs_btcs += [EssentialBC(u1.forward, sp.exp(-(sp.pi*sp.pi)*(t+1)*dt/3.)*sin(sp.pi*(x*h_x+y*h_y+1.)/3.) + x*h_x*y*h_y, subdomain=sub1)]
 
-
-exprs = [eqn] + bcs
-petsc = petscsolve(
-    exprs, target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'cg', 'pc_type': 'none'},
-    options_prefix='heat_implicit_3d'
+exprs_ftcs = [ftcs_eqn] + bcs_ftcs
+ftcs_solver = petscsolve(
+    exprs_ftcs, target=u0.forward,
+    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    options_prefix='heat_explicit_3d'
 )
 
-with switchconfig():
-    op = Operator(petsc, language='petsc')
-    summary = op.apply(dt=dt)
-    # print(op.ccode)
+exprs_btcs = [btcs_eqn] + bcs_btcs
+btcs_solver = petscsolve(
+    exprs_btcs, target=u1.forward,
+    solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    options_prefix='heat_btcs_3d'
+)
 
-# iters = summary.petsc[('section0', 'heat_explicit_3d')].KSPGetIterationNumber
-# ksp_iters.append(iters)
-
-# u_exact = Function(name='u_exact', grid=grid, space_order=2)
-# u_exact.data[:] = exact(X, Y, Z)
-
-# diff = Function(name='diff', grid=grid, space_order=2)
-# diff.data[:] = u_exact.data[:] - u.data[:]
-
-# # # Compute infinity norm using numpy
-# # # TODO: Figure out how to compute the infinity norm using Devito
-# infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-# infinity_norms.append(infinity_norm)
-
-# # Compute discrete L2 norm (RMS error)
-# n_interior = np.prod([s - 1 for s in grid.shape])
-# discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-# discrete_l2_norms.append(discrete_l2_norm)
-
-# from IPython import embed; embed()
+with switchconfig(log_level='DEBUG'):
+    op1 = Operator(ftcs_solver, language='petsc')
+    op2 = Operator(btcs_solver, language='petsc')
+    summary = op1.apply(dt=dt)
+    summary = op2.apply(dt=dt)
 
 
 u_exact = TimeFunction(name='u_exact', grid=grid, space_order=2, save=nt+1)
@@ -193,116 +185,109 @@ for t_idx in range(nt):
     u_exact.data[t_idx] = exact(X, Y, Z, dt * t_idx)
 
 
-from matplotlib import pyplot
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.size'] = 16
 
-# Set the font family and size to use for Matplotlib figures.
-pyplot.rcParams['font.family'] = 'serif'
-pyplot.rcParams['font.size'] = 16
+plt.figure(figsize=(10.0, 7.0))
+plt.xlabel('z')
+plt.ylabel('Temperature')
+plt.grid(False)
 
-pyplot.figure(figsize=(10.0, 7.0))
-pyplot.xlabel('z')
-pyplot.ylabel('Temperature')
-pyplot.grid(False)
+plt.plot(tmpz, u0.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, label=' FTCS t=0.05')
+plt.plot(tmpz, u1.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, linestyle='--', label=' BTCS t=0.05')
+plt.plot(tmpz, u_exact.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', marker='*', linestyle='none', markersize=8, label='Exa t=0.05')
 
-pyplot.plot(tmpz, u.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, label=' FD t=0.05')
-pyplot.plot(tmpz, u_exact.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', marker='*', linestyle='none', markersize=8, label='Exa t=0.05')
+plt.plot(tmpz, u0.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, label=' FTCS t=0.25')
+plt.plot(tmpz, u1.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, linestyle='--', label=' BTCS t=0.25')
+plt.plot(tmpz, u_exact.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='g', marker='*', linestyle='none', markersize=8, label='Exa t=0.25')
 
-pyplot.plot(tmpz, u.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, label=' FD t=0.25')
-pyplot.plot(tmpz, u_exact.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='g', marker='*', linestyle='none', markersize=8, label='Exa t=0.25')
+plt.plot(tmpz, u0.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, label=' FTCS t=0.5')
+plt.plot(tmpz, u1.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, linestyle='--', label=' BTCS t=0.5')
+plt.plot(tmpz, u_exact.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='y', marker='*', linestyle='none', markersize=8, label='Exa t=0.5')
 
-pyplot.plot(tmpz, u.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, label=' FD t=0.5')
-pyplot.plot(tmpz, u_exact.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='y', marker='*', linestyle='none', markersize=8, label='Exa t=0.5')
-
-pyplot.plot(tmpz, u.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=' FD t=1.0')
-pyplot.plot(tmpz, u_exact.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label='Exa t=1.0')
+plt.plot(tmpz, u0.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=' FTCS t=1.0')
+plt.plot(tmpz, u1.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, linestyle='--', label=' BTCS t=1.0')
+plt.plot(tmpz, u_exact.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label='Exa t=1.0')
 
 
-pyplot.xlim(0.0, 1.)
-pyplot.ylim(0., 1.6)
-pyplot.legend(fontsize=10, loc='upper left')
+plt.xlim(0.0, 1.)
+plt.ylim(0., 1.6)
+plt.legend(fontsize=8, loc='upper left')
+
 
 # Save fig
-fig_path = '3d_heat_implicit.png'
-pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
+fig_path = '3_2_3_centreline.png'
+plt.savefig(fig_path, bbox_inches='tight', dpi=300)
 
 
-
+# u.shape = (time_steps, nx, ny, nz)
+time_indices = [500, 2500, 5000, 10000]
+time_labels = ['0.05', '0.25', '0.5', '1.0']
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-# Example arrays (replace with your real data)
-# u.shape = (time_steps, nx, ny, nz)
-time_indices = [500, 2500, 5000, 10000]
-time_labels = ['0.05', '0.25', '0.5', '1.0']
+# (FTCS, BTCS, Exact)
+nrows, ncols = 4, 3
+fig = plt.figure(figsize=(18, 16))
 
-nrows, ncols = 4, 2
-fig = plt.figure(figsize=(12, 16))
-
-# Normalize across dataset
-# vmin = min(u.data.min(), u_exact.data.min())
-# vmax = max(u.data.max(), u_exact.data.max())
+# Normalization and colormap
 norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
 cmap = plt.cm.jet
 
 X, Y, Z = np.meshgrid(tmpx, tmpy, tmpz, indexing='ij')
 
 def plot_cube_faces(ax, data):
-    # x=0 face
+    # Draw six faces of cube
     ax.plot_surface(X[0,:,:], Y[0,:,:], Z[0,:,:],
-                    facecolors=cmap(norm(data[0,:,:])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-    # x=max face
+                    facecolors=cmap(norm(data[0,:,:])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.plot_surface(X[-1,:,:], Y[-1,:,:], Z[-1,:,:],
-                    facecolors=cmap(norm(data[-1,:,:])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-    # y=0 face
+                    facecolors=cmap(norm(data[-1,:,:])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.plot_surface(X[:,0,:], Y[:,0,:], Z[:,0,:],
-                    facecolors=cmap(norm(data[:,0,:])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-    # y=max face
+                    facecolors=cmap(norm(data[:,0,:])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.plot_surface(X[:,-1,:], Y[:,-1,:], Z[:,-1,:],
-                    facecolors=cmap(norm(data[:,-1,:])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-    # z=0 face
+                    facecolors=cmap(norm(data[:,-1,:])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.plot_surface(X[:,:,0], Y[:,:,0], Z[:,:,0],
-                    facecolors=cmap(norm(data[:,:,0])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-    # z=max face
+                    facecolors=cmap(norm(data[:,:,0])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.plot_surface(X[:,:,-1], Y[:,:,-1], Z[:,:,-1],
-                    facecolors=cmap(norm(data[:,:,-1])),
-                    rstride=1, cstride=1, shade=False, alpha=0.95)
-
+                    facecolors=cmap(norm(data[:,:,-1])), rstride=1, cstride=1, shade=False, alpha=0.95)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_zlim(0, 1)
 
-
 for i, t_idx in enumerate(time_indices):
-    # FD (left column)
-    ax1 = fig.add_subplot(nrows, ncols, i*2 + 1, projection='3d')
-    plot_cube_faces(ax1, u.data[t_idx])
-    ax1.set_title(f'Finite Difference Solution (t={time_labels[i]})')
+    # FTCS
+    ax1 = fig.add_subplot(nrows, ncols, i * ncols + 1, projection='3d')
+    plot_cube_faces(ax1, u0.data[t_idx])
+    ax1.set_title(f'FTCS Solution (t={time_labels[i]})')
     ax1.set_xlabel("x"); ax1.set_ylabel("y"); ax1.set_zlabel("z")
-    mappable = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
-    fig.colorbar(mappable, ax=ax1, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
+    mappable1 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    fig.colorbar(mappable1, ax=ax1, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
-    # Exact (right column)
-    ax2 = fig.add_subplot(nrows, ncols, i*2 + 2, projection='3d')
-    plot_cube_faces(ax2, u_exact.data[t_idx])
-    ax2.set_title(f'Exact Solution (t={time_labels[i]})')
+    # BTCS
+    ax2 = fig.add_subplot(nrows, ncols, i * ncols + 2, projection='3d')
+    plot_cube_faces(ax2, u1.data[t_idx])
+    ax2.set_title(f'BTCS Solution (t={time_labels[i]})')
     ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
     mappable2 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     fig.colorbar(mappable2, ax=ax2, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
 
+    # Exact
+    ax3 = fig.add_subplot(nrows, ncols, i * ncols + 3, projection='3d')
+    plot_cube_faces(ax3, u_exact.data[t_idx])
+    ax3.set_title(f'Exact Solution (t={time_labels[i]})')
+    ax3.set_xlabel("x"); ax3.set_ylabel("y"); ax3.set_zlabel("z")
+    mappable3 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    fig.colorbar(mappable3, ax=ax3, shrink=0.6, aspect=10, pad=0.1, label="Temperature")
+
 plt.tight_layout()
-plt.savefig("3d_contour_cube_faces_implicit.png", dpi=300)
-# plt.show()
+plt.savefig("3_2_3_cubes.png", dpi=300)
+plt.show()
 
 
 
-# ########### for the animation ###########
+############################################ for an animation only ############################################
 
 # import matplotlib.pyplot as plt
 # import matplotlib as mpl
@@ -373,6 +358,7 @@ plt.savefig("3d_contour_cube_faces_implicit.png", dpi=300)
 # # Initial plots
 # fd_faces = plot_cube_faces(ax1, u.data[0])
 # exact_faces = plot_cube_faces(ax2, u_exact.data[0])
+
 
 # def update(frame):
 #     # Clear old surfaces
