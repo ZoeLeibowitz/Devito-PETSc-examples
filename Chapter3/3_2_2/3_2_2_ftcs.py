@@ -72,52 +72,50 @@ alpha = 1.0
 dt = 0.0005
 nt = int(1. / dt)
 
-# n = 9, 17, 33, 65, 129, 257, 513, 1025
-n_values = [2**k + 1 for k in range(3, 11)]
-n_values = [21]
-h = np.array([Lx/(n-1) for n in n_values])
+n = 21
+h = Lx/(n-1)
 infinity_norms = []
 discrete_l2_norms = []
 ksp_iters = []
 
-for n in n_values:
-    grid = Grid(
-        shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
-    )
 
-    u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
-    bc = Function(name='bc', grid=grid, space_order=2)
+grid = Grid(
+    shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
+)
 
-    eqn = Eq(u.dt, (alpha**2)*u.laplace, subdomain=grid.interior)
+u = TimeFunction(name='u', grid=grid, space_order=2, save=nt+1)
+bc = Function(name='bc', grid=grid, space_order=2)
 
-    tmpx = np.linspace(0, Lx, n).astype(np.float64)
-    tmpy = np.linspace(0, Ly, n).astype(np.float64)
+eqn = Eq(u.dt, (alpha**2)*u.laplace, subdomain=grid.interior)
 
-    Y, X = np.meshgrid(tmpx, tmpy)
+tmpx = np.linspace(0, Lx, n).astype(np.float64)
+tmpy = np.linspace(0, Ly, n).astype(np.float64)
 
-    u.data[0] = np.sin(np.pi * X) * np.sin(np.pi * Y)  # Initial condition
+Y, X = np.meshgrid(tmpx, tmpy)
 
-    bc.data[0, :] = 0.
-    bc.data[-1, :] = 0.
-    bc.data[:, 0] = 0.
-    bc.data[:, -1] = 0.
+u.data[0] = np.sin(np.pi * X) * np.sin(np.pi * Y)  # Initial condition
 
-    # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u.forward, bc, subdomain=sub1)]
-    bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]
-    bcs += [EssentialBC(u.forward, bc, subdomain=sub3)]
-    bcs += [EssentialBC(u.forward, bc, subdomain=sub4)]
+bc.data[0, :] = 0.
+bc.data[-1, :] = 0.
+bc.data[:, 0] = 0.
+bc.data[:, -1] = 0.
 
-    exprs = [eqn] + bcs
-    petsc = petscsolve(
-        exprs, target=u.forward,
-        solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
-        options_prefix='heat_explicit_2d'
-    )
+# Create boundary condition expressions using subdomains
+bcs = [EssentialBC(u.forward, bc, subdomain=sub1)]
+bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]
+bcs += [EssentialBC(u.forward, bc, subdomain=sub3)]
+bcs += [EssentialBC(u.forward, bc, subdomain=sub4)]
 
-    with switchconfig(log_level='DEBUG'):
-        op = Operator(petsc, language='petsc')
-        summary = op.apply(dt=dt)
+exprs = [eqn] + bcs
+petsc = petscsolve(
+    exprs, target=u.forward,
+    solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    options_prefix='heat_explicit_2d'
+)
+
+with switchconfig(log_level='DEBUG'):
+    op = Operator(petsc, language='petsc')
+    summary = op.apply(dt=dt)
     
 
 u_exact = Function(name='u_exact', grid=grid, space_order=2)
