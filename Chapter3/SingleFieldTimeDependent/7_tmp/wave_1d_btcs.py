@@ -18,6 +18,7 @@ os.environ['CC'] = 'mpicc'
 # 1D test
 # Solving utt = c^2 * uxx + f(x,t)
 # ref - https://hplgit.github.io/num-methods-for-PDEs/doc/pub/wave/pdf/wave-4print-A4-2up.pdf?
+# https://library.oapen.org/bitstream/handle/20.500.12657/27809/1/1002196.pdf
 
 
 PetscInitialize()

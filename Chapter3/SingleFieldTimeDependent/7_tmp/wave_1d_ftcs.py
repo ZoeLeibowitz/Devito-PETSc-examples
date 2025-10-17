@@ -18,7 +18,7 @@ os.environ['CC'] = 'mpicc'
 # 1D test
 # Solving utt = c^2 * uxx + f(x,t)
 # ref - https://hplgit.github.io/num-methods-for-PDEs/doc/pub/wave/pdf/wave-4print-A4-2up.pdf?
-
+# https://library.oapen.org/bitstream/handle/20.500.12657/27809/1/1002196.pdf
 
 PetscInitialize()
 
@@ -62,7 +62,6 @@ Lx = np.float64(2.5)
 
 ti = 0.
 tf = 18.0
-# tf = 1.0
 
 c = 1.5
 C = 0.75
@@ -96,13 +95,12 @@ lap = (u.data[0][:-2] - 2.*u.data[0][1:-1] + u.data[0][2:])
 
 # V(x) = 0.5x(Lx - x)
 u.data[1][1:-1] = u.data[0][1:-1] + dt*V(X[1:-1]) + 0.5 * (C**2) * lap + 0.5* dt**2 * f(X[1:-1], 0, c)
-# u.data[1][1:-1] = dt*V(X[1:-1]) + 0.5 * (C**2) * lap + 0.5* dt**2 * f(X[1:-1], 0, c)
 u.data[1][0] = 0.
 u.data[1][-1] = 0.
 
 t = grid.time_dim
 
-# Should it be t or t+1? - i think t for explicit, t+1 for implicit
+
 eqn = Eq(u.dt2, (c**2)*u.laplace + 2.0 * (1. + 0.5*(t)*dt) * (c**2), subdomain=grid.interior)
 
 bc.data[:] = np.float64(0.0)

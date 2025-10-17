@@ -10,7 +10,7 @@ on:
       - 'Chapter3/3_1_2/*.png'
       - 'Chapter3/3_1_3/*.png'
       - 'Chapter3/3_1_4/*.png'
-      #  TODO: Add the neumann example
+      #  TODO: Add the neumann example for 3_1_5
       - 'Chapter3/3_1_6/*.png'
       - 'Chapter3/3_1_7/*.png'
       - 'Chapter3/3_1_8/*.png'
@@ -18,6 +18,7 @@ on:
       - 'Chapter3/3_2_1/*.png'
       - 'Chapter3/3_2_2/*.png'
       - 'Chapter3/3_2_3/*.png'
+      - 'Chapter3/3_2_4/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -126,6 +127,7 @@ jobs:
           zoeleibowitz/petsc_devito_image:latest \
           python3 rectangle2d.py
 
+    # Run 3_2_1 - serial
     - name: Run all .py scripts in 3_2_1 - serial
       run: |
         docker run --rm -t \
@@ -155,6 +157,16 @@ jobs:
           zoeleibowitz/petsc_devito_image:latest \
           python3 3_2_3.py
 
+    # Run 3_2_4 - serial
+    - name: Run 3_2_4 - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_2_4 \
+          -u $(id -u):$(id -g) \
+          zoeleibowitz/petsc_devito_image:latest \
+          python3 3_2_4.py
+
     # Configure Git for commits
     - name: Configure git
       run: |
@@ -171,12 +183,15 @@ jobs:
         git add Chapter3/3_1_2/*.png
         git add Chapter3/3_1_3/*.png
         git add Chapter3/3_1_4/*.png
-
+    
         git add Chapter3/3_1_6/*.png
         git add Chapter3/3_1_7/*.png
         git add Chapter3/3_1_8/*.png
         git add Chapter3/3_1_9/*.png
         git add Chapter3/3_2_1/*.png
+        git add Chapter3/3_2_2/*.png
+        git add Chapter3/3_2_3/*.png
+        git add Chapter3/3_2_4/*.png
 
         git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
         git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
