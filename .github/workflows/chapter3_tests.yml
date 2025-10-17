@@ -17,6 +17,7 @@ on:
       - 'Chapter3/3_1_9/*.png'
       - 'Chapter3/3_2_1/*.png'
       - 'Chapter3/3_2_2/*.png'
+      - 'Chapter3/3_2_3/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -143,6 +144,16 @@ jobs:
           -u $(id -u):$(id -g) \
           zoeleibowitz/petsc_devito_image:latest \
           python3 3_2_2_ftcs.py
+
+    # Run 3_2_3 - serial
+    - name: Run 3_2_3 - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_2_3 \
+          -u $(id -u):$(id -g) \
+          zoeleibowitz/petsc_devito_image:latest \
+          python3 3_2_3.py
 
     # Configure Git for commits
     - name: Configure git
