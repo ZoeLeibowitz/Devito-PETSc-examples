@@ -160,20 +160,20 @@ exprs_ftcs = [ftcs_eqn] + bcs_ftcs
 ftcs_solver = petscsolve(
     exprs_ftcs, target=u0.forward,
     solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='heat_explicit_3d'
+    options_prefix='heat_explicit'
 )
 
 exprs_btcs = [btcs_eqn] + bcs_btcs
 btcs_solver = petscsolve(
     exprs_btcs, target=u1.forward,
     solver_parameters={'ksp_rtol': 1e-7, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='heat_btcs_3d'
+    options_prefix='heat_implicit'
 )
 
 with switchconfig(log_level='DEBUG'):
-    op1 = Operator(ftcs_solver, language='petsc')
+    # op1 = Operator(ftcs_solver, language='petsc')
     op2 = Operator(btcs_solver, language='petsc')
-    summary = op1.apply(dt=dt)
+    # summary = op1.apply(dt=dt)
     summary = op2.apply(dt=dt)
 
 
