@@ -16,7 +16,6 @@ os.environ['CC'] = 'mpicc'
 
 
 # 2D test
-# Solving utt = c^2 * uxx + f(x,t)
 # ref - https://hplgit.github.io/num-methods-for-PDEs/doc/pub/wave/pdf/wave-4print-A4-2up.pdf?
 # ref - file:///Users/zoeleibowitz/Downloads/wave-4print-A4-2up.pdf
 # https://hplgit.github.io/num-methods-for-PDEs/doc/pub/wave/pdf/wave-4print-A4-2up.pdf?
@@ -155,7 +154,7 @@ exprs = [eqn] + bcs
 petsc = petscsolve(
     exprs,
     target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'gmres', 'pc_type': 'none'},
     options_prefix='wave_2d_btcs'
 )
 

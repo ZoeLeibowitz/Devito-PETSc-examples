@@ -3,12 +3,9 @@ import numpy as np
 
 from devito import (Grid, Function, TimeFunction, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
-from devito.symbolics import retrieve_functions, INT
-
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
-import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'

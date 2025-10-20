@@ -189,7 +189,7 @@ petsc = petscsolve(
     exprs,
     target=u.forward,
     solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
-    options_prefix='wave_3d_explicit'
+    options_prefix='wave_explicit'
 )
 
 with switchconfig(log_level='DEBUG'):
@@ -197,17 +197,15 @@ with switchconfig(log_level='DEBUG'):
     summary = op.apply(dt=dt)
     print(op.arguments(dt=dt))
 
-# don't acc need idx
-idx = nt
-t_to_compare = idx*dt
+
+t_to_compare = nt*dt
 print(f"t to compare: {t_to_compare}")
 
 u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y, Z, t_to_compare, Lx, Ly, Lz)
 
 diff = Function(name='diff', grid=grid, space_order=2)
-# diff.data[:] = u_exact.data[:] - u.data[idx][:]
-diff.data[:] = u.data[idx][:] - u_exact.data[:]
+diff.data[:] = u.data[nt][:] - u_exact.data[:]
 
 # Compute infinity norm using numpy
 infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
@@ -233,14 +231,12 @@ pyplot.xlabel('z')
 pyplot.ylabel('$u$')
 pyplot.grid(False)
 
-pyplot.plot(tmpz, u.data[idx, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=f'FD t={t_to_compare:.2f}')
+pyplot.plot(tmpz, u.data[nt, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=f'FD t={t_to_compare:.2f}')
 pyplot.plot(tmpz, u_exact.data[int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label=f'Exa t={t_to_compare:.2f}')
 
 
-# pyplot.xlim(0.0, 1.)
-# pyplot.ylim(0., 1.6)
 pyplot.legend(fontsize=10, loc='upper left')
 
 # Save fig
-fig_path = 'wave_3d_ftcs_slice.png'
+fig_path = '3_2_6_wave.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)
