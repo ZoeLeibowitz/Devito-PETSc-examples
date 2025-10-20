@@ -171,18 +171,25 @@ btcs_solver = petscsolve(
 )
 
 with switchconfig(log_level='DEBUG'):
-    # op1 = Operator(ftcs_solver, language='petsc')
+    op1 = Operator(ftcs_solver, language='petsc')
     op2 = Operator(btcs_solver, language='petsc')
-    # summary = op1.apply(dt=dt)
+    summary = op1.apply(dt=dt)
     summary = op2.apply(dt=dt)
 
 
-u_exact = TimeFunction(name='u_exact', grid=grid, space_order=2, save=nt+1)
+u_exact = TimeFunction(name='u_exact', grid=grid, space_order=2, save=4)
 
-nt = u_exact.data.shape[0]  # total number of time steps
+# nt = u_exact.data.shape[0]  # total number of time steps
+# from IPython import embed; embed()
+# for t_idx in range(nt):
+#     u_exact.data[t_idx] = exact(X, Y, Z, dt * t_idx)
 
-for t_idx in range(nt):
-    u_exact.data[t_idx] = exact(X, Y, Z, dt * t_idx)
+# mapper: 0->500, 1->2500, 2->5000, 3->10000
+u_exact.data[0] = exact(X, Y, Z, dt * 500)
+u_exact.data[1] = exact(X, Y, Z, dt * 2500)
+u_exact.data[2] = exact(X, Y, Z, dt * 5000)
+u_exact.data[3] = exact(X, Y, Z, dt * 10000)
+
 
 
 plt.rcParams['font.family'] = 'serif'
@@ -195,19 +202,19 @@ plt.grid(False)
 
 plt.plot(tmpz, u0.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, label=' FTCS t=0.05')
 plt.plot(tmpz, u1.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='r', linewidth=2, linestyle='--', label=' BTCS t=0.05')
-plt.plot(tmpz, u_exact.data[500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', marker='*', linestyle='none', markersize=8, label='Exa t=0.05')
+plt.plot(tmpz, u_exact.data[0, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', marker='*', linestyle='none', markersize=8, label='Exa t=0.05')
 
 plt.plot(tmpz, u0.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, label=' FTCS t=0.25')
 plt.plot(tmpz, u1.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='m', linewidth=2, linestyle='--', label=' BTCS t=0.25')
-plt.plot(tmpz, u_exact.data[2500, int((n-1)/2), int((n-1)/2), :].squeeze(), color='g', marker='*', linestyle='none', markersize=8, label='Exa t=0.25')
+plt.plot(tmpz, u_exact.data[1, int((n-1)/2), int((n-1)/2), :].squeeze(), color='g', marker='*', linestyle='none', markersize=8, label='Exa t=0.25')
 
 plt.plot(tmpz, u0.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, label=' FTCS t=0.5')
 plt.plot(tmpz, u1.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='c', linewidth=2, linestyle='--', label=' BTCS t=0.5')
-plt.plot(tmpz, u_exact.data[5000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='y', marker='*', linestyle='none', markersize=8, label='Exa t=0.5')
+plt.plot(tmpz, u_exact.data[2, int((n-1)/2), int((n-1)/2), :].squeeze(), color='y', marker='*', linestyle='none', markersize=8, label='Exa t=0.5')
 
 plt.plot(tmpz, u0.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=' FTCS t=1.0')
 plt.plot(tmpz, u1.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, linestyle='--', label=' BTCS t=1.0')
-plt.plot(tmpz, u_exact.data[10000, int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label='Exa t=1.0')
+plt.plot(tmpz, u_exact.data[3, int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label='Exa t=1.0')
 
 
 plt.xlim(0.0, 1.)
@@ -275,7 +282,7 @@ for i, t_idx in enumerate(time_indices):
 
     # Exact
     ax3 = fig.add_subplot(nrows, ncols, i * ncols + 3, projection='3d')
-    plot_cube_faces(ax3, u_exact.data[t_idx])
+    plot_cube_faces(ax3, u_exact.data[i])
     ax3.set_title(f'Exact Solution (t={time_labels[i]})')
     ax3.set_xlabel("x"); ax3.set_ylabel("y"); ax3.set_zlabel("z")
     mappable3 = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
