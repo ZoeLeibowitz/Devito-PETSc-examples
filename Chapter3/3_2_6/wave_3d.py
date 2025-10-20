@@ -92,7 +92,7 @@ def V(x, y, z):
     return 0.5*exact(x, y, z, 0)
 
 def f(x, y, z, t, c=1.5, Lx=2.5, Ly=2.5, Lz=2.5):
-    return 2.*(1. + 0.5*t)*(y*(Ly - y)*z*(Lz - z) + x*(Lx - x)*z*(Lz - z) + + x*(Lx - x)*y*(Ly - y))*(c**2)
+    return 2.*(1. + 0.5*t)*(y*(Ly - y)*z*(Lz - z) + x*(Lx - x)*z*(Lz - z) + x*(Lx - x)*y*(Ly - y))*(c**2)
 
 
 Lx = np.float64(2.5)
@@ -118,16 +118,12 @@ dt = stability_limit
 C = c*dt*(1/dx)  # Courant number
 nt = int((tf - ti) / dt)
 
-infinity_norms = []
-discrete_l2_norms = []
-ksp_iters = []
-
-
 grid = Grid(
     shape=(n, n, n), extent=(Lx, Ly, Lz), subdomains=subdomains, dtype=np.float64
 )
 
-u = TimeFunction(name='u', grid=grid, space_order=2, time_order=2, save=nt+1)
+u0 = TimeFunction(name='u0', grid=grid, space_order=2, time_order=2, save=nt+1)
+u1 = TimeFunction(name='u1', grid=grid, space_order=2, time_order=2, save=nt+1)
 bc = Function(name='bc', grid=grid, space_order=2)
 
 tmpx = np.linspace(0, Lx, n).astype(np.float64)
@@ -136,64 +132,85 @@ tmpz = np.linspace(0, Lz, n).astype(np.float64)
 
 X, Y, Z = np.meshgrid(tmpx, tmpy, tmpz, indexing="ij")
 
-u.data[0] = I(X, Y, Z)
+u0.data[0] = I(X, Y, Z)
+u1.data[0] = I(X, Y, Z)
 
-lap = (
-    u.data[0][1:-1, :-2] +  # left
-    u.data[0][1:-1, 2:]  +  # right
-    u.data[0][:-2, 1:-1] +  # down
-    u.data[0][2:, 1:-1]  -  # up
-    4.0 * u.data[0][1:-1, 1:-1]  # center
+lap0 = (
+    u0.data[0][1:-1, :-2, 1:-1] +  # left
+    u0.data[0][1:-1, 2:, 1:-1]  +  # right
+    u0.data[0][:-2, 1:-1, 1:-1] +  # down
+    u0.data[0][2:, 1:-1, 1:-1]  +  # up
+    u0.data[0][1:-1, 1:-1, :-2] +  # back
+    u0.data[0][1:-1, 1:-1, 2:]  -  # front
+    6.0 * u0.data[0][1:-1, 1:-1, 1:-1]  # center
+)
+lap1 = (
+    u1.data[0][1:-1, :-2, 1:-1] +  # left
+    u1.data[0][1:-1, 2:, 1:-1]  +  # right
+    u1.data[0][:-2, 1:-1, 1:-1] +  # down
+    u1.data[0][2:, 1:-1, 1:-1]  +  # up
+    u1.data[0][1:-1, 1:-1, :-2] +  # back
+    u1.data[0][1:-1, 1:-1, 2:]  -  # front
+    6.0 * u1.data[0][1:-1, 1:-1, 1:-1]  # center
 )
 
-lap = (
-    u.data[0][1:-1, :-2, 1:-1] +  # left
-    u.data[0][1:-1, 2:, 1:-1]  +  # right
-    u.data[0][:-2, 1:-1, 1:-1] +  # down
-    u.data[0][2:, 1:-1, 1:-1]  +  # up
-    u.data[0][1:-1, 1:-1, :-2] +  # back
-    u.data[0][1:-1, 1:-1, 2:]  -  # front
-    6.0 * u.data[0][1:-1, 1:-1, 1:-1]  # center
-)
-
-u.data[1][1:-1, 1:-1, 1:-1] = (
-    u.data[0][1:-1, 1:-1, 1:-1]
+u0.data[1][1:-1, 1:-1, 1:-1] = (
+    u0.data[0][1:-1, 1:-1, 1:-1]
     + dt * V(X[1:-1, 1:-1, 1:-1], Y[1:-1, 1:-1, 1:-1], Z[1:-1, 1:-1, 1:-1])
-    + 0.5 * (C**2) * lap
+    + 0.5 * (C**2) * lap0
+    + 0.5 * dt**2 * f(X[1:-1, 1:-1, 1:-1], Y[1:-1, 1:-1, 1:-1], Z[1:-1, 1:-1, 1:-1], 0, c)
+)
+u1.data[1][1:-1, 1:-1, 1:-1] = (
+    u1.data[0][1:-1, 1:-1, 1:-1]
+    + dt * V(X[1:-1, 1:-1, 1:-1], Y[1:-1, 1:-1, 1:-1], Z[1:-1, 1:-1, 1:-1])
+    + 0.5 * (C**2) * lap1
     + 0.5 * dt**2 * f(X[1:-1, 1:-1, 1:-1], Y[1:-1, 1:-1, 1:-1], Z[1:-1, 1:-1, 1:-1], 0, c)
 )
 
-# u.data[1][0] = 0.
-# u.data[1][-1] = 0.
 
 t = grid.time_dim
 x, y, z = grid.dimensions
 
 h_x, h_y, h_z = grid.spacing
 
-# Should it be t or t+1? - i think t for explicit, t+1 for implicit
-eqn = Eq(u.dt2, (c**2)*u.laplace + 2.*(1. + 0.5*(t*dt))*((z*h_z)*(Lz-(z*h_z))*(y*h_y)*(Ly-(y*h_y)) + (x*h_x)*(Lx-(x*h_x))*(z*h_z)*(Lz-(z*h_z)) + (x*h_x)*(Lx-(x*h_x))*(y*h_y)*(Ly-(y*h_y)))*(c**2), subdomain=grid.interior)
+eqn_ftcs = Eq(u0.dt2, (c**2)*u0.laplace + 2.*(1. + 0.5*(t*dt))*((z*h_z)*(Lz-(z*h_z))*(y*h_y)*(Ly-(y*h_y)) + (x*h_x)*(Lx-(x*h_x))*(z*h_z)*(Lz-(z*h_z)) + (x*h_x)*(Lx-(x*h_x))*(y*h_y)*(Ly-(y*h_y)))*(c**2), subdomain=grid.interior)
+eqn_btcs = Eq(u1.dt2, (c**2)*u1.forward.laplace + 2.*(1. + 0.5*((t+1)*dt))*((z*h_z)*(Lz-(z*h_z))*(y*h_y)*(Ly-(y*h_y)) + (x*h_x)*(Lx-(x*h_x))*(z*h_z)*(Lz-(z*h_z)) + (x*h_x)*(Lx-(x*h_x))*(y*h_y)*(Ly-(y*h_y)))*(c**2), subdomain=grid.interior)
 
 bc.data[:] = np.float64(0.0)
 
 # Create boundary condition expressions using subdomains
-bcs = [EssentialBC(u.forward, bc, subdomain=sub1)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub2)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub3)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub4)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub5)]
-bcs += [EssentialBC(u.forward, bc, subdomain=sub6)]
+bcs0 = [EssentialBC(u0.forward, bc, subdomain=sub1)]
+bcs0 += [EssentialBC(u0.forward, bc, subdomain=sub2)]
+bcs0 += [EssentialBC(u0.forward, bc, subdomain=sub3)]
+bcs0 += [EssentialBC(u0.forward, bc, subdomain=sub4)]
+bcs0 += [EssentialBC(u0.forward, bc, subdomain=sub5)]
+bcs0 += [EssentialBC(u0.forward, bc, subdomain=sub6)]
 
-exprs = [eqn] + bcs
-petsc = petscsolve(
-    exprs,
-    target=u.forward,
+bcs1 = [EssentialBC(u1.forward, bc, subdomain=sub1)]
+bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub2)]
+bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub3)]
+bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub4)]
+bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub5)]
+bcs1 += [EssentialBC(u1.forward, bc, subdomain=sub6)]
+
+exprs_ftcs = [eqn_ftcs] + bcs0
+ftcs_solver = petscsolve(
+    exprs_ftcs,
+    target=u0.forward,
     solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
     options_prefix='wave_explicit'
 )
 
+exprs_btcs = [eqn_btcs] + bcs1
+btcs_solver = petscsolve(
+    exprs_btcs,
+    target=u1.forward,
+    solver_parameters={'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    options_prefix='wave_implicit'
+)
+
 with switchconfig(log_level='DEBUG'):
-    op = Operator(petsc, language='petsc')
+    op = Operator([ftcs_solver, btcs_solver], language='petsc')
     summary = op.apply(dt=dt)
     print(op.arguments(dt=dt))
 
@@ -204,20 +221,26 @@ print(f"t to compare: {t_to_compare}")
 u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X, Y, Z, t_to_compare, Lx, Ly, Lz)
 
-diff = Function(name='diff', grid=grid, space_order=2)
-diff.data[:] = u.data[nt][:] - u_exact.data[:]
+diff_ftcs = Function(name='diff_ftcs', grid=grid, space_order=2)
+diff_ftcs.data[:] = u0.data[nt][:] - u_exact.data[:]
+
+diff_btcs = Function(name='diff_btcs', grid=grid, space_order=2)
+diff_btcs.data[:] = u1.data[nt][:] - u_exact.data[:]
 
 # Compute infinity norm using numpy
-infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-infinity_norms.append(infinity_norm)
+infinity_norm_ftcs = np.linalg.norm(diff_ftcs.data[:].ravel(), ord=np.inf)
+infinity_norm_btcs = np.linalg.norm(diff_btcs.data[:].ravel(), ord=np.inf)
 
 # Compute discrete L2 norm (RMS error)
 n_interior = np.prod([s - 1 for s in grid.shape])
-discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-discrete_l2_norms.append(discrete_l2_norm)
+discrete_l2_norm_ftcs = norm(diff_ftcs) / np.sqrt(n_interior)
+discrete_l2_norm_btcs = norm(diff_btcs) / np.sqrt(n_interior)
 
-print(f"Infinity norm: {infinity_norm}")
-print(f"Discrete L2 norm: {discrete_l2_norm}")
+
+print(f"FTCS infinity norm: {infinity_norm_ftcs}")
+print(f"FTCS discrete L2 norm: {discrete_l2_norm_ftcs}")
+print(f"BTCS infinity norm: {infinity_norm_btcs}")
+print(f"BTCS discrete L2 norm: {discrete_l2_norm_btcs}")
 
 
 from matplotlib import pyplot
@@ -231,12 +254,13 @@ pyplot.xlabel('z')
 pyplot.ylabel('$u$')
 pyplot.grid(False)
 
-pyplot.plot(tmpz, u.data[nt, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=f'FD t={t_to_compare:.2f}')
-pyplot.plot(tmpz, u_exact.data[int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label=f'Exa t={t_to_compare:.2f}')
+pyplot.plot(tmpz, u0.data[nt, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, label=f'FTCS solution at t={t_to_compare:.2f}')
+pyplot.plot(tmpz, u1.data[nt, int((n-1)/2), int((n-1)/2), :].squeeze(), color='b', linewidth=2, linestyle='--', label=f'BTCS solution at t={t_to_compare:.2f}')
+pyplot.plot(tmpz, u_exact.data[int((n-1)/2), int((n-1)/2), :].squeeze(), color='k', marker='*', linestyle='none', markersize=8, label=f'Exact solution at t={t_to_compare:.2f}')
 
 
 pyplot.legend(fontsize=10, loc='upper left')
 
 # Save fig
-fig_path = '3_2_6_wave.png'
+fig_path = '3_2_6_compare.png'
 pyplot.savefig(fig_path, bbox_inches='tight', dpi=300)

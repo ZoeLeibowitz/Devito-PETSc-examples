@@ -20,6 +20,7 @@ on:
       - 'Chapter3/3_2_3/*.png'
       - 'Chapter3/3_2_4/*.png'
       - 'Chapter3/3_2_5/*.png'
+      - 'Chapter3/3_2_6/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -46,107 +47,107 @@ jobs:
     - name: Pull prebuilt Docker image
       run: docker pull zoeleibowitz/petsc_devito_image:latest
 
-    # Run 3_1_1 - serial
-    - name: Run 3_1_1 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_1 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 1d_poisson.py
+    # # Run 3_1_1 - serial
+    # - name: Run 3_1_1 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_1 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 1d_poisson.py
 
-    # Run 3_1_2 - serial
-    - name: Run 3_1_2 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_2 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 2d_poisson.py
+    # # Run 3_1_2 - serial
+    # - name: Run 3_1_2 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_2 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 2d_poisson.py
 
-    # Run 3_1_3 - serial
-    - name: Run 3_1_3 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_3 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 3d_poisson.py
+    # # Run 3_1_3 - serial
+    # - name: Run 3_1_3 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_3 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 3d_poisson.py
 
-    # Run 3_1_4 - serial
-    - name: Run 3_1_4 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_4 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 2d_laplace_sine.py
+    # # Run 3_1_4 - serial
+    # - name: Run 3_1_4 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_4 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 2d_laplace_sine.py
 
-    # Don't run 3_1_5 yet -> need to fix nullspace treatment
+    # # Don't run 3_1_5 yet -> need to fix nullspace treatment
 
-    # Run 3_1_6 - serial
-    - name: Run 3_1_6 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_6 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 2d_modified_helmholtz.py
+    # # Run 3_1_6 - serial
+    # - name: Run 3_1_6 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_6 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 2d_modified_helmholtz.py
 
-    # Run 3_1_7 - serial
-    - name: Run 3_1_7 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_7 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 modified_stencil_4th_order.py
+    # # Run 3_1_7 - serial
+    # - name: Run 3_1_7 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_7 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 modified_stencil_4th_order.py
 
-    # Run 3_1_8 - serial
-    - name: Run 3_1_8 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_8 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 poisson_collatz.py
+    # # Run 3_1_8 - serial
+    # - name: Run 3_1_8 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_8 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 poisson_collatz.py
 
-    # Run 3_1_9 - serial
-    - name: Run 3_1_9 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_9 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 rectangle2d.py
+    # # Run 3_1_9 - serial
+    # - name: Run 3_1_9 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_9 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 rectangle2d.py
 
-    # Run 3_2_1 - serial
-    - name: Run all .py scripts in 3_2_1 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_1 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          bash -c 'for f in *.py; do echo "Running $f..."; python3 "$f"; done'
+    # # Run 3_2_1 - serial
+    # - name: Run all .py scripts in 3_2_1 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_2_1 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       bash -c 'for f in *.py; do echo "Running $f..."; python3 "$f"; done'
 
-    # Run 3_2_2 - serial
-    - name: Run 3_2_2 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_2 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 3_2_2_ftcs.py
+    # # Run 3_2_2 - serial
+    # - name: Run 3_2_2 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_2_2 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 3_2_2_ftcs.py
 
     # Run 3_2_3 - serial
     - name: Run 3_2_3 - serial
@@ -158,25 +159,35 @@ jobs:
           zoeleibowitz/petsc_devito_image:latest \
           python3 3_2_3.py
 
-    # Run 3_2_4 - serial
-    - name: Run 3_2_4 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_4 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 3_2_4.py
+    # # Run 3_2_4 - serial
+    # - name: Run 3_2_4 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_2_4 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 3_2_4.py
 
-    # Run 3_2_5 - serial
-    - name: Run 3_2_5 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_5 \
-          -u $(id -u):$(id -g) \
-          zoeleibowitz/petsc_devito_image:latest \
-          python3 wave_2d.py
+    # # Run 3_2_5 - serial
+    # - name: Run 3_2_5 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_2_5 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 wave_2d.py
+
+    # # Run 3_2_6 - serial
+    # - name: Run 3_2_6 - serial
+    #   run: |
+    #     docker run --rm -t \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_2_6 \
+    #       -u $(id -u):$(id -g) \
+    #       zoeleibowitz/petsc_devito_image:latest \
+    #       python3 wave_3d.py
 
     # Configure Git for commits
     - name: Configure git
@@ -204,6 +215,7 @@ jobs:
         git add Chapter3/3_2_3/*.png
         git add Chapter3/3_2_4/*.png
         git add Chapter3/3_2_5/*.png
+        git add Chapter3/3_2_6/*.png
 
         git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
         git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
@@ -213,4 +225,3 @@ jobs:
           --body "Generated automatically by workflow." \
           --base main \
           --head $BRANCH_NAME
-
