@@ -87,8 +87,8 @@ subdomains = (sub1, sub2, sub3, sub4)
 Lx = np.float64(1.)
 Ly = np.float64(1.)
 
-# n = 33, 65, 129, 257, 513, 1025
-n_values = [2**k + 1 for k in range(5, 11)]
+# n = 33, 65, 129, 257
+n_values = [2**k + 1 for k in range(5, 9)]
 dx = np.array([Lx/(n-1) for n in n_values])
 
 u_errors = []
@@ -152,6 +152,11 @@ for n in n_values:
 u_slope, _ = np.polyfit(np.log(dx), np.log(u_errors), 1)
 v_slope, _ = np.polyfit(np.log(dx), np.log(v_errors), 1)
 
+print(u_errors)
+print(v_errors)
+print(f"u slope: {u_slope}")
+print(f"v slope: {v_slope}")
+
 assert u_slope > 1.9
 assert u_slope < 2.1
 
@@ -193,27 +198,40 @@ tmpy = np.linspace(0, Ly, n_plot)
 X, Y = np.meshgrid(tmpx, tmpy)
 
 
-plt.figure(figsize=(12, 5))
+plt.figure(figsize=(12, 10))
 
-# Plot u
-plt.subplot(1, 2, 1)
+plt.subplot(2, 2, 1)
 cp1 = plt.contourf(X, Y, u.data[:], levels=50, cmap='plasma')
 plt.colorbar(cp1)
-plt.title(f'$u$, n={n_plot}')
+plt.title(f'$u$ (numerical), n={n_plot}')
 plt.xlabel('$x$')
 plt.ylabel('$y$')
 
-# Plot v
-plt.subplot(1, 2, 2)
-cp2 = plt.contourf(X, Y, v.data[:], levels=50, cmap='plasma')
+plt.subplot(2, 2, 3)
+cp2 = plt.contourf(X, Y, u_exact.data[:], levels=50, cmap='plasma')
 plt.colorbar(cp2)
-plt.title(f'$v$, n={n_plot}')
+plt.title(f'$u$ (exact), n={n_plot}')
+plt.xlabel('$x$')
+plt.ylabel('$y$')
+
+plt.subplot(2, 2, 2)
+cp3 = plt.contourf(X, Y, v.data[:], levels=50, cmap='plasma')
+plt.colorbar(cp3)
+plt.title(f'$v$ (numerical), n={n_plot}')
+plt.xlabel('$x$')
+plt.ylabel('$y$')
+
+plt.subplot(2, 2, 4)
+cp4 = plt.contourf(X, Y, lap_u.data[:], levels=50, cmap='plasma')
+plt.colorbar(cp4)
+plt.title(r'$v = -\nabla^{2} u$ (exact)' + f'\n$n = {n_plot}$', fontsize=12)
 plt.xlabel('$x$')
 plt.ylabel('$y$')
 
 plt.tight_layout()
 plt.savefig("3_3_1_solution.png", dpi=300, transparent=True)
 plt.show()
+
 
 
 
