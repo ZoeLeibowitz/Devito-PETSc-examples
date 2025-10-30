@@ -48,7 +48,7 @@ jobs:
 
     # Pull Docker image
     - name: Pull prebuilt Docker image
-      run: docker pull zoeleibowitz/petsc_devito_image:latest
+      run: docker pull devitocodes/devito-petsc:latest
 
     # Run 3_1_1 - serial
     - name: Run 3_1_1 - serial
