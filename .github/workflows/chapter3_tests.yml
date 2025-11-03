@@ -25,7 +25,7 @@ on:
 
       - 'Chapter3/3_3_1/*.png'
 
-  pull:
+  pull_request:
     branches:
       - main
     # Ignore commits to PNG files to prevent workflow loops
