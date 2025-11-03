@@ -232,7 +232,7 @@ jobs:
 
         git add Chapter3/3_3_1/*.png
 
-        git commit -m "Update plots for Chapter3 from workflow" || echo "No changes to commit"
+        git commit -m "Update plots for Chapter3 from workflow" || git commit --allow-empty -m "No visual changes but rerun"
         git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
         gh auth setup-git
         gh pr create \
