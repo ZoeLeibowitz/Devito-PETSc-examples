@@ -25,6 +25,30 @@ on:
 
       - 'Chapter3/3_3_1/*.png'
 
+  pull:
+    branches:
+      - main
+    # Ignore commits to PNG files to prevent workflow loops
+    paths-ignore:
+      - 'Chapter3/3_1_1/*.png'
+      - 'Chapter3/3_1_2/*.png'
+      - 'Chapter3/3_1_3/*.png'
+      - 'Chapter3/3_1_4/*.png'
+      #  TODO: Add the neumann example for 3_1_5
+      - 'Chapter3/3_1_6/*.png'
+      - 'Chapter3/3_1_7/*.png'
+      - 'Chapter3/3_1_8/*.png'
+      - 'Chapter3/3_1_9/*.png'
+
+      - 'Chapter3/3_2_1/*.png'
+      - 'Chapter3/3_2_2/*.png'
+      - 'Chapter3/3_2_3/*.png'
+      - 'Chapter3/3_2_4/*.png'
+      - 'Chapter3/3_2_5/*.png'
+      - 'Chapter3/3_2_6/*.png'
+
+      - 'Chapter3/3_3_1/*.png'
+
   schedule:
     # Runs every Monday at 00:00 UTC
     - cron: "0 0 * * 1"
