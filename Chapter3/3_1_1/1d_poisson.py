@@ -51,7 +51,7 @@ def exact(x):
 Lx = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
-n_values = [2**k + 1 for k in range(3, 14)]
+n_values = [2**k + 1 for k in range(3, 10)]
 dx = np.array([Lx/(n-1) for n in n_values])
 
 infinity_norms = []
@@ -82,7 +82,7 @@ for n in n_values:
     exprs = [eqn] + bcs
     petsc = petscsolve(
         exprs, target=u,
-        solver_parameters={'ksp_rtol': 1e-5, 'ksp_type': 'cg', 'pc_type': 'none'},
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='poisson_1d'
     )
 
