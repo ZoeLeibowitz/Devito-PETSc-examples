@@ -82,7 +82,7 @@ for n in n_values:
     exprs = [eqn] + bcs
     petsc = petscsolve(
         exprs, target=u,
-        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+        solver_parameters={'ksp_rtol': 1e-5, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='poisson_1d'
     )
 
