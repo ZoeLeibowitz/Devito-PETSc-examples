@@ -51,7 +51,7 @@ def exact(x):
 Lx = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
-n_values = [2**k + 1 for k in range(3, 10)]
+n_values = [2**k + 1 for k in range(3, 14)]
 dx = np.array([Lx/(n-1) for n in n_values])
 
 infinity_norms = []
@@ -211,6 +211,6 @@ print("Petsc4pdes L2 Norms: %s\n" % formatted_petsc4pdes_l2_norms)
 print("Devito L2 Norms: %s\n" % formatted_devito_l2_norms)
 
 
-# assert formatted_petsc4pdes_infinity_norms == formatted_devito_infinity_norms
-# assert formatted_petsc4pdes_l2_norms == formatted_devito_l2_norms
-# assert ksp_iters == petsc4pdes_kspiters
+assert formatted_petsc4pdes_infinity_norms == formatted_devito_infinity_norms
+assert formatted_petsc4pdes_l2_norms == formatted_devito_l2_norms
+assert ksp_iters == petsc4pdes_kspiters
