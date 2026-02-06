@@ -25,8 +25,6 @@ os.environ['CC'] = 'mpicc'
 # global solve, rather than keeping them as trivial equations
 
 
-# TODO: make this an MPI test..
-
 PetscInitialize()
 
 # Subdomains to implement BCs
@@ -124,6 +122,9 @@ for n in n_values:
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
+
+
+    # MAKWE THIS AN MPI TEST WITH 4 RANKS ....... should pass for all n
 
     iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
     ksp_iters.append(iters)
