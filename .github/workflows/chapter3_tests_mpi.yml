@@ -39,7 +39,7 @@ jobs:
       run: docker pull $DOCKER_IMAGE
 
     # Run 3_1_2 - parallel - TODO: make this a matrix to run over different ranks?? - the plot generated should have the no of ranks total in the filename..
-    - name: Run 3_1_1 - serial
+    - name: Run 3_1_2 - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
