@@ -2,16 +2,20 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm)
+                    configuration, SubDomain)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
+
+from devito.mpi.distributed import MPI
 
 import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
+
+# DEVITO_MPI=1 mpiexec -n 4 python3 1d_poisson_mpi.py
 
 # 1D test
 # Solving -u.laplace = f(x)
@@ -50,9 +54,12 @@ def exact(x):
 
 Lx = np.float64(1.)
 
-n = 9
-dx = Lx/(n-1)
+# n = 9, 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
+n_values = [2**k + 1 for k in range(3, 14)]
+# dx = np.array([Lx/(n-1) for n in n_values])
 
+
+n = 17
 
 grid = Grid(
     shape=(n,), extent=(Lx,), subdomains=subdomains, dtype=np.float64
@@ -77,15 +84,18 @@ bcs += [EssentialBC(u, bc, subdomain=sub2)]
 exprs = [eqn] + bcs
 petsc = petscsolve(
     exprs, target=u,
-    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
-    options_prefix='poisson_1d'
+    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'},
+    options_prefix='poisson_1d',
+    constrain_bcs=True
 )
 
 with switchconfig(log_level='DEBUG'):
     op = Operator(petsc, language='petsc')
-    summary = op.apply()
+    # summary = op.apply()
+    print(op.ccode)
 
-iters = summary.petsc[('section0', 'poisson_1d')].KSPGetIterationNumber
+# iters = summary.petsc[('section0', 'poisson_1d')].KSPGetIterationNumber
+# print(iters)
 
 u_exact = Function(name='u_exact', grid=grid, space_order=2)
 u_exact.data[:] = exact(X)
@@ -93,12 +103,17 @@ u_exact.data[:] = exact(X)
 diff = Function(name='diff', grid=grid, space_order=2)
 diff.data[:] = u_exact.data[:] - u.data[:]
 
-# Compute infinity norm using numpy
-# TODO: Figure out how to compute the infinity norm using Devito
-infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
-print(f"n={n}, Infinity Norm={infinity_norm}")
+gathered = diff.data._gather()
+comm = grid.comm
 
-# Compute discrete L2 norm (RMS error)
-n_interior = np.prod([s - 1 for s in grid.shape])
-discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
-print(f"n={n}, Discrete L2 Norm={discrete_l2_norm}")
+if comm is not None and configuration['mpi']:
+    if comm != MPI.COMM_NULL and comm.rank == 0:
+        infinity_norm_mpi = np.linalg.norm(np.asarray(gathered).ravel(), ord=np.inf)
+    else:
+        infinity_norm_mpi = None
+else:
+    infinity_norm_mpi = None
+
+
+print(f"Infinity Norm={infinity_norm_mpi}")
+

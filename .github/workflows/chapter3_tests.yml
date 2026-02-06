@@ -31,7 +31,7 @@ on:
   workflow_dispatch:  # allow manual trigger
 
 env:
-  DOCKER_IMAGE: devitocodes/devito-petsc:latest
+  DOCKER_IMAGE: devitocodes/devito-petsc:petscsection
 
 jobs:
   run-chapter3:
@@ -72,6 +72,16 @@ jobs:
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 2d_poisson.py
+
+    # Run 3_1_2 - parallel
+    - name: Run 3_1_2 - parallel
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_2 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          DEVITO_MPI=1 mpiexec -n 4 python3 2d_poisson_mpi.py
 
     # Run 3_1_3 - serial
     - name: Run 3_1_3 - serial

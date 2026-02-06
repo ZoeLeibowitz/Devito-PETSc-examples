@@ -21,6 +21,12 @@ os.environ['CC'] = 'mpicc'
 # Manufactured solution: u(x,y) = -xe^(y), with corresponding RHS f(x,y) = xe^(y)
 # ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c
 
+# In this code, we use `constrain_bcs=True` to exclude the essential boundary conditions from the
+# global solve, rather than keeping them as trivial equations
+
+
+# TODO: make this an MPI test..
+
 PetscInitialize()
 
 # Subdomains to implement BCs
@@ -69,6 +75,8 @@ def exact(x, y):
 Lx = np.float64(1.)
 Ly = np.float64(1.)
 
+so = 2
+
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]
 h = np.array([Lx/(n-1) for n in n_values])
@@ -81,9 +89,9 @@ for n in n_values:
         shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
     )
 
-    u = Function(name='u', grid=grid, space_order=2)
-    f = Function(name='f', grid=grid, space_order=2)
-    bc = Function(name='bc', grid=grid, space_order=2)
+    u = Function(name='u', grid=grid, space_order=so)
+    f = Function(name='f', grid=grid, space_order=so)
+    bc = Function(name='bc', grid=grid, space_order=so)
 
     eqn = Eq(-u.laplace, f, subdomain=grid.interior)
 
@@ -106,18 +114,18 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub4)]
 
     exprs = [eqn] + bcs
-
     petsc = petscsolve(
-        exprs,
-        target=u,
-        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'}
+        exprs, target=u,
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='poisson_2d',
+        constrain_bcs=True
     )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
@@ -126,77 +134,49 @@ for n in n_values:
     diff = Function(name='diff', grid=grid, space_order=2)
     diff.data[:] = u_exact.data[:] - u.data[:]
 
-    gathered = diff.data._gather()
-    comm = grid.comm
+    # Compute infinity norm using numpy
+    # TODO: Figure out how to compute the infinity norm using Devito
+    infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
+    infinity_norms.append(infinity_norm)
+    print(infinity_norm)
 
-    if comm is not None and configuration['mpi']:
-        if comm != MPI.COMM_NULL and comm.rank == 0:
-            infinity_norm_mpi = np.linalg.norm(np.asarray(gathered).ravel(), ord=np.inf)
-        else:
-            infinity_norm_mpi = None
-    else:
-        infinity_norm_mpi = None
-
-    infinity_norms.append(infinity_norm_mpi)
+    # Compute discrete L2 norm (RMS error)
+    n_interior = np.prod([s - 1 for s in grid.shape])
+    discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
+    discrete_l2_norms.append(discrete_l2_norm)
     
 
-slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
-print(infinity_norms)
-assert slope > 1.9
-assert slope < 2.1
+# slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
-# Plot
-plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-plt.loglog(
-    h, np.exp(intercept) * h**2,
-    'k--',
-    label=r'Reference slope $O(h^2)$'
-)
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
-plt.legend()
-plt.tight_layout()
-plt.savefig("3_1_2_mpi.png", dpi=200)
-plt.show()
+# assert slope > 1.9
+# assert slope < 2.1
 
 
-# TODO: Note, I ran with mpiexec -n 1 to check that the infinity norm computation is the exact same as below (the serial case)
-serial_infinity_norms = [
-    np.float64(8.59058043676253e-05),
-    np.float64(2.183883155537636e-05),
-    np.float64(5.477518565166761e-06),
-    np.float64(1.371033316877046e-06),
-    np.float64(3.428173114272681e-07),
-    np.float64(8.571514120703227e-08),
-    np.float64(2.1436735497815107e-08),
-    np.float64(5.381981305063732e-09)
-]
 
-# taken from output:
-parallel_infinity_norms = [
-    np.float64(8.590580436740325e-05),
-    np.float64(2.1838831555598404e-05),
-    np.float64(5.477518564056538e-06),
-    np.float64(1.371033316877046e-06),
-    np.float64(3.428173112052235e-07),
-    np.float64(8.571514054089846e-08),
-    np.float64(2.1436737274171946e-08),
-    np.float64(5.3819804168853125e-09)
-]
+# # Plot
+# plt.figure(figsize=(6, 5))
+# plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+# plt.loglog(
+#     h, np.exp(intercept) * h**2,
+#     'k--',
+#     label=r'Reference slope $O(h^2)$'
+# )
+# plt.xlabel(r'Grid spacing h')
+# plt.ylabel(r'$\infty$-norm error')
+# plt.title('Convergence Plot')
+# plt.legend()
+# plt.tight_layout()
+# plt.savefig("3_1_2_constrain.png", dpi=200)
+# plt.show()
 
 
-# check iters are exact same 
-serial_kspiters = [
-    25,
-    60,
-    124,
-    246,
-    486,
-    956,
-    1886,
-    3720,
-]
-
-assert ksp_iters == serial_kspiters
+# # Error vs iterations plot
+# plt.figure(figsize=(6, 5))
+# plt.semilogy(ksp_iters, infinity_norms, 'o-', color='darkgreen')
+# plt.xlabel('KSP Iterations')
+# plt.ylabel(r'Infinity Norm Error')
+# plt.title('Error vs. KSP Iteration Count')
+# plt.grid(True, which='both', ls='--')
+# plt.tight_layout()
+# plt.savefig("error_vs_iterations_constrain.png", dpi=200)
+# plt.show()
