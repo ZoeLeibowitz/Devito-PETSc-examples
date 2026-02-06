@@ -112,13 +112,12 @@ petsc = petscsolve(
 )
 
 rank = grid.distributor.myrank
-# from IPython import embed; embed()
 
 with switchconfig(log_level='DEBUG'):
     op = Operator(petsc, language='petsc')
     args = op.arguments()
     print(f"[rank {rank}] arguments = {args}")
-    # summary = op.apply()
+    summary = op.apply()
 
 
 print(op.ccode)
