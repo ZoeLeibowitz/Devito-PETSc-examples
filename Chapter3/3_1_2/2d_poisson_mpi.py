@@ -110,14 +110,15 @@ for n in n_values:
     petsc = petscsolve(
         exprs,
         target=u,
-        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'}
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
+        options_prefix='poisson_2d'
     )
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)

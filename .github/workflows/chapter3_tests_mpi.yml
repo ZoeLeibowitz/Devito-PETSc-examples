@@ -47,7 +47,7 @@ jobs:
           -w /workspace/Chapter3/3_1_2 \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n 4 python3 2d_poisson_mpi.py
+          mpiexec --oversubscribe -n 2 python3 2d_poisson_mpi.py
 
     # Configure Git for commits
     - name: Configure git
