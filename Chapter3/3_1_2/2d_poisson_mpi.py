@@ -139,65 +139,50 @@ for n in n_values:
         infinity_norm_mpi = None
 
     infinity_norms.append(infinity_norm_mpi)
+
     
+if comm.rank == 0:
+    slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
+    assert slope > 1.9
+    assert slope < 2.1
 
-slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
-print(infinity_norms)
-assert slope > 1.9
-assert slope < 2.1
-
-# Plot
-plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-plt.loglog(
-    h, np.exp(intercept) * h**2,
-    'k--',
-    label=r'Reference slope $O(h^2)$'
-)
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
-plt.legend()
-plt.tight_layout()
-plt.savefig("3_1_2_mpi.png", dpi=200)
-plt.show()
-
-
-# TODO: Note, I ran with mpiexec -n 1 to check that the infinity norm computation is the exact same as below (the serial case)
-serial_infinity_norms = [
-    np.float64(8.59058043676253e-05),
-    np.float64(2.183883155537636e-05),
-    np.float64(5.477518565166761e-06),
-    np.float64(1.371033316877046e-06),
-    np.float64(3.428173114272681e-07),
-    np.float64(8.571514120703227e-08),
-    np.float64(2.1436735497815107e-08),
-    np.float64(5.381981305063732e-09)
-]
-
-# taken from output:
-parallel_infinity_norms = [
-    np.float64(8.590580436740325e-05),
-    np.float64(2.1838831555598404e-05),
-    np.float64(5.477518564056538e-06),
-    np.float64(1.371033316877046e-06),
-    np.float64(3.428173112052235e-07),
-    np.float64(8.571514054089846e-08),
-    np.float64(2.1436737274171946e-08),
-    np.float64(5.3819804168853125e-09)
-]
+    # Plot
+    plt.figure(figsize=(6, 5))
+    plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    plt.loglog(
+        h, np.exp(intercept) * h**2,
+        'k--',
+        label=r'Reference slope $O(h^2)$'
+    )
+    plt.xlabel(r'Grid spacing h')
+    plt.ylabel(r'$\infty$-norm error')
+    plt.title('Convergence Plot')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("3_1_2_mpi.png", dpi=200)
+    plt.show()
 
 
-# check iters are exact same 
-serial_kspiters = [
-    25,
-    60,
-    124,
-    246,
-    486,
-    956,
-    1886,
-    3720,
-]
+    # TODO: Note, I ran with mpiexec -n 1 to check that the infinity norm computation is the exact same as below (the serial case)
+    serial_infinity_norms = [
+        np.float64(8.59058043676253e-05),
+        np.float64(2.183883155537636e-05),
+        np.float64(5.477518565166761e-06),
+        np.float64(1.371033316877046e-06),
+        np.float64(3.428173114272681e-07),
+        np.float64(8.571514120703227e-08),
+        np.float64(2.1436735497815107e-08),
+        np.float64(5.381981305063732e-09)
+    ]
 
-assert ksp_iters == serial_kspiters
+    # taken from output:
+    parallel_infinity_norms = [
+        np.float64(8.590580436740325e-05),
+        np.float64(2.1838831555598404e-05),
+        np.float64(5.477518564056538e-06),
+        np.float64(1.371033316877046e-06),
+        np.float64(3.428173112052235e-07),
+        np.float64(8.571514054089846e-08),
+        np.float64(2.1436737274171946e-08),
+        np.float64(5.3819804168853125e-09)
+    ]
