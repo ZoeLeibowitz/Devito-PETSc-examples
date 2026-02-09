@@ -90,6 +90,7 @@ for n in n_values:
     )
 
     op = Operator(petsc, language='petsc')
+    op.apply()
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X)
