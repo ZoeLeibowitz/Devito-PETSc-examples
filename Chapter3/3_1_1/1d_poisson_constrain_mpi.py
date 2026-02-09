@@ -129,5 +129,5 @@ if comm.rank == 0:
     plt.title('Convergence Plot')
     plt.legend()
     plt.tight_layout()
-    plt.savefig("3_1_1_mpi.png", dpi=200)
+    plt.savefig("3_1_1_mpi_constrain.png", dpi=200)
     plt.show()
