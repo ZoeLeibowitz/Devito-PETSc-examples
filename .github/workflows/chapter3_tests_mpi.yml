@@ -7,6 +7,7 @@ on:
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
 
+      - 'Chapter3/3_1_1/*.png'
       - 'Chapter3/3_1_2/*.png'
 
   schedule:
@@ -37,6 +38,16 @@ jobs:
     # Pull Docker image
     - name: Pull prebuilt Docker image
       run: docker pull $DOCKER_IMAGE
+
+    - name: Run 3_1_1 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_1 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n 2 python3 2d_poisson_mpi.py
 
     # Run 3_1_2 - parallel - TODO: make this a matrix to run over different ranks?? - the plot generated should have the no of ranks total in the filename..
     - name: Run 3_1_2 - parallel

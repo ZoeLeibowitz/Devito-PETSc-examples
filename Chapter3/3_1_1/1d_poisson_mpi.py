@@ -60,7 +60,6 @@ dx = np.array([Lx/(n-1) for n in n_values])
 
 infinity_norms = []
 discrete_l2_norms = []
-ksp_iters = []
 
 for n in n_values:
     grid = Grid(
@@ -90,12 +89,7 @@ for n in n_values:
         options_prefix='poisson_1d'
     )
 
-    with switchconfig(log_level='DEBUG'):
-        op = Operator(petsc, language='petsc')
-        summary = op.apply()
-
-    iters = summary.petsc[('section0', 'poisson_1d')].KSPGetIterationNumber
-    ksp_iters.append(iters)
+    op = Operator(petsc, language='petsc')
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X)
@@ -116,25 +110,26 @@ for n in n_values:
 
     infinity_norms.append(infinity_norm_mpi)
 
-print(infinity_norms)
-print(ksp_iters)
-slope, intercept = np.polyfit(np.log(dx), np.log(infinity_norms), 1)
 
-assert slope > 1.9
-assert slope < 2.1
+if comm.rank == 0:
+    print(infinity_norms)
+    slope, intercept = np.polyfit(np.log(dx), np.log(infinity_norms), 1)
 
-# Convergence Plot
-plt.figure(figsize=(6, 5))
-plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-plt.loglog(
-    dx, np.exp(intercept) * dx**2,
-    'k--',
-    label=r'Reference slope $O(h^2)$'
-)
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
-plt.legend()
-plt.tight_layout()
-plt.savefig("3_1_1_mpi.png", dpi=200)
-plt.show()
+    assert slope > 1.9
+    assert slope < 2.1
+
+    # Convergence Plot
+    plt.figure(figsize=(6, 5))
+    plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    plt.loglog(
+        dx, np.exp(intercept) * dx**2,
+        'k--',
+        label=r'Reference slope $O(h^2)$'
+    )
+    plt.xlabel(r'Grid spacing h')
+    plt.ylabel(r'$\infty$-norm error')
+    plt.title('Convergence Plot')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("3_1_1_mpi.png", dpi=200)
+    plt.show()
