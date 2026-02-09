@@ -21,7 +21,12 @@ env:
 
 jobs:
   run-chapter3:
+    name: Run Chapter 3 (MPI n=${{ matrix.mpi_n }})
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        mpi_n: [2, 4]
 
     steps:
     # Checkout repo
@@ -39,6 +44,7 @@ jobs:
     - name: Pull prebuilt Docker image
       run: docker pull $DOCKER_IMAGE
 
+    ################################## 311 ##################################
     - name: Run 3_1_1 - parallel
       run: |
         docker run --rm -t \
@@ -47,7 +53,7 @@ jobs:
           -w /workspace/Chapter3/3_1_1 \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n 2 python3 1d_poisson_mpi.py
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 1d_poisson_mpi.py
 
     - name: Run 3_1_1 - parallel - constrain bcs
       run: |
@@ -57,7 +63,9 @@ jobs:
           -w /workspace/Chapter3/3_1_1 \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n 2 python3 1d_poisson_constrain_mpi.py
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 1d_poisson_constrain_mpi.py
+
+    ################################## 312 ##################################
 
     # Run 3_1_2 - parallel - TODO: make this a matrix to run over different ranks?? - the plot generated should have the no of ranks total in the filename..
     - name: Run 3_1_2 - parallel
@@ -68,7 +76,8 @@ jobs:
           -w /workspace/Chapter3/3_1_2 \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n 2 python3 2d_poisson_mpi.py
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_poisson_mpi.py
+          
 
     - name: Run 3_1_2 - parallel - constrain bcs
       run: |
@@ -78,7 +87,7 @@ jobs:
           -w /workspace/Chapter3/3_1_2 \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n 2 python3 2d_poisson_constrain_mpi.py
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_poisson_constrain_mpi.py
 
     # Configure Git for commits
     - name: Configure git

@@ -115,9 +115,6 @@ for n in n_values:
         op = Operator(petsc, language='petsc')
         summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
-    ksp_iters.append(iters)
-
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X, Y)
 
