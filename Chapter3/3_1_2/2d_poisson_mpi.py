@@ -114,12 +114,13 @@ for n in n_values:
         options_prefix='poisson_2d'
     )
 
-    with switchconfig(log_level='DEBUG'):
-        op = Operator(petsc, language='petsc')
-        summary = op.apply()
+    # with switchconfig():
+    op = Operator(petsc, language='petsc')
+    # summary = op.apply()
+    op.apply()
 
-    iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
-    ksp_iters.append(iters)
+    # iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
+    # ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X, Y)
