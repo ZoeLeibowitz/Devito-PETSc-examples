@@ -143,7 +143,8 @@ for n in n_values:
 
     infinity_norms.append(infinity_norm_mpi)
 
-    
+
+size = comm.rank
 if comm.rank == 0:
     slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
     assert slope > 1.9
@@ -159,10 +160,10 @@ if comm.rank == 0:
     )
     plt.xlabel(r'Grid spacing h')
     plt.ylabel(r'$\infty$-norm error')
-    plt.title('Convergence Plot')
+    plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig("3_1_2_mpi_constrain.png", dpi=200)
+    plt.savefig(f"3_1_2_constrain_mpi_procs{size}.png", dpi=200)
     plt.show()
 
 

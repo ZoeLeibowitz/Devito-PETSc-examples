@@ -9,6 +9,7 @@ on:
 
       - 'Chapter3/3_1_1/*.png'
       - 'Chapter3/3_1_2/*.png'
+      - 'Chapter3/3_1_3/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -67,7 +68,6 @@ jobs:
 
     ################################## 312 ##################################
 
-    # Run 3_1_2 - parallel - TODO: make this a matrix to run over different ranks?? - the plot generated should have the no of ranks total in the filename..
     - name: Run 3_1_2 - parallel
       run: |
         docker run --rm -t \
@@ -89,9 +89,17 @@ jobs:
           mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_poisson_constrain_mpi.py
 
     ################################## 313 ##################################
+    # TODO: add the constrain bc test for 313
 
-
-
+    - name: Run 3_1_3 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_3 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 3d_poisson_mpi.py
 
     ################################## 314 ##################################
     - name: Run 3_1_4 - parallel
