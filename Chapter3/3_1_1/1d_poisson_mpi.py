@@ -119,18 +119,18 @@ if comm.rank == 0:
     assert slope > 1.9
     assert slope < 2.1
 
-    # Convergence Plot
-    plt.figure(figsize=(6, 5))
-    plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-    plt.loglog(
-        dx, np.exp(intercept) * dx**2,
-        'k--',
-        label=r'Reference slope $O(h^2)$'
-    )
-    plt.xlabel(r'Grid spacing h')
-    plt.ylabel(r'$\infty$-norm error')
-    plt.title('Convergence Plot')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("3_1_1_mpi.png", dpi=200)
-    plt.show()
+    # # Convergence Plot
+    # plt.figure(figsize=(6, 5))
+    # plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    # plt.loglog(
+    #     dx, np.exp(intercept) * dx**2,
+    #     'k--',
+    #     label=r'Reference slope $O(h^2)$'
+    # )
+    # plt.xlabel(r'Grid spacing h')
+    # plt.ylabel(r'$\infty$-norm error')
+    # plt.title('Convergence Plot')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig("3_1_1_mpi.png", dpi=200)
+    # plt.show()

@@ -51,7 +51,8 @@ def exact(x):
 
 Lx = np.float64(1.)
 
-# n = 9, 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
+# n=9 is too small with 4 processes if the bcs are constrained as well, so start at 17
+# n = 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
 n_values = [2**k + 1 for k in range(3, 14)]
 dx = np.array([Lx/(n-1) for n in n_values])
 
@@ -117,18 +118,18 @@ if comm.rank == 0:
     assert slope > 1.9
     assert slope < 2.1
 
-    # Convergence Plot
-    plt.figure(figsize=(6, 5))
-    plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-    plt.loglog(
-        dx, np.exp(intercept) * dx**2,
-        'k--',
-        label=r'Reference slope $O(h^2)$'
-    )
-    plt.xlabel(r'Grid spacing h')
-    plt.ylabel(r'$\infty$-norm error')
-    plt.title('Convergence Plot')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("3_1_1_mpi_constrain.png", dpi=200)
-    plt.show()
+    # # Convergence Plot
+    # plt.figure(figsize=(6, 5))
+    # plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    # plt.loglog(
+    #     dx, np.exp(intercept) * dx**2,
+    #     'k--',
+    #     label=r'Reference slope $O(h^2)$'
+    # )
+    # plt.xlabel(r'Grid spacing h')
+    # plt.ylabel(r'$\infty$-norm error')
+    # plt.title('Convergence Plot')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig("3_1_1_mpi_constrain.png", dpi=200)
+    # plt.show()
