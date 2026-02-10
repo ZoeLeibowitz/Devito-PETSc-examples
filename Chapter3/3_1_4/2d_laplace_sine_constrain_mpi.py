@@ -14,7 +14,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# DEVITO_MPI=1 mpiexec -n 4 python3 2d_laplace_sine_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
+# DEVITO_MPI=1 mpiexec -n 4 python3 2d_laplace_sine_constrain_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
 
 # 2D test
 # Solving u_xx + u_yy = 0
@@ -108,7 +108,12 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub4)]
 
     exprs = [eqn] + bcs
-    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'})
+    petsc = petscsolve(
+        exprs,
+        target=u,
+        solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'},
+        constrain_bcs=True
+    )
 
     op = Operator(petsc, language='petsc')
     summary = op.apply()
@@ -154,7 +159,7 @@ if comm.rank == 0:
     plt.title('Convergence Plot')
     plt.legend()
     plt.tight_layout()
-    plt.savefig("3_1_4_mpi.png", dpi=200)
+    plt.savefig("3_1_4_mpi_constrain.png", dpi=200)
     plt.show()
 
 
