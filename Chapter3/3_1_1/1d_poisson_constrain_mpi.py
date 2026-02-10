@@ -53,7 +53,7 @@ Lx = np.float64(1.)
 
 # n=9 is too small with 4 processes if the bcs are constrained as well, so start at 17
 # n = 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
-n_values = [2**k + 1 for k in range(3, 14)]
+n_values = [2**k + 1 for k in range(4, 14)]
 dx = np.array([Lx/(n-1) for n in n_values])
 
 infinity_norms = []
