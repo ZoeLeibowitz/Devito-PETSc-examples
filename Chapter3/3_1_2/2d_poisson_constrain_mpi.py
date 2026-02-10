@@ -144,7 +144,7 @@ for n in n_values:
     infinity_norms.append(infinity_norm_mpi)
 
 
-size = comm.rank
+size = comm.size
 if comm.rank == 0:
     slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
     assert slope > 1.9

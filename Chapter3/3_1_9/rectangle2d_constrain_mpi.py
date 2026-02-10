@@ -15,7 +15,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# DEVITO_MPI=1 mpiexec -n 4 python3 rectangle2d_mpi.py -ksp_converged_reason -ksp_type gmres -pc_type none -ksp_max_it 500000 -ksp_rtol 1e-11
+# DEVITO_MPI=1 mpiexec -n 4 python3 rectangle2d_constrain_mpi.py -ksp_converged_reason -ksp_type gmres -pc_type none -ksp_max_it 500000 -ksp_rtol 1e-11
 
 # solves laplace equation in 2D with dirichlet and neumann boundary conditions
 # u(0,y) = 0
@@ -171,7 +171,12 @@ for nx, ny in zip(nx_values, ny_values):
     bcs += [neumann_top(eqn, sub1)]
 
     exprs = [eqn] + bcs
-    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
+    petsc = petscsolve(
+        exprs,
+        target=u,
+        solver_parameters={'ksp_rtol': 1e-11},
+        constrain_bcs=True
+    )
 
     op = Operator(petsc, language='petsc')
     summary = op.apply()
@@ -218,5 +223,5 @@ if comm.rank==0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_9_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"3_1_9_constrain_mpi_procs{size}.png", dpi=200)
     plt.show()
