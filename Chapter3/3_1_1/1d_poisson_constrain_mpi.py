@@ -19,6 +19,8 @@ os.environ['CC'] = 'mpicc'
 # Dirichlet BCs: u(0) = -1, u(1) = -e
 # Manufactured solution: u(x) = -e^(x), with corresponding RHS f(x) = e^(x)
 # ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c
+# constrain essential bcs
+
 
 PetscInitialize()
 
@@ -52,6 +54,7 @@ def exact(x):
 Lx = np.float64(1.)
 
 # n=9 is too small with 4 processes if the bcs are constrained as well, so start at 17
+# this is why the plot is slightly different compared to the 1d_poisson_mpi.py file - which starts at n=9
 # n = 17, 33, 65, 129, 257, 513, 1025, 2049, 4097, 8193
 n_values = [2**k + 1 for k in range(4, 14)]
 dx = np.array([Lx/(n-1) for n in n_values])
@@ -111,6 +114,8 @@ for n in n_values:
     infinity_norms.append(infinity_norm_mpi)
 
 
+size = comm.size
+
 if comm.rank == 0:
     print(infinity_norms)
     slope, intercept = np.polyfit(np.log(dx), np.log(infinity_norms), 1)
@@ -118,18 +123,18 @@ if comm.rank == 0:
     assert slope > 1.9
     assert slope < 2.1
 
-    # # Convergence Plot
-    # plt.figure(figsize=(6, 5))
-    # plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-    # plt.loglog(
-    #     dx, np.exp(intercept) * dx**2,
-    #     'k--',
-    #     label=r'Reference slope $O(h^2)$'
-    # )
-    # plt.xlabel(r'Grid spacing h')
-    # plt.ylabel(r'$\infty$-norm error')
-    # plt.title('Convergence Plot')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig("3_1_1_mpi_constrain.png", dpi=200)
-    # plt.show()
+    # Convergence Plot
+    plt.figure(figsize=(6, 5))
+    plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    plt.loglog(
+        dx, np.exp(intercept) * dx**2,
+        'k--',
+        label=r'Reference slope $O(h^2)$'
+    )
+    plt.xlabel(r'Grid spacing h')
+    plt.ylabel(r'$\infty$-norm error')
+    plt.title(f'Convergence Plot (MPI processes = {size})')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"3_1_1_constrain_mpi_procs{size}.png", dpi=200)
+    plt.show()

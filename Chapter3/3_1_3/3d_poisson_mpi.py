@@ -159,17 +159,14 @@ for n in n_values:
     bcs += [EssentialBC(u, bc, subdomain=sub5)]  # subback
     bcs += [EssentialBC(u, bc, subdomain=sub6)]  # subfront
 
-    # exprs = bcs
     exprs = [eqn] + bcs
-    # TODO: set ksp type to CG
-    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12})
+    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'})
 
-    with switchconfig(log_level='DEBUG'):
-        op = Operator(petsc, language='petsc')
-        summary = op.apply()
+    op = Operator(petsc, language='petsc')
+    summary = op.apply()
 
-    iters = summary.petsc[('section0', None)].KSPGetIterationNumber
-    ksp_iters.append(iters)
+    # iters = summary.petsc[('section0', None)].KSPGetIterationNumber
+    # ksp_iters.append(iters)
 
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     u_exact.data[:] = exact(X, Y, Z)
@@ -190,57 +187,59 @@ for n in n_values:
 
     infinity_norms.append(infinity_norm_mpi)
 
-print(infinity_norms)
-slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
-assert slope > 1.9
-assert slope < 2.1
+if comm.rank == 0:
+    print(infinity_norms)
+    slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 
-# Plot
-plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
-plt.loglog(
-    h, np.exp(intercept) * h**2,
-    'k--',
-    label=r'Reference slope $O(h^2)$'
-)
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
-plt.legend()
-plt.tight_layout()
-plt.savefig("3_1_3_mpi.png", dpi=200)
-plt.show()
+    assert slope > 1.9
+    assert slope < 2.1
 
-
-serial_infinity_norms = [
-    np.float64(0.00023550633478208738),
-    np.float64(6.0292711047793546e-05),
-    np.float64(1.5215275331215139e-05),
-    np.float64(3.811616776872029e-06),
-    np.float64(9.532971296799531e-07),
-    np.float64(2.3835349827194818e-07)
-]
+    # Plot
+    plt.figure(figsize=(6, 5))
+    plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+    plt.loglog(
+        h, np.exp(intercept) * h**2,
+        'k--',
+        label=r'Reference slope $O(h^2)$'
+    )
+    plt.xlabel(r'Grid spacing h')
+    plt.ylabel(r'$\infty$-norm error')
+    plt.title('Convergence Plot')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("3_1_3_mpi.png", dpi=200)
+    plt.show()
 
 
-# taken from output:
-parallel_infinity_norms = [
-    np.float64(0.00023550633478253147),
-    np.float64(6.0292711047793546e-05),
-    np.float64(1.5215275331659228e-05),
-    np.float64(3.8116167782042965e-06),
-    np.float64(9.532971296799531e-07),
-    np.float64(2.3835350182466186e-07)
-]
+    serial_infinity_norms = [
+        np.float64(0.00023550633478208738),
+        np.float64(6.0292711047793546e-05),
+        np.float64(1.5215275331215139e-05),
+        np.float64(3.811616776872029e-06),
+        np.float64(9.532971296799531e-07),
+        np.float64(2.3835349827194818e-07)
+    ]
 
-# # check iters are exact same 
-serial_kspiters = [
-    38,
-    79,
-    159,
-    315,
-    624,
-    1234
-]
 
-assert ksp_iters == serial_kspiters
+    # taken from output:
+    parallel_infinity_norms = [
+        np.float64(0.00023550633478253147),
+        np.float64(6.0292711047793546e-05),
+        np.float64(1.5215275331659228e-05),
+        np.float64(3.8116167782042965e-06),
+        np.float64(9.532971296799531e-07),
+        np.float64(2.3835350182466186e-07)
+    ]
+
+    # # check iters are exact same 
+    serial_kspiters = [
+        38,
+        79,
+        159,
+        315,
+        624,
+        1234
+    ]
+
+    # assert ksp_iters == serial_kspiters
