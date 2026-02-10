@@ -133,6 +133,7 @@ for n in n_values:
     infinity_norms.append(infinity_norm_mpi)
 
 
+size = comm.rank
 if comm.rank == 0:
     print(infinity_norms)
     print(ksp_iters)
@@ -151,13 +152,11 @@ if comm.rank == 0:
     )
     plt.xlabel(r'Grid spacing h')
     plt.ylabel(r'$\infty$-norm error')
-    plt.title('Convergence Plot')
+    plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig("3_1_4_mpi.png", dpi=200)
+    plt.savefig(f"3_1_4_mpi_procs{size}.png", dpi=200)
     plt.show()
-
-
 
     serial_infinity_norms = [
         np.float64(0.004403459551176603),

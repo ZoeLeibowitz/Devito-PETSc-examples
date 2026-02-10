@@ -10,6 +10,7 @@ on:
       - 'Chapter3/3_1_1/*.png'
       - 'Chapter3/3_1_2/*.png'
       - 'Chapter3/3_1_3/*.png'
+      - 'Chapter3/3_1_4/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
