@@ -174,7 +174,7 @@ for nx, ny in zip(nx_values, ny_values):
     petsc = petscsolve(
         exprs,
         target=u,
-        solver_parameters={'ksp_rtol': 1e-11},
+        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'gmres', 'pc_type': 'none', 'ksp_max_it': 500000},
         constrain_bcs=True
     )
 

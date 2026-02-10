@@ -171,7 +171,11 @@ for nx, ny in zip(nx_values, ny_values):
     bcs += [neumann_top(eqn, sub1)]
 
     exprs = [eqn] + bcs
-    petsc = petscsolve(exprs, target=u, solver_parameters={'ksp_rtol': 1e-11})
+    petsc = petscsolve(
+        exprs,
+        target=u,
+        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'gmres', 'pc_type': 'none', 'ksp_max_it': 500000}
+    )
 
     op = Operator(petsc, language='petsc')
     summary = op.apply()
