@@ -255,9 +255,8 @@ for n in n_values:
 
     solver = petscsolve([eqn]+bcs, target=u, solver_parameters={'ksp_rtol': 1e-8})
 
-    with switchconfig(openmp=False, language='petsc'):
-        op = Operator(solver)
-        op.apply()
+    op = Operator(solver, language='petsc')
+    op.apply()
 
     analytical = Function(name='analytical', grid=grid, space_order=2)
     analytical.data[:] = analytical_solution(X, Y)
