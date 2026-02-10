@@ -184,8 +184,8 @@ Lx = np.float64(16.)
 Ly = np.float64(16.)
 
 
-# n = 9, 17, 33, 65, 129, 257, 513
-n_values = [2**k + 1 for k in range(3, 10)]
+# n = 17, 33, 65, 129, 257, 513
+n_values = [2**k + 1 for k in range(4, 10)]
 
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []

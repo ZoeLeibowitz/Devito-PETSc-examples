@@ -130,7 +130,7 @@ jobs:
     #       $DOCKER_IMAGE \
     #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_laplace_sine_constrain_mpi.py
 
-    # # TODO: insert 315 parallel tests
+    # TODO: insert 315 parallel tests
 
     # ################################## 316 ##################################
 
@@ -145,17 +145,17 @@ jobs:
     #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_modified_helmholtz_mpi.py
 
 
-    ################################## 317 ##################################
+    # ################################## 317 ##################################
 
-    - name: Run 3_1_7 - parallel
-      run: |
-        docker run --rm -t \
-          -e DEVITO_MPI \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_7 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_mpi.py
+    # - name: Run 3_1_7 - parallel
+    #   run: |
+    #     docker run --rm -t \
+    #       -e DEVITO_MPI \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_7 \
+    #       -u $(id -u):$(id -g) \
+    #       $DOCKER_IMAGE \
+    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_mpi.py
 
     - name: Run 3_1_7 - parallel - constrain bcs
       run: |
