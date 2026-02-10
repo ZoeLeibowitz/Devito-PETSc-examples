@@ -188,6 +188,7 @@ for n in n_values:
     infinity_norms.append(infinity_norm_mpi)
 
 
+size = comm.rank
 if comm.rank == 0:
     print(infinity_norms)
     slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
@@ -205,10 +206,10 @@ if comm.rank == 0:
     )
     plt.xlabel(r'Grid spacing h')
     plt.ylabel(r'$\infty$-norm error')
-    plt.title('Convergence Plot')
+    plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig("3_1_3_mpi.png", dpi=200)
+    plt.savefig(f"3_1_3_mpi_procs{size}.png", dpi=200)
     plt.show()
 
 
@@ -220,7 +221,6 @@ if comm.rank == 0:
         np.float64(9.532971296799531e-07),
         np.float64(2.3835349827194818e-07)
     ]
-
 
     # taken from output:
     parallel_infinity_norms = [
