@@ -162,15 +162,15 @@ jobs:
     #       $DOCKER_IMAGE \
     #       mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_mpi.py
 
-    # - name: Run 3_1_8 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_8 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_constrain_mpi.py
+    - name: Run 3_1_8 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_8 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_constrain_mpi.py
 
     # ################################## 319 ##################################
 
@@ -184,15 +184,15 @@ jobs:
     #       $DOCKER_IMAGE \
     #       mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_mpi.py
 
-    - name: Run 3_1_9 - parallel - constrain bcs
-      run: |
-        docker run --rm -t \
-          -e DEVITO_MPI \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_9 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_constrain_mpi.py
+    # - name: Run 3_1_9 - parallel - constrain bcs
+    #   run: |
+    #     docker run --rm -t \
+    #       -e DEVITO_MPI \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_1_9 \
+    #       -u $(id -u):$(id -g) \
+    #       $DOCKER_IMAGE \
+    #       mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_constrain_mpi.py
 
     # Configure Git for commits
     - name: Configure git
