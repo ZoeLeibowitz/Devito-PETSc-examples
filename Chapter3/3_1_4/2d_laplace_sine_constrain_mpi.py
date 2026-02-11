@@ -7,7 +7,10 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
+import matplotlib
+matplotlib.use("Agg")  # Fully deterministic non-interactive backend
 import matplotlib.pyplot as plt
+
 from devito.mpi.distributed import MPI
 
 configuration['compiler'] = 'custom'
@@ -160,7 +163,7 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_4_constrain_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"3_1_4_constrain_mpi_procs{size}.png", dpi=200, metadata={})
 
 
     serial_infinity_norms = [

@@ -10,8 +10,9 @@ from devito.petsc.initialize import PetscInitialize
 import matplotlib.pyplot as plt
 from devito.mpi.distributed import MPI
 
-configuration['compiler'] = 'custom'
-os.environ['CC'] = 'mpicc'
+import matplotlib
+matplotlib.use("Agg")  # Fully deterministic non-interactive backend
+import matplotlib.pyplot as plt
 
 
 # DEVITO_MPI=1 mpiexec -n 4 python3 2d_laplace_sine_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-12 -pc_type none
@@ -155,7 +156,7 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_4_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"3_1_4_mpi_procs{size}.png", dpi=200, metadata={})
     plt.show()
 
     serial_infinity_norms = [
