@@ -133,7 +133,7 @@ for n in n_values:
     infinity_norms.append(infinity_norm_mpi)
 
 
-size = comm.rank
+size = comm.size
 if comm.rank == 0:
     print(infinity_norms)
     print(ksp_iters)
