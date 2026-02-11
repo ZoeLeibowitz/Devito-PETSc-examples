@@ -257,9 +257,8 @@ for n in n_values:
         options_prefix='helmholtz_2d'
     )
 
-    with switchconfig(openmp=False, language='petsc'):
-        op = Operator(solver)
-        op.apply()
+    op = Operator(solver, language='petsc')
+    op.apply()
 
     analytical = analytical_solution(X, Y)
 

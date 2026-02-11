@@ -256,7 +256,11 @@ for n in n_values:
     bcs8 = Eq(0.25*bcs8.lhs, 0.25*bcs8.rhs, subdomain=sub8)
     bcs = [bcs1, bcs2, bcs3, bcs4, bcs5, bcs6, bcs7, bcs8]
 
-    solver = petscsolve([eqn]+bcs, target=u, solver_parameters={'ksp_rtol': 1e-8})
+    solver = petscsolve(
+        [eqn]+bcs,
+        target=u,
+        solver_parameters={'ksp_rtol': 1e-8, 'ksp_type': 'cg', 'pc_type': 'none'}
+    )
 
     op = Operator(solver, language='petsc')
     op.apply()
