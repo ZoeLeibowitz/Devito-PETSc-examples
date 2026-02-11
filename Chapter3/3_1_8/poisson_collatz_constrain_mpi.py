@@ -217,7 +217,7 @@ if comm.rank == 0:
     )
     plt.xlabel(r'Grid spacing h')
     plt.ylabel(r'$\infty$-norm error')
-    plt.title(f'Convergence Plottt (MPI processes = {size})')
+    plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
     plt.savefig(f"3_1_8_constrain_mpi_procs{size}.png", dpi=200, metadata={})
