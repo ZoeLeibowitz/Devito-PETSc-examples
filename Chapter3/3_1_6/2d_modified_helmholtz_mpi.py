@@ -16,6 +16,9 @@ os.environ['CC'] = 'mpicc'
 # Ref - https://www.firedrakeproject.org/demos/helmholtz.py.html
 
 
+# TODO: this example is broken in parallel - investigate
+
+
 # RUN WITH CG if you're ensuring the matrix is symmetric
 # run with: DEVITO_MPI=1 mpiexec -n 4 python3 2d_modified_helmholtz_mpi.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-8
 
