@@ -8,17 +8,15 @@ on:
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
 
-      # - 'Chapter3/3_1_1/*.png'
-      # - 'Chapter3/3_1_2/*.png'
-      # - 'Chapter3/3_1_3/*.png'
-      # - 'Chapter3/3_1_4/*.png'
+      - 'Chapter3/3_1_1/*.png'
+      - 'Chapter3/3_1_2/*.png'
+      - 'Chapter3/3_1_3/*.png'
+      - 'Chapter3/3_1_4/*.png'
 
-      # - 'Chapter3/3_1_6/*.png'
-      # - 'Chapter3/3_1_7/*.png'
-      # - 'Chapter3/3_1_8/*.png'
-      # - 'Chapter3/3_1_9/*.png'
-
-      - 'Chapter3/**/*.png'
+      - 'Chapter3/3_1_6/*.png'
+      - 'Chapter3/3_1_7/*.png'
+      - 'Chapter3/3_1_8/*.png'
+      - 'Chapter3/3_1_9/*.png'
 
 
   schedule:
@@ -37,7 +35,7 @@ jobs:
 
     strategy:
       matrix:
-        mpi_n: [2, 4]
+        mpi_n: [4]
 
     steps:
     # Checkout repo
@@ -98,168 +96,156 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_poisson_constrain_mpi.py
 
+    ################################## 313 ##################################
+    # TODO: add the constrain bc test for 313
 
-    # ################################## 313 ##################################
-    # # TODO: add the constrain bc test for 313
+    - name: Run 3_1_3 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_3 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 3d_poisson_mpi.py
 
-    # - name: Run 3_1_3 - parallel
+    ################################## 314 ##################################
+    - name: Run 3_1_4 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_4 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_laplace_sine_mpi.py
+
+    - name: Run 3_1_4 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_4 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_laplace_sine_constrain_mpi.py
+
+    # TODO: insert 315 parallel tests
+
+    ################################## 316 ##################################
+
+    ## TODO: fix 316 in parallel
+    # - name: Run 3_1_6 - parallel
     #   run: |
     #     docker run --rm -t \
     #       -e DEVITO_MPI \
     #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_3 \
+    #       -w /workspace/Chapter3/3_1_6 \
     #       -u $(id -u):$(id -g) \
     #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 3d_poisson_mpi.py
-
-    # ################################## 314 ##################################
-    # - name: Run 3_1_4 - parallel
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_4 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_laplace_sine_mpi.py
-
-    # - name: Run 3_1_4 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_4 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_laplace_sine_constrain_mpi.py
-
-    # # TODO: insert 315 parallel tests
-
-    # ################################## 316 ##################################
-
-    # ## TODO: fix 316 in parallel
-    # # - name: Run 3_1_6 - parallel
-    # #   run: |
-    # #     docker run --rm -t \
-    # #       -e DEVITO_MPI \
-    # #       -v ${{ github.workspace }}:/workspace \
-    # #       -w /workspace/Chapter3/3_1_6 \
-    # #       -u $(id -u):$(id -g) \
-    # #       $DOCKER_IMAGE \
-    # #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_modified_helmholtz_mpi.py
+    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 2d_modified_helmholtz_mpi.py
 
 
-    # ################################## 317 ##################################
+    ################################## 317 ##################################
 
-    # - name: Run 3_1_7 - parallel
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_7 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_mpi.py
+    - name: Run 3_1_7 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_7 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_mpi.py
 
-    # - name: Run 3_1_7 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_7 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_constrain_mpi.py
+    - name: Run 3_1_7 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_7 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 modified_stencil_4th_order_constrain_mpi.py
 
-    # ################################## 318 ##################################
+    ################################## 318 ##################################
 
-    # - name: Run 3_1_8 - parallel
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_8 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 poisson_collatz_mpi.py
+    - name: Run 3_1_8 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_8 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 poisson_collatz_mpi.py
 
-    # - name: Run 3_1_8 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_8 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 poisson_collatz_constrain_mpi.py
+    - name: Run 3_1_8 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_8 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 poisson_collatz_constrain_mpi.py
 
-    # ################################## 319 ##################################
+    ################################## 319 ##################################
 
-    # - name: Run 3_1_9 - parallel
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_9 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 rectangle2d_mpi.py
+    - name: Run 3_1_9 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_9 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 rectangle2d_mpi.py
 
-    # - name: Run 3_1_9 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_1_9 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 rectangle2d_constrain_mpi.py
+    - name: Run 3_1_9 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_1_9 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n ${{ matrix.mpi_n }} python3 rectangle2d_constrain_mpi.py
 
-    - name: Upload plots
-      uses: actions/upload-artifact@v4
-      with:
-        name: plots-${{ matrix.mpi_n }}
-        path: Chapter3/**/*.png
+    # Configure Git for commits
+    - name: Configure git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Commit plots and create PR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        BRANCH_NAME="update-ch3-$(date +%s)"
+        git checkout -b $BRANCH_NAME
+
+        git add Chapter3/3_1_1/*.png
+        git add Chapter3/3_1_2/*.png
+        git add Chapter3/3_1_3/*.png
+        git add Chapter3/3_1_4/*.png
+
+        git add Chapter3/3_1_6/*.png
+        git add Chapter3/3_1_7/*.png
+        git add Chapter3/3_1_8/*.png
+        git add Chapter3/3_1_9/*.png
 
 
-  commit-plots:
-    name: Commit updated plots
-    needs: run-chapter3
-    runs-on: ubuntu-latest
+        if git diff --cached --quiet; then
+          echo "No changes to commit, skipping PR."
+          exit 0
+        fi
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download all plot artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: .
-
-      - name: Configure git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create branch and commit
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH_NAME="update-ch3-$(date +%s)"
-          git checkout -b $BRANCH_NAME
-          git add Chapter3/**/*.png
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          git commit -m "Update Chapter3 MPI plots"
-          git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
-
-          gh auth setup-git
-          gh pr create \
-            --title "Update Chapter3 MPI plots" \
-            --body "Automatically generated by workflow." \
-            --base main \
-            --head $BRANCH_NAME
+        git commit -m "Update plots for Chapter3 from workflow"
+        git push --set-upstream https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} $BRANCH_NAME
+        gh auth setup-git
+        gh pr create \
+          --title "Update plots for Chapter3" \
+          --body "Generated automatically by workflow." \
+          --base main \
+          --head $BRANCH_NAME
