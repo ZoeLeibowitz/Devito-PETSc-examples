@@ -218,7 +218,6 @@ jobs:
         git add Chapter3/3_1_8/*.png
         git add Chapter3/3_1_9/*.png
 
-
         if git diff --cached --quiet; then
           echo "No changes to commit, skipping PR."
           exit 0
