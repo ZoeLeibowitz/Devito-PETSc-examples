@@ -9,6 +9,8 @@ from devito.petsc.initialize import PetscInitialize
 
 from devito.mpi.distributed import MPI
 
+import matplotlib
+matplotlib.use("Agg")  # Fully deterministic non-interactive backend
 import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
@@ -134,5 +136,5 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_1_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"3_1_1_mpi_procs{size}.png", dpi=200, metadata={})
     plt.show()
