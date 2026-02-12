@@ -59,7 +59,6 @@ jobs:
           mpiexec --oversubscribe -n $MPI_N python3 1d_poisson_constrain_mpi.py
 
     ################################## 312 ##################################
-
     - name: Run 3_1_2 - parallel
       run: |
         docker run --rm -t \
@@ -82,7 +81,6 @@ jobs:
 
     ################################## 313 ##################################
     # TODO: add the constrain bc test for 313
-
     - name: Run 3_1_3 - parallel
       run: |
         docker run --rm -t \
@@ -117,7 +115,6 @@ jobs:
     # TODO: insert 315 parallel tests
 
     ################################## 316 ##################################
-
     - name: Run 3_1_6 - parallel
       run: |
         docker run --rm -t \
@@ -129,7 +126,6 @@ jobs:
           mpiexec --oversubscribe -n $MPI_N python3 2d_modified_helmholtz_mpi.py
 
     # ################################## 317 ##################################
-
     - name: Run 3_1_7 - parallel
       run: |
         docker run --rm -t \
@@ -151,7 +147,6 @@ jobs:
           mpiexec --oversubscribe -n $MPI_N python3 modified_stencil_4th_order_constrain_mpi.py
 
     ################################# 318 ##################################
-
     - name: Run 3_1_8 - parallel
       run: |
         docker run --rm -t \
@@ -173,7 +168,6 @@ jobs:
           mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_constrain_mpi.py
 
     ################################## 319 ##################################
-
     - name: Run 3_1_9 - parallel
       run: |
         docker run --rm -t \
