@@ -162,7 +162,6 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_mpi.py
 
-
     - name: Run 3_1_8 - parallel - constrain bcs
       run: |
         docker run --rm -t \
