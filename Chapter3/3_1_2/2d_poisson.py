@@ -69,7 +69,6 @@ Ly = np.float64(1.)
 
 # n = 9, 17, 33, 65, 129, 257, 513, 1025
 n_values = [2**k + 1 for k in range(3, 11)]
-n_values = [257]
 h = np.array([Lx/(n-1) for n in n_values])
 infinity_norms = []
 discrete_l2_norms = []
