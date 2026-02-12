@@ -1,8 +1,6 @@
 import os
 import numpy as np
 
-import matplotlib
-matplotlib.use("Agg")  # Fully deterministic non-interactive backend
 import matplotlib.pyplot as plt
 
 from devito.mpi.distributed import MPI
@@ -304,6 +302,6 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_6_mpi_procs{size}.png", dpi=200, metadata={})
+    plt.savefig(f"3_1_6_mpi_procs{size}.png", dpi=200)
     plt.show()
 
