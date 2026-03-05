@@ -202,15 +202,15 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi.py
 
-    # - name: Run 3_3_1 - parallel - constrain bcs
-    #   run: |
-    #     docker run --rm -t \
-    #       -e DEVITO_MPI \
-    #       -v ${{ github.workspace }}:/workspace \
-    #       -w /workspace/Chapter3/3_3_1 \
-    #       -u $(id -u):$(id -g) \
-    #       $DOCKER_IMAGE \
-    #       mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi_constrain.py
+    - name: Run 3_3_1 - parallel - constrain bcs
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_3_1 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi_constrain.py
 
 
     # Configure Git for commits
