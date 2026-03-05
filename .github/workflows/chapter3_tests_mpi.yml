@@ -188,6 +188,31 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_constrain_mpi.py
 
+    ################################## insert time dependent parallel tests ##################################
+
+    ################################## 331 (mixed petscsolve) ##################################
+
+    - name: Run 3_3_1 - parallel
+      run: |
+        docker run --rm -t \
+          -e DEVITO_MPI \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/3_3_1 \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi.py
+
+    # - name: Run 3_3_1 - parallel - constrain bcs
+    #   run: |
+    #     docker run --rm -t \
+    #       -e DEVITO_MPI \
+    #       -v ${{ github.workspace }}:/workspace \
+    #       -w /workspace/Chapter3/3_3_1 \
+    #       -u $(id -u):$(id -g) \
+    #       $DOCKER_IMAGE \
+    #       mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi_constrain.py
+
+
     # Configure Git for commits
     - name: Configure git
       run: |
@@ -210,6 +235,10 @@ jobs:
         git add Chapter3/3_1_7/*.png
         git add Chapter3/3_1_8/*.png
         git add Chapter3/3_1_9/*.png
+
+
+        git add Chapter3/3_3_1/*.png
+
 
         if git diff --cached --quiet; then
           echo "No changes to commit, skipping PR."
