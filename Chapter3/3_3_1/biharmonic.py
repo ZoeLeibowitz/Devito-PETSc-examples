@@ -10,8 +10,6 @@ from devito import (Grid, Function, Eq, Operator, switchconfig,
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 
-import matplotlib
-matplotlib.use("Agg")  # Fully deterministic non-interactive backend
 import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
@@ -188,7 +186,7 @@ plt.legend(fontsize=12)
 plt.tight_layout()
 
 # Save plot
-plt.savefig("3_3_1_convergence.png", dpi=300, transparent=True, metadata={})
+plt.savefig("3_3_1_convergence.png", dpi=300)
 print(u_errors)
 print(v_errors)
 
@@ -231,7 +229,7 @@ plt.xlabel('$x$')
 plt.ylabel('$y$')
 
 plt.tight_layout()
-plt.savefig("3_3_1_solution.png", dpi=300, transparent=True, metadata={})
+plt.savefig("3_3_1_solution.png", dpi=300)
 plt.show()
 
 

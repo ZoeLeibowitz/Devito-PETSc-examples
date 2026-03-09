@@ -12,8 +12,6 @@ from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
 from devito.mpi.distributed import MPI
 
-import matplotlib
-matplotlib.use("Agg")  # Fully deterministic non-interactive backend
 import matplotlib.pyplot as plt
 
 configuration['compiler'] = 'custom'
@@ -212,7 +210,7 @@ if comm.rank == 0:
               fontsize=14)
     plt.legend(fontsize=12)
     plt.tight_layout()
-    plt.savefig("3_3_1_convergence_mpi_constrain.png", dpi=300, transparent=True, metadata={})
+    plt.savefig("3_3_1_convergence_mpi_constrain.png", dpi=300)
 
     # Solution plot using gathered data from the highest resolution solve
     n_plot = n_values[-1]
@@ -251,7 +249,7 @@ if comm.rank == 0:
     plt.ylabel('$y$')
 
     plt.tight_layout()
-    plt.savefig("3_3_1_solution_mpi_constrain.png", dpi=300, transparent=True, metadata={})
+    plt.savefig("3_3_1_solution_mpi_constrain.png", dpi=300)
 
 
 

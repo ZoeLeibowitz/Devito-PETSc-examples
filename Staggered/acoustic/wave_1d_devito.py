@@ -1,7 +1,10 @@
 from devito import *
 from examples.seismic.source import DGaussSource, TimeAxis
-from examples.seismic import plot_image
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from sympy import init_printing, latex
 init_printing(use_latex='mathjax')
@@ -47,21 +50,38 @@ l2m = V_p*V_p*density
 src_p = src.inject(field=p.forward, expr=src)
 
 # 2nd order acoustic according to fdelmoc
-u_v_2 = Eq(v.forward, solve(v.dt + ro * grad(p), v.forward))
+u_v_2 = Eq(v.forward, solve(v.dt - ro * grad(p), v.forward))
 # use leap - frogging (that is why we use v.forward here)
-u_p_2 = Eq(p.forward, solve(p.dt + l2m * div(v.forward), p.forward))
+u_p_2 = Eq(p.forward, solve(p.dt - l2m * div(v.forward), p.forward))
 
 
 op_2 = Operator([u_v_2, u_p_2] + src_p)
-print(op_2.ccode)
+# print(op_2.ccode)
 
 
 
 print(src.time_range.num-1)
 # Propagate the source
-op_2(time=1, dt=dt)
+op_2(time=src.time_range.num-1, dt=dt)
+
+# Let's see what we got....
+def save_image(data, filename, cmap='gray'):
+    fig, ax = plt.subplots()
+    plot = ax.imshow(np.transpose(data),
+                     vmin=0.9 * np.min(data),
+                     vmax=1.1 * np.max(data),
+                     cmap=cmap)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(plot, cax=cax)
+    plt.savefig(filename)
+    plt.close(fig)
+
+save_image(v[0].data[0], 'v0.png')
+save_image(v[1].data[0], 'v1.png')
+save_image(p.data[0], 'p.png')
 
 # print(p.data[:])
-# norm_p = norm(p)
-# # print(norm_p)
-# assert np.isclose(norm_p, .35098, atol=1e-4, rtol=0)
+norm_p = norm(p)
+print(norm_p)
+assert np.isclose(norm_p, .35098, atol=1e-4, rtol=0)
