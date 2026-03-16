@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot, cm
-from devito import Grid, TimeFunction, Function, Eq, solve, Operator, configuration, SubDomain, NODE, retrieve_functions, INT
+from devito import Grid, TimeFunction, Function, Eq, solve, Operator, configuration, SubDomain, NODE
+from devito.symbolics import retrieve_functions, INT
 
 ######## same as 02.py but using subdomains for the pressure field (including the bc implementation)
 # also this approach utilises a modified stencil approach to implement the neumann bcs
@@ -152,94 +153,83 @@ class Sub11(SubDomain):
     
 
 
-def neumann_bottom(eq, subdomain):
+def neumann_bottom(eq, t, subdomain):
     lhs, rhs = eq.evaluate.args
-
-    # Get vertical subdimension and its parent
-    yfs = subdomain.dimensions[-1]
-    y = yfs.parent
 
     # Functions present in stencil
     funcs = retrieve_functions(lhs-rhs)
+
+    yind_target = t.indices[-1]
+
+    mapper = {}
+    for f in funcs:
+        yind = f.indices[-1]
+        if (yind - yind_target).as_coeff_Mul()[0] < 0:
+            if f.name == 'p':
+                mapper.update({f: f.subs({yind: yind_target})})
+
+    # THIS NEEDS TO BE EDITED FOR THE PETSC ONEEE......  i.e need to apply mapper to lhs as well?
+    return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
+
+
+def neumann_top(eq, t, subdomain):
+    lhs, rhs = eq.evaluate.args
+
+    # Functions present in stencil
+    funcs = retrieve_functions(lhs-rhs)
+
+    yind_target = t.indices[-1]
 
     mapper = {}
     for f in funcs:
         # Get the y index
         yind = f.indices[-1]
-        if (yind - y).as_coeff_Mul()[0] < 0:
+        # from IPython import embed; embed()
+        if (yind - yind_target).as_coeff_Mul()[0] > 0:
+            # Symmetric mirror: ghost maps to yind_target (last physical p-cell).
+            # For staggered p at y+h_y/2 the top wall sits exactly at the midpoint
+            # between yind_target and the ghost, so the Neumann mirror is yind_target.
             if f.name == 'p':
-                mapper.update({f: f.subs({yind: INT(abs(yind))})})
+                mapper.update({f: f.subs({yind: yind_target})})
 
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    # return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
-def neumann_top(eq, subdomain):
+def neumann_left(eq, t, subdomain):
     lhs, rhs = eq.evaluate.args
-
-    # Get vertical subdimension and its parent
-    yfs = subdomain.dimensions[-1]
-    y = yfs.parent
 
     # Functions present in stencil
     funcs = retrieve_functions(lhs-rhs)
 
-    mapper = {}
-    for f in funcs:
-        # Get the y index
-        yind = f.indices[-1]
-        if (yind - y).as_coeff_Mul()[0] > 0:
-            # Symmetric mirror
-            tmp = y - INT(abs(y.symbolic_max - yind))
-            if f.name == 'p':
-                mapper.update({f: f.subs({yind: tmp})})
-
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
-
-
-def neumann_left(eq, subdomain):
-    lhs, rhs = eq.evaluate.args
-
-    # Get horizontal subdimension and its parent
-    xfs = subdomain.dimensions[0]
-    x = xfs.parent
-
-    # Functions present in stencil
-    funcs = retrieve_functions(lhs-rhs)
+    xind_target = t.indices[-2]
 
     mapper = {}
     for f in funcs:
-        # Get the x index
         xind = f.indices[-2]
-        if (xind - x).as_coeff_Mul()[0] < 0:
-            # Symmetric mirror
-            # Substitute where index is negative for +ve
-            # where index is positive
+        if (xind - xind_target).as_coeff_Mul()[0] < 0:
             if f.name == 'p':
-                mapper.update({f: f.subs({xind: INT(abs(xind))})})
+                mapper.update({f: f.subs({xind: xind_target})})
 
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
-def neumann_right(eq, subdomain):
+def neumann_right(eq, t, subdomain):
     lhs, rhs = eq.evaluate.args
-
-    # Get horizontal subdimension and its parent
-    xfs = subdomain.dimensions[0]
-    x = xfs.parent
 
     # Functions present in stencil
     funcs = retrieve_functions(lhs-rhs)
 
+    xind_target = t.indices[-2]
+
     mapper = {}
     for f in funcs:
-        # Get the x index
         xind = f.indices[-2]
-        if (xind - x).as_coeff_Mul()[0] > 0:
-            tmp = x - INT(abs(x.symbolic_max - xind))
+        if (xind - xind_target).as_coeff_Mul()[0] > 0:
             if f.name == 'p':
-                mapper.update({f: f.subs({xind: tmp})})
+                mapper.update({f: f.subs({xind: xind_target})})
 
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
 sub1 = Sub1(so)
@@ -303,18 +293,14 @@ vy_cc = vf.dy(x0=y + y.spacing/2)
 uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
 vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
 
-# eq_p = Eq(p.laplace,
-#           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uy_cc*vx_cc - vy_cc**2),
-#           subdomain=grid.subdomains['pressure_interior'])
-
 eq_p = Eq(p.laplace,
           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uf.dy*vf.dx - vy_cc**2),
-          subdomain=grid.subdomains['pressure_interior'])
+          subdomain=grid.subdomains['sub5'])
 
 stencil_p = solve(eq_p, p)
 update_p = Eq(p.forward, stencil_p)
 
-from IPython import embed; embed()
+# from IPython import embed; embed()
 
 
 # u BCs
@@ -335,11 +321,17 @@ bc_v += [Eq(v[t+1, x, 0], 0)] # bottom
 
 
 # p is at cell centres
-bc_p  = [Eq(p[t+1, -1, y], p[t+1, 0, y])]        # left halo ghost → Neumann at x=0
-bc_p += [Eq(p[t+1, nx-1, y], p[t+1, nx-2, y])]   # right ghost → Neumann at x=1
-bc_p += [Eq(p[t+1, x, -1], p[t+1, x, 0])] # bottom halo ghost → Neumann at y=0
-bc_p += [Eq(p[t+1, x, ny-1], p[t+1, x, ny-2])]   # top ghost → Neumann at y=1
-bc_p += [Eq(p[t+1, 0, 0], 0)] # pin pressure at corner 
+bc_p = [neumann_left(neumann_top(update_p, p.forward, sub1), p.forward, sub1)]
+
+bc_p += [neumann_top(update_p, p.forward, sub2)]
+bc_p += [neumann_right(neumann_top(update_p, p.forward, sub3), p.forward, sub3)]
+bc_p += [neumann_left(update_p, p.forward, sub4)]
+
+bc_p += [neumann_right(update_p, p.forward, sub6)]
+bc_p += [neumann_bottom(update_p, p.forward, sub8)]
+bc_p += [neumann_right(neumann_bottom(update_p, p.forward, sub9), p.forward, sub9)]
+
+bc_p += [Eq(p.forward, 0, subdomain=grid.subdomains['sub7'])] # pin pressure at corner 
 
 
 optime = Operator([update_u, update_v] + bc_u + bc_v)
@@ -354,7 +346,6 @@ for step in range(0, nt):
         vf.data[:] = v.data[step % 2]
         oppres(time_M=nit)
     optime(time_m=step, time_M=step, dt=dt)
-
 
 
 # Import u values at x=L/2 (table 6, column 2 rows 12-26) in Marchi et al.
