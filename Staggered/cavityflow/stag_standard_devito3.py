@@ -8,7 +8,6 @@ ny = 41
 nx = 41
 
 
-
 nt = 2000
 nit = 50
 dx = 1. / (nx - 1)
@@ -141,7 +140,6 @@ for step in range(0, nt):
         vf.data[:] = v.data[step % 2]
         oppres(time_M=nit)
     optime(time_m=step, time_M=step, dt=dt)
-
 
 
 
