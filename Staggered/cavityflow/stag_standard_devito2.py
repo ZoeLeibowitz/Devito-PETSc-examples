@@ -81,31 +81,20 @@ update_v = Eq(v.forward, stencil_v)
 # from IPython import embed; embed()
 
 
-# Eq(u, (u*v).dy).evaluate
-
-
-# Pressure Poisson at cell centre with full quadratic source (mirrors the
-# non-staggered formulation): rho*(1/dt*div - (ux)^2 - 2*uy*vx - (vy)^2).
-# The quadratic terms give the correct steady-state pressure even when div->0.
-# update_p = Eq(p.forward,
-#           rho * (1./dt * (ux_cc + vy_cc)),
-#           subdomain=grid.subdomains['pressure_interior'])
-# update_p = Eq(p.forward,
-#           rho * (1./dt * (uf.dx + vf.dy)),
-#           subdomain=grid.subdomains['pressure_interior'])
-
-
 # Velocity gradients at cell centres (x+hx/2, y+hy/2) using frozen fields.
 # ux and vy use forward half-step derivatives (same as the MAC divergence).
 # uy and vx use 4-point averages to reach the cell-centre location.
 ux_cc = uf.dx(x0=x + x.spacing/2)
 vy_cc = vf.dy(x0=y + y.spacing/2)
-uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y] - uf[x+1, y]) / (2 * y.spacing)
-vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x, y] - vf[x, y+1]) / (2 * x.spacing)
+uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
+vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
 
+# eq_p = Eq(p.laplace,
+#           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uy_cc*vx_cc - vy_cc**2),
+#           subdomain=grid.subdomains['pressure_interior'])
 
 eq_p = Eq(p.laplace,
-          rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uy_cc*vx_cc - vy_cc**2),
+          rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uf.dy*vf.dx - vy_cc**2),
           subdomain=grid.subdomains['pressure_interior'])
 
 stencil_p = solve(eq_p, p)
@@ -119,15 +108,15 @@ update_p = Eq(p.forward, stencil_p)
 # Top lid (y=1): j=ny-1 is a ghost point above y=1; set so the interpolated
 #   value at the wall equals U_lid=1: (u[ny-2] + u[ny-1])/2 = 1
 #   => u[ny-1] = 2 - u[ny-2]
-bc_u  = [Eq(u[t+1, 0, y], 0)]
-bc_u += [Eq(u[t+1, nx-1, y], 0)]
-bc_u += [Eq(u[t+1, x, 0], 0)]
+bc_u  = [Eq(u[t+1, 0, y], 0)] # left
+bc_u += [Eq(u[t+1, nx-1, y], 0)] # right
+bc_u += [Eq(u[t+1, x, -1], -u[t+1, x, 0])] # bottom
 bc_u += [Eq(u[t+1, x, ny-1], 2 - u[t+1, x, ny-2])]  # lid: u=1 at y=1
 
-bc_v  = [Eq(v[t+1, 0, y], 0)]
+bc_v  = [Eq(v[t+1, -1, y], -v[t+1, 0, y])] # left
 bc_v += [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]  # ghost beyond right wall: interp to 0 at x=1
-bc_v += [Eq(v[t+1, x, ny-1], 0)]
-bc_v += [Eq(v[t+1, x, 0], 0)]
+bc_v += [Eq(v[t+1, x, ny-1], 0)] # top
+bc_v += [Eq(v[t+1, x, 0], 0)] # bottom
 
 # p is at cell centres; left/bottom BCs must set halo ghosts (index -1) so
 # that the Poisson stencil at i=0/j=0 sees a Neumann (dp/dn=0) condition.
