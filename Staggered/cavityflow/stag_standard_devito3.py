@@ -181,19 +181,34 @@ Marchi_Re10_v = np.array([[0.0625, 9.2970121e-2],
 # run trivial operators to interpolate the staggered fields back onto original grid "nodes" for plotting and analysis
 
 plotfunc_u = Function(name='plotfunc_u', grid=grid, space_order=2, staggered=NODE)
+plotfunc_v = Function(name='plotfunc_v', grid=grid, space_order=2, staggered=NODE)
+plotfunc_p = Function(name='plotfunc_p', grid=grid, space_order=2, staggered=NODE)
 
-Operator(Eq(plotfunc_u, u))()
+Operator(Eq(plotfunc_u, u))(time_M=0)
+Operator(Eq(plotfunc_v, v))(time_M=0)
+Operator(Eq(plotfunc_p, p))(time_M=0)
+
+
+fig = pyplot.figure(figsize=(11, 7), dpi=100)
+pyplot.contourf(X, Y, plotfunc_p.data[:], alpha=0.5, cmap=cm.viridis)
+pyplot.colorbar()
+pyplot.contour(X, Y, plotfunc_p.data[:], cmap=cm.viridis)
+pyplot.quiver(X[::2, ::2], Y[::2, ::2], plotfunc_u.data[::2, ::2], plotfunc_v.data[::2, ::2])
+pyplot.xlabel('X')
+pyplot.ylabel('Y')
+pyplot.savefig('cavity_flow_devito3.png', dpi=100, bbox_inches='tight')
+pyplot.show()
 
 #NBVAL_IGNORE_OUTPUT
 # Again, check results with Marchi et al 2009.
 fig = pyplot.figure(figsize=(12, 6))
 ax1 = fig.add_subplot(121)
-ax1.plot(u.data[0,int(grid.shape[0]/2),:],y_coord[:])
+ax1.plot(plotfunc_u.data[int(grid.shape[0]/2),:],y_coord[:])
 ax1.plot(Marchi_Re10_u[:,1],Marchi_Re10_u[:,0],'ro')
 ax1.set_xlabel('$u$')
 ax1.set_ylabel('$y$')
 ax1 = fig.add_subplot(122)
-ax1.plot(x_coord[:],v.data[0,:,int(grid.shape[0]/2)])
+ax1.plot(x_coord[:],plotfunc_v.data[:,int(grid.shape[0]/2)])
 ax1.plot(Marchi_Re10_v[:,0],Marchi_Re10_v[:,1],'ro')
 ax1.set_xlabel('$x$')
 ax1.set_ylabel('$v$')

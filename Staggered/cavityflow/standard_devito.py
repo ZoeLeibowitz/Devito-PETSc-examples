@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot, cm
 from devito import Grid, TimeFunction, Eq, solve, Operator, configuration, SubDomain
 
-
+####### NOT STAGGERD EXAMPLE FROM THE NOTEBOOK ############
 
 ny = 41
 nx = 41

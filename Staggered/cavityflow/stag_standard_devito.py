@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot, cm
-from devito import Grid, TimeFunction, Function, Eq, solve, Operator, configuration, SubDomain
+from devito import Grid, TimeFunction, Function, Eq, solve, Operator, configuration, SubDomain, NODE
 
 
 
@@ -46,6 +46,9 @@ t = grid.stepping_dim
 u = TimeFunction(name='u', grid=grid, space_order=2, staggered=y)
 v = TimeFunction(name='v', grid=grid, space_order=2, staggered=x)
 p = TimeFunction(name='p', grid=grid, space_order=2, staggered=(x, y))
+
+
+# plot_func_p = Function(name='plot_func_p', grid=grid, space_order=2, staggered=NODE)
 
 # interp_order
 
