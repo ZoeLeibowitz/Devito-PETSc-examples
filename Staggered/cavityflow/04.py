@@ -20,10 +20,6 @@ ny = 41
 nx = 41
 
 
-nt = 2000
-nit = 50
-
-
 x_coord = np.linspace(0, 1, nx)
 y_coord = np.linspace(0, 1, ny)
 
@@ -37,7 +33,10 @@ nu = Constant(name='nu', dtype=np.float64)
 rho.data = np.float64(1.)
 nu.data = np.float64(1./10.)
 
-dt = .0007
+
+dx = 1.0 / (nx - 1)                                                                                                                         
+dt = 0.45 * dx**2 / (4 * nu.data)                                                                               
+nt = int(2.0 / dt)
 so = 2
     
 
@@ -207,7 +206,6 @@ def neumann_top(eq, t, subdomain):
                 mapper.update({f: f.subs({yind: yind_target})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
-    # return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
 def neumann_left(eq, t, subdomain):
@@ -226,7 +224,6 @@ def neumann_left(eq, t, subdomain):
                 mapper.update({f: f.subs({xind: xind_target})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
-    # return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
 def neumann_right(eq, t, subdomain):
@@ -245,7 +242,6 @@ def neumann_right(eq, t, subdomain):
                 mapper.update({f: f.subs({xind: xind_target})})
 
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
-    # return Eq(lhs, rhs.subs(mapper), subdomain=subdomain)
 
 
 sub1 = Sub1(so)
@@ -281,19 +277,10 @@ eq_u = Eq(u.dt + u*u.dxc + v*u.dyc, -1./rho * p.dx + nu*(u.dx2 + u.dy2))
 stencil_u = solve(eq_u, u.forward)
 update_u = Eq(u.forward, stencil_u)
 
-
-
-
-
-# from IPython import embed; embed()
-
 # v-momentum:
 eq_v = Eq(v.dt + u*v.dxc + v*v.dyc, -1./rho * p.dy + nu*(v.dx2 + v.dy2))
 stencil_v = solve(eq_v, v.forward)
 update_v = Eq(v.forward, stencil_v)
-
-# from IPython import embed; embed()
-
 
 # manual edit to x0 since using uf.dx and vf.dy alone does not seem to be correct? it seems to be left staggered?
 ux_cc = u.dx(x0=x + x.spacing/2)
@@ -305,10 +292,6 @@ eq_p = Eq(p.laplace,
           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*u.dy*v.dx - vy_cc**2),
           subdomain=grid.subdomains['sub5'])
 
-
-# eq_p = Eq(p, p.laplace,
-#           subdomain=grid.subdomains['sub5'])
-# from IPython import embed; embed()
 # u BCs
 # Left/right walls: u is not x-staggered so nodes sit exactly on the walls.
 # Bottom wall - average across the wall is zero, so ghost point is negative of first interior point
@@ -325,21 +308,18 @@ bc_v += [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]  # ghost beyond right wall: inte
 bc_v += [Eq(v[t+1, x, ny-1], 0)] # top
 bc_v += [Eq(v[t+1, x, 0], 0)] # bottom
 
-
 # p is at cell centres
 bc_p = [neumann_left(neumann_top(eq_p, p, sub1), p, sub1)]
-
 bc_p += [neumann_top(eq_p, p, sub2)]
 bc_p += [neumann_right(neumann_top(eq_p, p, sub3), p, sub3)]
 bc_p += [neumann_left(eq_p, p, sub4)]
-
 bc_p += [neumann_right(eq_p, p, sub6)]
 bc_p += [neumann_bottom(eq_p, p, sub8)]
 bc_p += [neumann_right(neumann_bottom(eq_p, p, sub9), p, sub9)]
 
 bc_tmp1 = Function(name='bc_tmp1', grid=grid, space_order=2, staggered=(x, y))
 bc_tmp1.data[:] = 0.
-bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub7'])] # pin pressure at corner
+bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub7'], constrain=True)] # pin pressure at corner
 
 # These two will be automated in the compiler
 bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub10'], constrain=True)]
@@ -350,13 +330,10 @@ bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub11'], constrain=T
 pressure_solve = petscsolve([eq_p]+bc_p, p, options_prefix='pressure_solve', solver_parameters={'ksp_type': 'cg'})
 # pressure_solve = petscsolve([eq_p]+bc_p, p, options_prefix='pressure_solve', solver_parameters={'ksp_type': 'gmres'})
 
-# from IPython import embed; embed()
 exprs = [pressure_solve] + [update_u, update_v] + bc_u + bc_v
-# exprs = [pressure_solve]
 
 with switchconfig(language='petsc'):
     op = Operator(exprs)
-    # op = Operator([eq_p])
     # print(op.ccode)
     op.apply(time_M=nt, dt=dt)
 

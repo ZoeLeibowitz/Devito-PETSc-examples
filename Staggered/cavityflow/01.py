@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot, cm
 from devito import Grid, TimeFunction, Eq, solve, Operator, configuration, SubDomain
 
-####### NOT STAGGERD - EXAMPLE FROM THE NOTEBOOK ############
+####### NOT STAGGERED - EXAMPLE EXACTLY FROM THE ORIGINAL CFD NOTEBOOK in DEVITO ############
 
 ny = 41
 nx = 41
@@ -67,6 +67,7 @@ bc_p += [Eq(p[t+1, 0, 0], 0)]
 
 optime = Operator([update_u, update_v] + bc_u + bc_v)
 oppres = Operator([update_p] + bc_p)
+print(oppres.ccode)
 
 configuration['log-level'] = 'ERROR'
 

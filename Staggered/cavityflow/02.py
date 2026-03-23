@@ -2,7 +2,8 @@ import numpy as np
 from matplotlib import pyplot, cm
 from devito import Grid, TimeFunction, Function, Eq, solve, Operator, configuration, SubDomain, NODE
 
-
+######## same as 01.py but with staggered grid - MAC grid
+# Still using standard devito (no petsc)
 
 ny = 41
 nx = 41
@@ -10,8 +11,6 @@ nx = 41
 
 nt = 2000
 nit = 50
-dx = 1. / (nx - 1)
-dy = 1. / (ny - 1)
 
 
 x_coord = np.linspace(0, 1, nx)
@@ -22,7 +21,7 @@ Y, X = np.meshgrid(x_coord, y_coord)
 
 rho = 1
 nu = .1
-dt = .0005
+dt = .0007
 
 # p is at cell centres - create subdomain to solve poisson equation only at pressure points
 # that fall inside the physical domain (i.e exclude the right and top ghost columns at i=nx-1 and j=ny-1)
@@ -36,16 +35,16 @@ grid = Grid(shape=(nx, ny), extent=(1, 1.), subdomains=(PressureInterior(),), dt
 x, y = grid.dimensions
 t = grid.stepping_dim
 
-# Staggered MAC grid:
-#   u - staggered in y
-#   v - staggered in x
-#   p - cell centres (staggered in both x and y)
+#MAC grid:
+#u - staggered in y
+# v - staggered in x
+# p - cell centres (staggered in both x and y)
 u = TimeFunction(name='u', grid=grid, space_order=2, staggered=y)
 v = TimeFunction(name='v', grid=grid, space_order=2, staggered=x)
 p = TimeFunction(name='p', grid=grid, space_order=2, staggered=(x, y))
 
 
-# Plain Functions (no time dimension) for the Poisson source. (this is actually not used in the original notebook,
+# tmp Functions (no time dimension) for the Poisson source. (this is actually not used in the original notebook,
 # which suggests it is slightly wrong since the source is different for each jacobi iteration?)
 # The Jacobi loop in oppres advances its own time counter, so any TimeFunction
 # in the source would alternate between the two velocity buffers on each
@@ -76,8 +75,10 @@ update_v = Eq(v.forward, stencil_v)
 # manual edit to x0 since using uf.dx and vf.dy alone does not seem to be correct? it seems to be left staggered?
 ux_cc = uf.dx(x0=x + x.spacing/2)
 vy_cc = vf.dy(x0=y + y.spacing/2)
-uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
-vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
+
+# avergae then take derivative of averages 
+# uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
+# vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
 
 # eq_p = Eq(p.laplace,
 #           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uy_cc*vx_cc - vy_cc**2),
@@ -103,16 +104,16 @@ bc_u += [Eq(u[t+1, x, -1], -u[t+1, x, 0])] # bottom
 bc_u += [Eq(u[t+1, x, ny-1], 2 - u[t+1, x, ny-2])]  # lid: u=1 at y=1
 
 bc_v  = [Eq(v[t+1, -1, y], -v[t+1, 0, y])] # left
-bc_v += [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]  # ghost beyond right wall: interp to 0 at x=1
+bc_v += [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]  # ghost beyond right wall
 bc_v += [Eq(v[t+1, x, ny-1], 0)] # top
 bc_v += [Eq(v[t+1, x, 0], 0)] # bottom
 
 
 # p is at cell centres
-bc_p  = [Eq(p[t+1, -1, y], p[t+1, 0, y])]        # left halo ghost → Neumann at x=0
-bc_p += [Eq(p[t+1, nx-1, y], p[t+1, nx-2, y])]   # right ghost → Neumann at x=1
+bc_p  = [Eq(p[t+1, -1, y], p[t+1, 0, y])]  # left halo ghost → Neumann at x=0
+bc_p += [Eq(p[t+1, nx-1, y], p[t+1, nx-2, y])]  # right ghost → Neumann at x=1
 bc_p += [Eq(p[t+1, x, -1], p[t+1, x, 0])] # bottom halo ghost → Neumann at y=0
-bc_p += [Eq(p[t+1, x, ny-1], p[t+1, x, ny-2])]   # top ghost → Neumann at y=1
+bc_p += [Eq(p[t+1, x, ny-1], p[t+1, x, ny-2])]  # top ghost → Neumann at y=1
 bc_p += [Eq(p[t+1, 0, 0], 0)] # pin pressure at corner 
 
 

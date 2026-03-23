@@ -250,16 +250,16 @@ grid = Grid(shape=(nx, ny), extent=(1, 1.), subdomains=subdomains, dtype=np.floa
 x, y = grid.dimensions
 t = grid.stepping_dim
 
-# Staggered MAC grid:
-#   u - staggered in y
-#   v - staggered in x
-#   p - cell centres (staggered in both x and y)
+#MAC grid:
+# u - staggered in y
+# v - staggered in x
+# p - cell centres (staggered in both x and y)
 u = TimeFunction(name='u', grid=grid, space_order=2, staggered=y)
 v = TimeFunction(name='v', grid=grid, space_order=2, staggered=x)
 p = TimeFunction(name='p', grid=grid, space_order=2, staggered=(x, y))
 
 
-# Plain Functions (no time dimension) for the Poisson source. (this is actually not used in the original notebook,
+# tmp Functions (no time dimension) for the Poisson source. (this is actually not used in the original notebook,
 # which suggests it is slightly wrong since the source is different for each jacobi iteration?)
 # The Jacobi loop in oppres advances its own time counter, so any TimeFunction
 # in the source would alternate between the two velocity buffers on each
@@ -290,8 +290,8 @@ update_v = Eq(v.forward, stencil_v)
 # manual edit to x0 since using uf.dx and vf.dy alone does not seem to be correct? it seems to be left staggered?
 ux_cc = uf.dx(x0=x + x.spacing/2)
 vy_cc = vf.dy(x0=y + y.spacing/2)
-uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
-vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
+# uy_cc = (uf[x, y+1] + uf[x+1, y+1] - uf[x, y-1] - uf[x+1, y-1]) / (4 * y.spacing)
+# vx_cc = (vf[x+1, y] + vf[x+1, y+1] - vf[x-1, y] - vf[x-1, y+1]) / (4 * x.spacing)
 
 eq_p = Eq(p.laplace,
           rho * (1./dt * (ux_cc + vy_cc) - ux_cc**2 - 2*uf.dy*vf.dx - vy_cc**2),
@@ -300,7 +300,7 @@ eq_p = Eq(p.laplace,
 stencil_p = solve(eq_p, p)
 update_p = Eq(p.forward, stencil_p)
 
-# from IPython import embed; embed()
+from IPython import embed; embed()
 
 
 # u BCs
