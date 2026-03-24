@@ -13,7 +13,7 @@ os.environ['CC'] = 'mpicc'
 
 PetscInitialize()
 
-######## using a predictor corrector approach (EXPLICIT time stepping for momenntum equations)
+######## using a predictor corrector approach (EXPLICIT time stepping for momentum equations)
 ######### using Kim & Moin paper 1985
 # https://pdf.sciencedirectassets.com/272570/1-s2.0-S0021999100X02513/1-s2.0-0021999185901482/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEGsaCXVzLWVhc3QtMSJGMEQCIBS1F7mGptLOMbJ6PunezwOAjZYzhWrZuMY%2B8lzItRNMAiAGFG%2FEVxQoL1h%2BBvzDij%2Bv14K7ycj6ZxBVeOeuxf8izyqyBQgzEAUaDDA1OTAwMzU0Njg2NSIMNMMwndYgdsGt%2FCfzKo8FQACH4ZJmbQo32vbvrQn6sTRdUTCazmZnmy3RUDkBoMP6u5O8EndwsFvmZ3njNpCReNgu%2F7WWGcDcxzdJLS50DstxG7Ul2LjZJxTWZ%2FoTow6yOdlPgbwgCXeMXLWnridULXEg%2BHp%2BL8HnW43%2BRXBIg5sH%2B2Q7p85mIIGtjI8xZxzcZSNQdw2GYJQ%2FxScu%2FH5dv1LEgeqtaJo50CzNUDVAFJiYQyfnn2SqHDs86GwTKaZnNjI3KyDf8GBAHeuHJv1CSgC6y7p3r0QAyQzB28jwp%2BHL6BoTo6Y8XC4NZCRHcLyucetWSPJZ%2BNh56PtXErzjzUiQtOJr%2BLQhNMFXUsAwLpKv%2BgLFQqHhNXgb76hgrv5kGq3IgTvqRldgKSVTAxYF9i6Ac%2Bpc3k8Gdyp31%2BKmYc1qdLRl1gWxujliDlFjLubmva4CfCkGfINYtyqsgsY98Dz8uYR90%2Fe8Ys2%2FsfBQcgb%2FGCP15UQM6uC4Mz3P1UZ89ccfMIDLxo36SBzHXdO%2BaYXTsaxhAGqdB6qN%2BSwPZ81E8AlIhvlYTHRH9xzRS5v7YMZ010Ne0%2BRIysG28LZhvo36sNPtagDh%2BpdotIfo6hh0SsJM07Mn0xYwwRuKZcfnbuJ6kGkBWAlTM9GdIQOs5JchjcjvXRp%2B%2F%2FyhoeEd7tY4lOK7QQ52JPKIu%2FG4IPoFlHXMvDcIWiY4VPwG9KJpwOXT4hvmxBma3FSfeNow9dvAYo%2Bbt9LgDZM9QQQh9SWFuRlYfzdr5NazVeyHj5Z1yN0XofTWwjEoP7GMZrvZkTn%2F3MKE5TibD5V4Q%2BRtVCDOjtr1%2BL0FUHLD6t6aWLoYdaFxQFXulCiNX9sPUX5ePWMju6BpxHkjzZT3gqgtYjCAvfTNBjqyAaW1XqS2gtHvAzgbOHZ%2B07ql73%2B0k7UtAfA8ZIeO1EgGwVkcSw3nmgnc3sjw3qg8dRWE%2F5KmxEN2Yjx4j5qO4ZJB7VbugAkOlkzPhW%2B5WRSGOWg6nr3WtctxBYtAOKUBeOUmRg069ncsOIlk%2BfwqOKzg%2Bc9%2BpUyV6%2F0f3ZVQlPb7xRALBJQQk%2FKyC%2Bx6Z8J5inmovtflrhOL0Cvm1mNRaQpVclNDAGYSzpOUamdK%2FlJE%2FQE%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260320T110721Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTYTXKHTLAE%2F20260320%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=a4302a5660eef862d1845af92f4e5db2995cf0e523b59e15f99a3d72941f825a&hash=3fe0c26f74abb9f667c9d80ad4bf2664e1dd49869b1e0445ce629b1d60e03d53&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=0021999185901482&tid=spdf-8999359f-9965-4281-ad4e-09e6ad2782bf&sid=6631e4b18440084e6799914-00d95cf11814gxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&rh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=02055c0a045455540c56&rr=9df440b17fc4631d&cc=gb
 # paper is - Application of a fractional step method to incompressible Navier-Stokes equations, Kim & Moin 1985
@@ -265,6 +265,17 @@ class Sub20(SubDomain):
     def define(self, dimensions):
         x, y = dimensions
         return {x: ('left', 1), y: ('middle', 1, 1)}
+    
+
+class Sub21(SubDomain):
+    name = 'sub21'
+    def __init__(self, S_O):
+        super().__init__()
+        self.S_O = S_O
+
+    def define(self, dimensions):
+        x, y = dimensions
+        return {x: ('right', 1), y: y}
 
 
 
@@ -376,8 +387,9 @@ sub17 = Sub17(so)
 sub18 = Sub18(so)
 sub19 = Sub19(so)
 sub20 = Sub20(so)
+sub21 = Sub21(so)
 
-subdomains = (sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8, sub9, sub10, sub11, sub12, sub13, sub14, sub15, sub16, sub17, sub18, sub19, sub20)
+subdomains = (sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8, sub9, sub10, sub11, sub12, sub13, sub14, sub15, sub16, sub17, sub18, sub19, sub20, sub21)
 
 grid = Grid(shape=(nx, ny), extent=(1, 1.), subdomains=subdomains, dtype=np.float64)
 x, y = grid.dimensions
@@ -385,23 +397,17 @@ t = grid.stepping_dim
 
 
 # Staggered MAC grid:
-#   u - staggered in y
-#   v - staggered in x
-#   p - cell centres (staggered in both x and y)
 u = TimeFunction(name='u', grid=grid, space_order=2, staggered=y)
 v = TimeFunction(name='v', grid=grid, space_order=2, staggered=x)
 p = Function(name='p', grid=grid, space_order=2, staggered=(x, y))
 
 
 # u-momentum:
-# p.dxc is forcing the non staggering so it is not correct - that is why I use p.dx instead
 eq_u_tent = Eq(u.dt + u*u.dxc + v*u.dyc, (1./re)*(u.dx2 + u.dy2), subdomain=grid.subdomains['sub15'])
 
-
 # v-momentum:
-eq_v_tent = Eq(v.dt + u*v.dxc + v*v.dyc, (1./re)*(v.dx2 + v.dy2))
-stencil_v_tent = solve(eq_v_tent, v.forward)
-update_v_tent = Eq(v.forward, stencil_v_tent, subdomain=grid.subdomains['sub17'])
+eq_v_tent = Eq(v.dt + u*v.dxc + v*v.dyc, (1./re)*(v.dx2 + v.dy2), subdomain=grid.subdomains['sub17'])
+
 
 # manual edit to x0 since using uf.dx and vf.dy alone does not seem to be correct? it seems to be left staggered?
 ux_cc = u.forward.dx(x0=x + x.spacing/2)
@@ -411,11 +417,6 @@ vy_cc = v.forward.dy(x0=y + y.spacing/2)
 eq_p = Eq(p.laplace, (1./dt)*(ux_cc+vy_cc), subdomain=grid.subdomains['sub5'])
 
 # u BCs
-# Left/right walls: u is not x-staggered so nodes sit exactly on the walls.
-# Bottom wall - average across the wall is zero, so ghost point is negative of first interior point
-
-# Top lid (y=1): value at the wall equals U_lid=1: (u[ny-2] + u[ny-1])/2 = 1
-# u[ny-1] = 2 - u[ny-2]
 bc_u_tent = [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
 bc_u_tent += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
 # NOTE: don't acc need to modify these equations with the explicit scheme since I set them with bc_u_halo after
@@ -423,8 +424,9 @@ bc_u_tent += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub11'])] # r
 bc_u_tent += [neumann_bottom(eq_u_tent, u, subdomain=grid.subdomains['sub12'])] # bottom
 bc_u_tent += [neumann_top(eq_u_tent, u, subdomain=grid.subdomains['sub13'])] # top
 
-bc_tmp_u = TimeFunction(name='bc_tmp_u', grid=grid, space_order=2, staggered=y)
+
 # This will be automated by the compiler
+bc_tmp_u = TimeFunction(name='bc_tmp_u', grid=grid, space_order=2, staggered=y)
 bc_u_tent += [EssentialBC(u.forward, bc_tmp_u, subdomain=grid.subdomains['sub10'], constrain=True)]
 
 
@@ -436,10 +438,18 @@ bc_u_halo = [Eq(u[t+1, x, ny-1], 2 - u[t+1, x, ny-2])]  # lid: u=1 at y=1
 bc_u_halo += [Eq(u[t+1, x, -1], -u[t+1, x, 0])] # bottom
 
 
-bc_v = [Eq(v.forward, 0, subdomain=grid.subdomains['sub18'])] # top
-bc_v += [Eq(v.forward, 0, subdomain=grid.subdomains['sub19'])] # bottom
-bc_v += [neumann_left(update_v_tent, v, subdomain=grid.subdomains['sub20'])] # left
-bc_v += [neumann_right(update_v_tent, v, subdomain=grid.subdomains['sub16'])] # right
+# v BCs
+bc_v_tent = [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub18'])] # top
+bc_v_tent += [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub19'])] # bottom
+bc_v_tent += [neumann_left(eq_v_tent, v, subdomain=grid.subdomains['sub20'])] # left
+bc_v_tent += [neumann_right(eq_v_tent, v, subdomain=grid.subdomains['sub16'])] # right
+
+
+# This will be automated by the compiler
+bc_tmp_v = TimeFunction(name='bc_tmp_v', grid=grid, space_order=2, staggered=y)
+bc_v_tent += [EssentialBC(v.forward, bc_tmp_v, subdomain=grid.subdomains['sub21'], constrain=True)]
+
+v_tent_solve = petscsolve([eq_v_tent]+bc_v_tent, v.forward, options_prefix='vtent_solve', solver_parameters={'ksp_type': 'cg'})
 
 
 bc_v_halo = [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]
@@ -485,10 +495,14 @@ bc_u += [neumann_bottom(update_u, u, subdomain=grid.subdomains['sub12'])] # bott
 bc_u += [neumann_top(update_u, u, subdomain=grid.subdomains['sub13'])] # top
 
 
+bc_v = [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub18'])] # top
+bc_v += [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub19'])] # bottom
+bc_v += [neumann_left(update_v, v, subdomain=grid.subdomains['sub20'])] # left
+bc_v += [neumann_right(update_v, v, subdomain=grid.subdomains['sub16'])] # right
+
 
 # from IPython import embed; embed()
-exprs = [u_tent_solve] + bc_u_halo + [update_v_tent] + bc_v + bc_v_halo + [pressure_solve] + [update_u] + bc_u + bc_u_halo + [update_v] + bc_v + bc_v_halo
-# exprs = [u_tent_solve] + bc_u_halo + [update_v_tent] + bc_v + bc_v_halo + [pressure_solve] + [update_u] + bc_u
+exprs = [u_tent_solve] + bc_u_halo + [v_tent_solve] + bc_v_halo + [pressure_solve] + [update_u] + bc_u + bc_u_halo + [update_v] + bc_v + bc_v_halo
 
 with switchconfig(language='petsc'):
     op = Operator(exprs)
