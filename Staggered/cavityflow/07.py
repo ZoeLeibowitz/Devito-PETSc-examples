@@ -21,7 +21,7 @@ PetscInitialize()
 # also closely linked to 'Computational fluid dynamics by example' textbook - biringen and chow
 
 
-# using petsc only for the pressure solve
+# using petsc for the momentum equations (still explicit) and the pressure solve
 
 ny = 41
 nx = 41
@@ -395,9 +395,8 @@ p = Function(name='p', grid=grid, space_order=2, staggered=(x, y))
 
 # u-momentum:
 # p.dxc is forcing the non staggering so it is not correct - that is why I use p.dx instead
-eq_u_tent = Eq(u.dt + u*u.dxc + v*u.dyc, (1./re)*(u.dx2 + u.dy2))
-stencil_u_tent = solve(eq_u_tent, u.forward)
-update_u_tent = Eq(u.forward, stencil_u_tent, subdomain=grid.subdomains['sub15'])
+eq_u_tent = Eq(u.dt + u*u.dxc + v*u.dyc, (1./re)*(u.dx2 + u.dy2), subdomain=grid.subdomains['sub15'])
+
 
 # v-momentum:
 eq_v_tent = Eq(v.dt + u*v.dxc + v*v.dyc, (1./re)*(v.dx2 + v.dy2))
@@ -417,12 +416,19 @@ eq_p = Eq(p.laplace, (1./dt)*(ux_cc+vy_cc), subdomain=grid.subdomains['sub5'])
 
 # Top lid (y=1): value at the wall equals U_lid=1: (u[ny-2] + u[ny-1])/2 = 1
 # u[ny-1] = 2 - u[ny-2]
-bc_u = [Eq(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
-bc_u += [Eq(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
+bc_u_tent = [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
+bc_u_tent += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
 # NOTE: don't acc need to modify these equations with the explicit scheme since I set them with bc_u_halo after
 # but just setting it up this way since I THINK it may be needed for the implicit scheme
-bc_u += [neumann_bottom(update_u_tent, u, subdomain=grid.subdomains['sub12'])] # bottom
-bc_u += [neumann_top(update_u_tent, u, subdomain=grid.subdomains['sub13'])] # top
+bc_u_tent += [neumann_bottom(eq_u_tent, u, subdomain=grid.subdomains['sub12'])] # bottom
+bc_u_tent += [neumann_top(eq_u_tent, u, subdomain=grid.subdomains['sub13'])] # top
+
+bc_tmp_u = TimeFunction(name='bc_tmp_u', grid=grid, space_order=2, staggered=y)
+# This will be automated by the compiler
+bc_u_tent += [EssentialBC(u.forward, bc_tmp_u, subdomain=grid.subdomains['sub10'], constrain=True)]
+
+
+u_tent_solve = petscsolve([eq_u_tent]+bc_u_tent, u.forward, options_prefix='utent_solve', solver_parameters={'ksp_type': 'cg'})
 
 
 # TODO: can you use subdomains instead of index notation to set the halo region here?
@@ -449,14 +455,14 @@ bc_p += [neumann_right(eq_p, p, sub6)]
 bc_p += [neumann_bottom(eq_p, p, sub8)]
 bc_p += [neumann_right(neumann_bottom(eq_p, p, sub9), p, sub9)]
 
-bc_tmp1 = Function(name='bc_tmp1', grid=grid, space_order=2, staggered=(x, y))
-bc_tmp1.data[:] = 0.
-bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub7'])] # pin pressure at corner
+bc_tmp_p = Function(name='bc_tmp_p', grid=grid, space_order=2, staggered=(x, y))
+bc_tmp_p.data[:] = 0.
+bc_p += [EssentialBC(p, bc_tmp_p, subdomain=grid.subdomains['sub7'])] # pin pressure at corner
 
 
 # These two will be automated in the compiler
-bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub10'], constrain=True)]
-bc_p += [EssentialBC(p, bc_tmp1, subdomain=grid.subdomains['sub11'], constrain=True)]
+bc_p += [EssentialBC(p, bc_tmp_p, subdomain=grid.subdomains['sub10'], constrain=True)]
+bc_p += [EssentialBC(p, bc_tmp_p, subdomain=grid.subdomains['sub11'], constrain=True)]
 
 
 # TODO: check symmetry of matrix before using CG..
@@ -471,8 +477,18 @@ update_v = Eq(v.forward, v.forward - dt*p.dy,
               subdomain=grid.subdomains['sub17'])
 
 
-exprs = [update_u_tent] + bc_u + bc_u_halo + [update_v_tent] + bc_v + bc_v_halo + [pressure_solve] + [update_u] + bc_u + bc_u_halo + [update_v] + bc_v + bc_v_halo
+bc_u = [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
+bc_u += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
+# NOTE: don't acc need to modify these equations with the explicit scheme since I set them with bc_u_halo after
+# but just setting it up this way since I THINK it may be needed for the implicit scheme
+bc_u += [neumann_bottom(update_u, u, subdomain=grid.subdomains['sub12'])] # bottom
+bc_u += [neumann_top(update_u, u, subdomain=grid.subdomains['sub13'])] # top
 
+
+
+# from IPython import embed; embed()
+exprs = [u_tent_solve] + bc_u_halo + [update_v_tent] + bc_v + bc_v_halo + [pressure_solve] + [update_u] + bc_u + bc_u_halo + [update_v] + bc_v + bc_v_halo
+# exprs = [u_tent_solve] + bc_u_halo + [update_v_tent] + bc_v + bc_v_halo + [pressure_solve] + [update_u] + bc_u
 
 with switchconfig(language='petsc'):
     op = Operator(exprs)
@@ -531,7 +547,7 @@ pyplot.contour(X, Y, plotfunc_p.data[:], cmap=cm.viridis)
 pyplot.quiver(X[::2, ::2], Y[::2, ::2], plotfunc_u.data[::2, ::2], plotfunc_v.data[::2, ::2])
 pyplot.xlabel('X')
 pyplot.ylabel('Y')
-pyplot.savefig('06.png', dpi=100, bbox_inches='tight')
+pyplot.savefig('07.png', dpi=100, bbox_inches='tight')
 pyplot.show()
 
 #NBVAL_IGNORE_OUTPUT
@@ -547,5 +563,5 @@ ax1.plot(x_coord[:],plotfunc_v.data[:,int(grid.shape[0]/2)])
 ax1.plot(Marchi_Re10_v[:,0],Marchi_Re10_v[:,1],'ro')
 ax1.set_xlabel('$x$')
 ax1.set_ylabel('$v$')
-pyplot.savefig('06_comparison.png', dpi=100, bbox_inches='tight')
+pyplot.savefig('07_comparison.png', dpi=100, bbox_inches='tight')
 pyplot.show()

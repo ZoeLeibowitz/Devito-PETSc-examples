@@ -416,6 +416,8 @@ eq_p = Eq(p.laplace,
 # u[ny-1] = 2 - u[ny-2]
 bc_u = [Eq(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
 bc_u += [Eq(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
+# NOTE: don't acc need to modify these equations with the explicit scheme since I set them with bc_u_halo after
+# but just setting it up this way since I THINK it may be needed for the implicit scheme
 bc_u += [neumann_bottom(update_u, u, subdomain=grid.subdomains['sub12'])] # bottom
 bc_u += [neumann_top(update_u, u, subdomain=grid.subdomains['sub13'])] # top
 
