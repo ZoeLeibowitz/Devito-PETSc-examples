@@ -561,3 +561,22 @@ ax_vort.set_xticks([])
 ax_vort.set_yticks([])
 pyplot.savefig('vorticity.png', dpi=150, bbox_inches='tight')
 pyplot.show()
+
+# Velocity vector plot (normalized: parallel to flow direction, equal length arrows)
+U = plotfunc_u.data.T   # shape (ny, nx)
+V = plotfunc_v.data.T
+mag = np.sqrt(U**2 + V**2)
+mag[mag == 0] = 1.0     # avoid division by zero at no-slip walls
+
+fig_vec, ax_vec = pyplot.subplots(figsize=(6, 6))
+ax_vec.quiver(x_coord, y_coord, U / mag, V / mag,
+              scale=nx, scale_units='width',
+              headwidth=2, headlength=2, headaxislength=2,
+              width=0.002, color='k')
+ax_vec.set_aspect('equal')
+ax_vec.set_xlim(0, 1)
+ax_vec.set_ylim(0, 1)
+ax_vec.set_xticks([])
+ax_vec.set_yticks([])
+pyplot.savefig('velocity_vectors.png', dpi=150, bbox_inches='tight')
+pyplot.show()
