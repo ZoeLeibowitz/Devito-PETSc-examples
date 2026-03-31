@@ -409,11 +409,6 @@ eq_p = Eq(p.laplace,
           subdomain=grid.subdomains['sub5'])
 
 # u BCs
-# Left/right walls: u is not x-staggered so nodes sit exactly on the walls.
-# Bottom wall - average across the wall is zero, so ghost point is negative of first interior point
-
-# Top lid (y=1): value at the wall equals U_lid=1: (u[ny-2] + u[ny-1])/2 = 1
-# u[ny-1] = 2 - u[ny-2]
 bc_u = [Eq(u.forward, 0, subdomain=grid.subdomains['sub14'])] # left
 bc_u += [Eq(u.forward, 0, subdomain=grid.subdomains['sub11'])] # right
 # NOTE: don't acc need to modify these equations with the explicit scheme since I set them with bc_u_halo after

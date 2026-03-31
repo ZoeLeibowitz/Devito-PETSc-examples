@@ -385,9 +385,6 @@ t = grid.stepping_dim
 
 
 # Staggered MAC grid:
-#   u - staggered in y
-#   v - staggered in x
-#   p - cell centres (staggered in both x and y)
 u = TimeFunction(name='u', grid=grid, space_order=2, staggered=y)
 v = TimeFunction(name='v', grid=grid, space_order=2, staggered=x)
 p = Function(name='p', grid=grid, space_order=2, staggered=(x, y))

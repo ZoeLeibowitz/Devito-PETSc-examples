@@ -426,7 +426,7 @@ bc_u_tent += [neumann_top(eq_u_tent, u, subdomain=grid.subdomains['sub13'])] # t
 
 
 # This will be automated by the compiler
-bc_tmp_u = TimeFunction(name='bc_tmp_u', grid=grid, space_order=2, staggered=y)
+bc_tmp_u = Function(name='bc_tmp_u', grid=grid, space_order=2, staggered=y)
 bc_u_tent += [EssentialBC(u.forward, bc_tmp_u, subdomain=grid.subdomains['sub10'], constrain=True)]
 
 
@@ -446,7 +446,7 @@ bc_v_tent += [neumann_right(eq_v_tent, v, subdomain=grid.subdomains['sub16'])] #
 
 
 # This will be automated by the compiler
-bc_tmp_v = TimeFunction(name='bc_tmp_v', grid=grid, space_order=2, staggered=y)
+bc_tmp_v = Function(name='bc_tmp_v', grid=grid, space_order=2, staggered=y)
 bc_v_tent += [EssentialBC(v.forward, bc_tmp_v, subdomain=grid.subdomains['sub21'], constrain=True)]
 
 v_tent_solve = petscsolve([eq_v_tent]+bc_v_tent, v.forward, options_prefix='vtent_solve', solver_parameters={'ksp_type': 'cg'})

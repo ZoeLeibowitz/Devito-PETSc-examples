@@ -23,8 +23,8 @@ PetscInitialize()
 
 # using petsc for the momentum equations (still explicit) and the pressure solve
 
-ny = 65
-nx = 65
+ny = 97
+nx = 97
 
 
 x_coord = np.linspace(0, 1, nx)
