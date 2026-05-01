@@ -1,3 +1,4 @@
+from operator import sub
 import os
 import numpy as np
 
@@ -88,7 +89,7 @@ def _neumann_right(eq, t, subdomain):
         xind = f.indices[-2]
         if (xind - xind_target).as_coeff_Mul()[0] > 0:
             if f.name == 'p':
-                mapper[f] = f.subs({xind: xind_target})
+                mapper[f] = -f.subs({xind: xind_target})
             if f.name == 'v':
                 mapper[f] = f.subs({xind: xind_target})
             if f.name == 'u':
@@ -272,13 +273,13 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     j_step = int((ny - 1) / 2)  # discrete y-index at top of step (y = h)
     for j in range(j_step, ny - 1):
         y_j = j * dy_phys + dy_phys / 2  # staggered y position for u
-        u_inflow.data[0, j] = 6.0 * (y_j - h) * (y_extent - y_j)
+        u_inflow.data[0, j] = 6.0 * (y_j - h) * (y_extent - y_j) / (h)**2
 
-    # u_inflow.data[:] = 1.0
+    u_inflow.data[:] = 1.0
 
     # make bottom half of u.data[0] 0 and top half equal to 1
     u.data[0, :, :(ny-1//2)+1] = 0.0
-    u.data[0, :, ny-1//2:] = 1.0
+    # u.data[0, :, ny-1//2:] = 1.0
 
     u.data[1, :, :(ny-1//2)+1] = 0.0
     u.data[1, :, ny-1//2:] = 1.0
@@ -309,7 +310,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     eq_p = Eq(p.laplace, (1./dt_c)*(ux_cc + vy_cc), subdomain=grid.subdomains['sub5'])
 
     # u BCs (tent)
-    bc_u_tent = [EssentialBC(u.forward, 1.0, subdomain=grid.subdomains['sub22'])]
+    bc_u_tent = [EssentialBC(u.forward, u_inflow, subdomain=grid.subdomains['sub22'])]
     bc_u_tent += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub23'])]
     bc_u_tent += [_neumann_right(eq_u_tent, u, subdomain=grid.subdomains['sub11'])]
     bc_u_tent += [_neumann_bottom(eq_u_tent, u, subdomain=grid.subdomains['sub12'])]
@@ -349,15 +350,18 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     bc_tmp_p = Function(name='bc_tmp_p', grid=grid, space_order=so, staggered=(x, y))
     bc_tmp_p.data[:] = 0.
 
-    sub = subdomains
-    bc_p = [_neumann_left(_neumann_top(eq_p, p, sub[0]), p, sub[0])]
-    bc_p += [_neumann_top(eq_p, p, sub[1])]
-    bc_p += [_neumann_right(_neumann_top(eq_p, p, sub[2]), p, sub[2])]
-    bc_p += [_neumann_left(eq_p, p, sub[3])]
-    bc_p += [_neumann_right(eq_p, p, sub[5])]
-    bc_p += [_neumann_bottom(eq_p, p, sub[7])]
-    bc_p += [_neumann_right(_neumann_bottom(eq_p, p, sub[8]), p, sub[8])]
-    bc_p += [EssentialBC(p, bc_tmp_p, subdomain=grid.subdomains['sub7'])]
+    # sub = subdomains
+    bc_p = [_neumann_left(_neumann_top(eq_p, p, grid.subdomains['sub1']), p, grid.subdomains['sub1'])]
+    bc_p += [_neumann_top(eq_p, p, grid.subdomains['sub2'])]
+    bc_p += [_neumann_right(_neumann_top(eq_p, p, grid.subdomains['sub3']), p, grid.subdomains['sub3'])]
+    bc_p += [_neumann_left(eq_p, p, grid.subdomains['sub4'])]
+
+    bc_p += [_neumann_right(eq_p, p, grid.subdomains['sub6'])]
+
+    bc_p += [_neumann_bottom(eq_p, p, grid.subdomains['sub8'])]
+    
+    bc_p += [_neumann_right(_neumann_bottom(eq_p, p, grid.subdomains['sub9']), p, grid.subdomains['sub9'])]
+    bc_p += [_neumann_left(_neumann_bottom(eq_p, p, grid.subdomains['sub7']), p, grid.subdomains['sub7'])]
 
     pressure_solve = petscsolve([eq_p] + bc_p, p,
                                 options_prefix='pressure_solve',
@@ -367,9 +371,10 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=grid.subdomains['sub15'])
     update_v = Eq(v.forward, v.forward - dt_c*p.dy, subdomain=grid.subdomains['sub17'])
 
-    bc_u = [Eq(u.forward, 1.0, subdomain=grid.subdomains['sub22'])]
+    bc_u = [Eq(u.forward, u_inflow, subdomain=grid.subdomains['sub22'])]
     bc_u += [Eq(u.forward, 0, subdomain=grid.subdomains['sub23'])]
-    bc_u += [_neumann_right(update_u, u, subdomain=grid.subdomains['sub11'])]
+    # Simple halo copy for outflow: u[nx] = u[nx-1] (first-order Neumann, no dx2 stencil here)
+    bc_u += [Eq(u.forward, u.forward.subs({x: x - x.spacing}), subdomain=grid.subdomains['sub11'])]
     bc_u += [_neumann_bottom(update_u, u, subdomain=grid.subdomains['sub12'])]
     bc_u += [_neumann_top(update_u, u, subdomain=grid.subdomains['sub13'])]
 
@@ -386,12 +391,14 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
              [update_v] + bc_v + bc_v_halo)
 
 
-    # exprs = (bc_u_tent)
-
-
     with switchconfig(language='petsc'):
         op = Operator(exprs)
         print(op.ccode)
+
+    # tmp = Function(name='tmp', grid=grid, space_order=so)
+    # op = Operator([Eq(tmp, tmp+1, subdomain=grid.subdomains['sub10'])])
+    # op.apply()
+    # print(tmp.data[:])
 
     # then gather to rank 0 here?
 

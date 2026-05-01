@@ -11,19 +11,20 @@ rank = 2
 # Build solver
 grid_size = 65
 # run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
-run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
+run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=False, implicit_diffusion=True)
 
 # t_end = 21
 t_end = 21
-# _original is before interpolation
-x, y, U_data, V_data, Omega_data, Stream_data, comm, u_original, v_original = run_solver(100, tol=1e-4, t_end=t_end, fixed=True)
+# t_end= 3
+# _original is before interpolation back to node
+x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(100, tol=1e-4, t_end=t_end, fixed=True)
 
-if comm.rank == 0:
+if my_rank == 0:
     # staggered u and v
     np.savetxt(f'u_original_{rank}.txt', u_original, fmt='%12.6f')
     np.savetxt(f'v_original_{rank}.txt', v_original, fmt='%12.6f')
 
-if comm.rank == 0:
+if my_rank == 0:
 
     np.savetxt(f'omega_data_{rank}.txt', Omega_data, fmt='%12.6f')
 
@@ -71,56 +72,45 @@ if comm.rank == 0:
     pyplot.savefig(f'stream_function_{rank}.png', dpi=150, bbox_inches='tight')
 
 
-    # Stream function: integrate u along y using trapezoid rule, psi=0 on bottom wall
-    dy = y[1] - y[0]
-    psi = np.zeros_like(U_data)
-    psi[:, 1:] = np.cumsum(0.5 * (U_data[:, :-1] + U_data[:, 1:]) * dy, axis=1)
-
-    # Primary vortex center = minimum of psi in the interior (nodal grid)
-    idx = np.argmin(psi[1:-1, 1:-1])
-    i, j = np.unravel_index(idx, psi[1:-1, 1:-1].shape)
+    # Devito Poisson stream function
+    # Need to find primary vortext center location
+    # psi_d = np.array(Stream_data)
+    # Only look at interior to avoid boundary ... The streamfunction is minimum at the vortex center
+    # np.argmin returns index (as a single flat number) of the smallest value
+    flat_idx = np.argmin(Stream_data[1:-1, 1:-1])
+    # convert flat index into 2D coordinates
+    i, j = np.unravel_index(flat_idx, Stream_data[1:-1, 1:-1].shape)
+    # shift back to original indexing because we just inspected the interior
     i += 1; j += 1
+    
 
-    # Fit parabola in x and y through psi to find sub-grid minimum
-    cx = np.polyfit(x[i-1:i+2], psi[i-1:i+2, j], 2)
+    # Instead of taking the this point as the minimum, to make it more accurate fit a smooth curve through nearby points
+    # and take minimum 
+
+
+    # To get more accurate minimum??, fit parabola to the 3 points around the minimum in x and y directions, and find the vertex of the parabola
+    # Takes 3 points vertically and fits a quadratic f(x) = ax**2+bx+c then cx = [a,b,c]
+    cx = np.polyfit(x[i-1:i+2], Stream_data[i-1:i+2, j], 2)
+    # xmin = -b/(2a)
     x_vortex = -cx[1] / (2 * cx[0])
-    cy = np.polyfit(y[j-1:j+2], psi[i, j-1:j+2], 2)
+    cy = np.polyfit(y[j-1:j+2], Stream_data[i, j-1:j+2], 2)
     y_vortex = -cy[1] / (2 * cy[0])
-    psi_min = np.polyval(cx, x_vortex)  # psi at sub-grid minimum
+    # put refined x_vortex back into the x dir parabola to give estimate of psi at vortex center
+    psi_min = np.polyval(cx, x_vortex)
 
-    # Same for Devito Poisson stream function
-    psi_d = np.array(Stream_data)
-    idx_d = np.argmin(psi_d[1:-1, 1:-1])
-    id_, jd_ = np.unravel_index(idx_d, psi_d[1:-1, 1:-1].shape)
-    id_ += 1; jd_ += 1
-    cx_d = np.polyfit(x[id_-1:id_+2], psi_d[id_-1:id_+2, jd_], 2)
-    x_vortex_d = -cx_d[1] / (2 * cx_d[0])
-    cy_d = np.polyfit(y[jd_-1:jd_+2], psi_d[id_, jd_-1:jd_+2], 2)
-    y_vortex_d = -cy_d[1] / (2 * cy_d[0])
-    psi_min_d = np.polyval(cx_d, x_vortex_d)
-
+    # Then we find omega at (x_vortex, y_vortex) using bilinear interpolation
     # Bilinear interpolation of omega to sub-grid vortex location
     from scipy.interpolate import RegularGridInterpolator
     omega_interp = RegularGridInterpolator((x, y), Omega_data, method='linear')
     omega_at_center = float(omega_interp([[x_vortex, y_vortex]]))
-    omega_at_center_d = float(omega_interp([[x_vortex_d, y_vortex_d]]))
-
-    print(f'Primary vortex center (trapezoid): x={x_vortex:.4f}, y={y_vortex:.4f}')
-    print(f'  psi_min = {psi_min:.6f}')
-    print(f'  omega   = {omega_at_center:.6f}')
-    print(f'Primary vortex center (Devito Poisson): x={x_vortex_d:.4f}, y={y_vortex_d:.4f}')
-    print(f'  psi_min = {psi_min_d:.6f}')
-    print(f'  omega   = {omega_at_center_d:.6f}')
 
     gs = f'{grid_size}x{grid_size}'
     with open(f'vortex_center_re100_{rank}.txt', 'w') as f:
-        f.write(f'{"quantity":>12}  {f"trapezoid ({gs})":>20}  {f"devito ({gs})":>17}  {"Kim & Moin (65x65)":>18}  {"Ghia et al. (129x129)":>21}  {"Schreiber & Keller (121x121)":>28}  {"Vanka (321x321)":>15}  {"Wright (1024x1024)":>18}\n')
-        f.write(f'{"x_center":>12}  {x_vortex:20.6f}  {x_vortex_d:17.6f}  {"-":>18}  {"0.6172":>21}  {"0.61667":>28}  {"0.6188":>15}  {"0.6157":>18}\n')
-        f.write(f'{"y_center":>12}  {y_vortex:20.6f}  {y_vortex_d:17.6f}  {"-":>18}  {"0.7344":>21}  {"0.74167":>28}  {"0.7375":>15}  {"0.7378":>18}\n')
-        f.write(f'{"psi":>12}  {psi_min:20.6f}  {psi_min_d:17.6f}  {"-0.103":>18}  {"-0.103423":>21}  {"-0.10330":>28}  {"0.1034":>15}  {"0.103516":>18}\n')
-        f.write(f'{"omega":>12}  {omega_at_center:20.6f}  {omega_at_center_d:17.6f}  {"-3.177":>18}  {"3.16646":>21}  {"-3.18200":>28}  {"-":>15}  {"3.17044":>18}\n')
-    print('vortex center data saved to vortex_center_re100.txt')
-
+        f.write(f'{"quantity":>12}  {f"devito ({gs})":>17}  {"Kim & Moin (65x65)":>18}  {"Ghia et al. (129x129)":>21}  {"Schreiber & Keller (121x121)":>28}  {"Vanka (321x321)":>15}  {"Wright (1024x1024)":>18}\n')
+        f.write(f'{"x_center":>12}  {x_vortex:17.6f}  {"-":>18}  {"0.6172":>21}  {"0.61667":>28}  {"0.6188":>15}  {"0.6157":>18}\n')
+        f.write(f'{"y_center":>12}  {y_vortex:17.6f}  {"-":>18}  {"0.7344":>21}  {"0.74167":>28}  {"0.7375":>15}  {"0.7378":>18}\n')
+        f.write(f'{"psi":>12}  {psi_min:17.6f}  {"-0.103":>18}  {"-0.103423":>21}  {"-0.10330":>28}  {"0.1034":>15}  {"0.103516":>18}\n')
+        f.write(f'{"omega":>12}  {omega_at_center:17.6f}  {"-3.177":>18}  {"3.16646":>21}  {"-3.18200":>28}  {"-":>15}  {"3.17044":>18}\n')
 
     # Ghia, u vel, Re=100
     y_ghia = np.array([1.0000, 0.9766, 0.9688, 0.9609, 0.9531, 0.8516, 0.7344,
@@ -171,9 +161,7 @@ if comm.rank == 0:
         for xg, vm, vg in zip(x_ghia, v_mine_at_ghia, v_ghia):
             f.write(f'{xg:8.4f}  {vm:12.5f}  {vg:12.5f}\n')
 
-
     vort_data = -np.array(Omega_data).T  # matches Ghia sign convention
-    psi_data = psi.T
     psi_devito = np.array(Stream_data).T
 
     # vorticity contour levels — Ghia Table III
@@ -181,24 +169,18 @@ if comm.rank == 0:
     vort_fmt = {-3.0: '-4', -2.0: '-3', -1.0: '-2', -0.5: '-1', 0.0: '0',
                  0.5: '+1', 1.0: '2', 2.0: '3', 3.0: '+4', 4.0: '5', 5.0: '6'}
 
-    # Stream func contour levels - Ghia table III 
+    # Stream func contour levels - Ghia table III
     psi_levels = sorted([-0.1175, -0.115, -0.11, -0.1, -0.09, -0.07, -0.05, -0.03,
                          -0.01, -1e-4, -1e-5, -1e-7, -1e-10,
                           1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 2.5e-4, 5e-4, 1e-3, 1.5e-3, 3e-3])
 
-    fig, (ax_psi, ax_psi_devito, ax_vort) = pyplot.subplots(1, 3, figsize=(18, 6))
-
-    ax_psi.contour(x, y, psi_data, levels=psi_levels, colors='k', linewidths=0.6)
-    ax_psi.set_aspect('equal')
-    ax_psi.set_xlim(0, 1); ax_psi.set_ylim(0, 1)
-    ax_psi.set_xticks([]); ax_psi.set_yticks([])
-    ax_psi.set_title('Stream function (trapezoid)')
+    fig, (ax_psi_devito, ax_vort) = pyplot.subplots(1, 2, figsize=(12, 6))
 
     ax_psi_devito.contour(x, y, psi_devito, levels=psi_levels, colors='k', linewidths=0.6)
     ax_psi_devito.set_aspect('equal')
     ax_psi_devito.set_xlim(0, 1); ax_psi_devito.set_ylim(0, 1)
     ax_psi_devito.set_xticks([]); ax_psi_devito.set_yticks([])
-    ax_psi_devito.set_title('Stream function (Devito Poisson)')
+    ax_psi_devito.set_title('Stream function')
 
     cs_vort = ax_vort.contour(x, y, vort_data, levels=vort_levels, colors='k', linewidths=0.6)
     ax_vort.clabel(cs_vort, inline=True, fontsize=7, fmt=vort_fmt)

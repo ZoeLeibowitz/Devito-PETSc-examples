@@ -12,10 +12,10 @@ rank = 1
 h = 1       # step height
 Re = 100
 
-grid_size = 9
+grid_size = 101
 run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
 
-t_end = 1
+t_end = 40
 
 # _original is before interpolation back to node
 x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=True)
