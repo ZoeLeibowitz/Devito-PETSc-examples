@@ -1,0 +1,62 @@
+Simulation was run with ny = 41 giving nx = 601 (solver ensures same spatial discretisation in each dimension)
+in solver.py 1e-7 was used for u, v and 1e-4 for p
+
+ran with:
+
+run_solver = make_solver(ny=grid_size, nx=None, ab2=True, implicit_diffusion=False)
+
+t_end = 200
+
+x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=False)
+
+
+giving:
+Re=50: dt=0.015625000000000003, max_steps=12799
+
+
+
+output:
+Re=50: dt=0.015625000000000003, max_steps=12799
+Operator `Kernel` ran in 250.24 s
+t=3.125000000000001 step=200 norm=0.15953202949061746 rel=1.0
+Operator `Kernel` ran in 241.54 s
+t=6.250000000000002 step=400 norm=0.07876594418805083 rel=0.49373122400278424
+Operator `Kernel` ran in 251.92 s
+t=9.375000000000002 step=600 norm=0.08152433460475565 rel=0.5110217356668827
+Operator `Kernel` ran in 260.29 s
+t=12.500000000000004 step=800 norm=0.021407909569693465 rel=0.1341919214470504
+Operator `Kernel` ran in 232.85 s
+t=15.625000000000004 step=1000 norm=0.011262245949119802 rel=0.07059551605454983
+Operator `Kernel` ran in 242.39 s
+t=18.750000000000004 step=1200 norm=0.011932774014335528 rel=0.0747986097364688
+Operator `Kernel` ran in 242.17 s
+t=21.875000000000004 step=1400 norm=0.0031609764518802604 rel=0.019814055283902513
+Operator `Kernel` ran in 245.26 s
+t=25.000000000000007 step=1600 norm=0.0016654129455995253 rel=0.010439364125919762
+Operator `Kernel` ran in 270.70 s
+t=28.125000000000007 step=1800 norm=0.0017614893495079525 rel=0.01104160308830993
+Operator `Kernel` ran in 244.12 s
+t=31.250000000000007 step=2000 norm=0.0004652489993314519 rel=0.0029163359910670135
+Operator `Kernel` ran in 234.00 s
+t=34.37500000000001 step=2200 norm=0.00024430111855373344 rel=0.0015313609394538637
+Operator `Kernel` ran in 250.05 s
+t=37.50000000000001 step=2400 norm=0.00025739869265916634 rel=0.0016134609048793222
+Operator `Kernel` ran in 240.20 s
+t=40.62500000000001 step=2600 norm=6.777317176103048e-05 rel=0.0004248248579136669
+Operator `Kernel` ran in 202.93 s
+t=43.75000000000001 step=2800 norm=3.5413217797766436e-05 rel=0.0002219818672829533
+Operator `Kernel` ran in 160.48 s
+t=46.87500000000001 step=3000 norm=3.698754269945958e-05 rel=0.0002318502611516951
+Operator `Kernel` ran in 163.88 s
+t=50.000000000000014 step=3200 norm=9.763232828688781e-06 rel=6.119920156386518e-05
+converged at t=50.000000000000014 (step 3200/12799), rel=6.119920156386518e-05
+Operator `Kernel` ran in 0.92 s
+Operator `Kernel` ran in 0.01 s
+Operator `Kernel` ran in 0.01 s
+Operator `Kernel` ran in 0.01 s
+Operator `Kernel` ran in 2.53 s
+Reattachment x_r/h = 3.2145
+Operator `kernel_finalize` ran in 0.01 s
+
+
+
