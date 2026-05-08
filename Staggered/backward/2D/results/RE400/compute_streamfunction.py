@@ -30,7 +30,6 @@ levels = np.concatenate([neg_levels, pos_levels])
 
 fig, ax = plt.subplots(figsize=(14, 3))
 cs = ax.contour(x_coords, y_faces, psi.T, levels=levels, colors='k', linewidths=0.5)
-ax.axhline(1.0, color='gray', linewidth=0.5, linestyle='--', label='y = h')
 ax.set_xlabel('x')
 ax.set_ylabel('y')
 ax.set_title(f'Stream function (rank={rank})')

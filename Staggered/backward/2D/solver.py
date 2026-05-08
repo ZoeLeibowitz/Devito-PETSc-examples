@@ -98,12 +98,20 @@ def _neumann_right(eq, t, subdomain):
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
-def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
+def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
 
     # ab2 - Adams-Bashforth 2 for convection, otherwise forward Euler
     # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
     so = 2
 
+    h = 1.
+    x_extent = 30.*h
+    y_extent = 2.*h
+    if nx is None:
+        nx = int(round((x_extent / y_extent) * (ny - 1))) + 1
+    dx_phys = x_extent / (nx - 1)
+    dy_phys = y_extent / (ny - 1)
+    print(f'Grid: nx={nx}, ny={ny}, dx={dx_phys:.6f}, dy={dy_phys:.6f}')
 
     class Sub1(SubDomain):
         name = 'sub1'
@@ -245,14 +253,6 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
 
 
-    # grid = Grid(shape=(nx, ny), extent=(1., 1.), subdomains=subdomains,
-    #             dtype=np.float64, topology=(2,1))
-    h = 1.
-    x_extent = 30.*h
-    y_extent = 2.*h
-    dx_phys = x_extent / (nx - 1)
-    dy_phys = y_extent / (ny - 1)
-
     grid = Grid(shape=(nx, ny), extent=(x_extent, y_extent), subdomains=subdomains,
                 dtype=np.float64)
     # from IPython import embed; embed()
@@ -268,22 +268,31 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     v = TimeFunction(name='v', grid=grid, space_order=so, time_order=time_order, staggered=x)
     p = Function(name='p', grid=grid, space_order=so, staggered=(x, y))
 
-    # Parabolic inflow: u = 6*(y-h)*(2h-y) for y in [h, 2h], gives mean velocity = 1
+    # parabolic inflow u for y above step
     u_inflow = Function(name='u_inflow', grid=grid, space_order=so, staggered=y)
-    j_step = int((ny - 1) / 2)  # discrete y-index at top of step (y = h)
+    j_step = int((ny - 1) / 2)  #  y index at top of step (y = h)
     for j in range(j_step, ny - 1):
         y_j = j * dy_phys + dy_phys / 2  # staggered y position for u
-        u_inflow.data[0, j] = 6.0 * (y_j - h) * (y_extent - y_j) / (h)**2
+        print(f'j={j}, y_j={y_j}')
+        u_inflow.data[0, j] = 6.0 * (y_j - h) * (y_extent - y_j) / (h)**2  # Gartling: u=24y(0.5-y), u_max=1.5, u_avg=1.0
+        # u_inflow.data[0, j] = -4.0 * (y_j - h) * (y_j - 2*h) / (h)**2
+        # u_inflow.data[0, j] = -24.0*(0.5 - y_j)*(1.0-y_j)
 
-    u_inflow.data[:] = 1.0
 
-    # make bottom half of u.data[0] 0 and top half equal to 1
-    u.data[0, :, :(ny-1//2)+1] = 0.0
-    # u.data[0, :, ny-1//2:] = 1.0
+    # print(u_inflow.data[:])
+    # u_inflow.data[:] = 1.0
 
-    u.data[1, :, :(ny-1//2)+1] = 0.0
-    u.data[1, :, ny-1//2:] = 1.0
+    # initialise with the parabolic inlet profile to minimise initial transient
+    u.data[0, :, :] = 0.0
+    u.data[1, :, :] = 0.0
+    for j in range(j_step, ny - 1):
+        y_j = j * dy_phys + dy_phys / 2
+        u_val = 6.0 * (y_j - h) * (y_extent - y_j) / (h**2)
+        u.data[0, :, j] = u_val
+        u.data[1, :, j] = u_val
 
+
+    print(u.data[0])
 
     # Convection
     if ab2:
@@ -365,7 +374,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     pressure_solve = petscsolve([eq_p] + bc_p, p,
                                 options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
+                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-4})
 
     # Velocity correction
     update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=grid.subdomains['sub15'])
@@ -393,7 +402,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     with switchconfig(language='petsc'):
         op = Operator(exprs)
-        print(op.ccode)
+        # print(op.ccode)
 
     # tmp = Function(name='tmp', grid=grid, space_order=so)
     # op = Operator([Eq(tmp, tmp+1, subdomain=grid.subdomains['sub10'])])
@@ -440,11 +449,12 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
         # If fixed is True, run for exactly t_end time in a single op.apply(), otherwise chunk the run
         # and check convergence every check_every steps.
-        u.data[:] = 0.
-        v.data[:] = 0.
-        p.data[:] = 0.
+        # u.data[:] = 0.
+        # v.data[:] = 0.
+        # p.data[:] = 0.
 
-        dt_conv = 0.5 * min(dx_phys, dy_phys)
+        u_max = 1.5  # parabolic inlet peak (Gartling)
+        dt_conv = 0.5 * min(dx_phys, dy_phys) / u_max
 
         if implicit_diffusion:
             dt_val = dt_conv
@@ -463,7 +473,6 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
         if fixed:
             op.apply(time_m=0, time_M=max_steps - 1, dt=dt_val)
 
-            # op.apply(time_m=max_steps, time_M=max_steps, dt=dt_val)
             print(f'completed t_end={t_end} ({max_steps} steps)')
             tb = max_steps % n_slots
         else:

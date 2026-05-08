@@ -10,15 +10,15 @@ rank = 1
 
 # Build solver
 h = 1       # step height
-Re = 100
+Re = 300
 
-grid_size = 101
-run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
+grid_size = 41
+run_solver = make_solver(ny=grid_size, nx=None, ab2=True, implicit_diffusion=False)
 
-t_end = 40
+t_end = 500
 
 # _original is before interpolation back to node
-x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=True)
+x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=False)
 
 if my_rank == 0:
     np.savetxt(f'u_original_{rank}.txt', u_original, fmt='%12.6f')
@@ -27,7 +27,7 @@ if my_rank == 0:
     np.savetxt(f'u_data_{rank}.txt', U_data, fmt='%12.6f')
     np.savetxt(f'v_data_{rank}.txt', V_data, fmt='%12.6f')
 
-    gs = f'{grid_size}x{grid_size}'
+    gs = f'{len(x)}x{grid_size}'
 
     # --- velocity fields (interpolated to nodes) ---
     pyplot.figure(figsize=(14, 4))
@@ -57,16 +57,16 @@ if my_rank == 0:
     pyplot.savefig(f'velocity_fields_original_{rank}.png', dpi=150, bbox_inches='tight')
     pyplot.show()
 
-    # --- vorticity ---
+    # vorticity
     pyplot.figure(figsize=(14, 3))
-    pyplot.contourf(x, y, Omega_data, levels=20)
+    pyplot.contourf(x, y, Omega_data.T, levels=20)
     pyplot.colorbar()
     pyplot.xlabel('x'); pyplot.ylabel('y'); pyplot.title('vorticity')
     pyplot.tight_layout()
     pyplot.savefig(f'vorticity_field_{rank}.png', dpi=150, bbox_inches='tight')
     pyplot.show()
 
-    # --- stream function ---
+    # stream function
     pyplot.figure(figsize=(14, 3))
     pyplot.contourf(x, y, Stream_data.T, levels=20)
     pyplot.colorbar()
@@ -75,7 +75,7 @@ if my_rank == 0:
     pyplot.savefig(f'stream_function_{rank}.png', dpi=150, bbox_inches='tight')
     pyplot.show()
 
-    # --- reattachment length ---
+    # reattachment length
     # U_data is indexed [x_idx, y_idx], so U_data[:, 0] is near-wall u at y≈dy/2 for all x.
     u_bottom = U_data[:, 0]   # near-wall u along y=0, shape (nx,)
     sign_changes = np.where(np.diff(np.sign(u_bottom)))[0]
@@ -102,7 +102,7 @@ if my_rank == 0:
     fig, axes = pyplot.subplots(1, len(x_stations), figsize=(14, 4), sharey=True)
     for ax, xs in zip(axes, x_stations):
         i_s = np.argmin(np.abs(x - xs))
-        ax.plot(U_data[:, i_s], y, 'k-', linewidth=1.2)
+        ax.plot(U_data[i_s, :], y, 'k-', linewidth=1.2)
         ax.axvline(0, color='k', linewidth=0.4, linestyle='--')
         ax.set_title(f'x={xs}')
         ax.set_xlabel('u')

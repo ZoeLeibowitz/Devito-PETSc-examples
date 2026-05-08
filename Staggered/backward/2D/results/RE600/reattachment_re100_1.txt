@@ -1,0 +1,3 @@
+Re=300, grid=601x41
+Reattachment length x_r/h = 10.8563  (x_r = 10.8563)
+Kim & Moin (1985) Re=100: x_r/h ~ 3.0

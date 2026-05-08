@@ -22,18 +22,20 @@ y_faces = np.arange(ny_nodes + 1) * dy          # shape (41,), from 0 to 2.0
 psi = np.zeros((nx, ny_nodes + 1))              # shape (601, 41)
 psi[:, 1:] = np.cumsum(u_arr[:, :ny_nodes] * dy, axis=1)
 
-# Contour levels: evenly spaced between min and max, always including 0
+# Contour levels: evenly spaced bulk levels + fine levels near Q to show secondary bubble
 psi_min, psi_max = psi.min(), psi.max()
-neg_levels = np.linspace(psi_min, 0, 12)[:-1]   # negative levels (recirculation)
-pos_levels = np.linspace(0, psi_max, 20)          # positive levels (main flow)
-levels = np.concatenate([neg_levels, pos_levels])
+Q = psi[0, -1]
+neg_levels = np.linspace(psi_min, 0, 12)[:-1]        # recirculation
+bulk_levels = np.linspace(0, Q * 0.98, 18)[1:]        # main flow up to just below Q
+fine_levels = np.linspace(Q * 0.998, psi_max, 15)     # fine spacing near Q to show secondary bubble
+levels = np.unique(np.concatenate([neg_levels, bulk_levels, fine_levels]))
 
 fig, ax = plt.subplots(figsize=(14, 3))
 cs = ax.contour(x_coords, y_faces, psi.T, levels=levels, colors='k', linewidths=0.5)
 ax.set_xlabel('x')
 ax.set_ylabel('y')
 ax.set_title(f'Stream function (rank={rank})')
-ax.set_xlim(0, 15)
+ax.set_xlim(0, 30)
 ax.set_ylim(0, 2)
 ax.set_aspect('equal')
 plt.tight_layout()
@@ -41,7 +43,6 @@ plt.savefig(f'streamfunction_{rank}.png', dpi=150, bbox_inches='tight')
 plt.show()
 
 # Total flow rate at inlet (should be 1.0 for parabolic inlet with U_avg=1, h=1)
-Q = psi[0, -1]
 print(f'Total flow rate Q = {Q:.6f}  (expected 1.0)')
 print(f'psi range: [{psi_min:.4f}, {psi_max:.4f}]')
 print(f'Saved streamfunction_{rank}.png')
