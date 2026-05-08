@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, re
 
-# --- Load user's computed data from results directories ---
+# load data
 results_dir = os.path.dirname(os.path.abspath(__file__))
 user_re, user_xr = [], []
 
@@ -30,13 +30,13 @@ print('User data (Re_armaly, x_r/h):')
 for r, x in zip(user_re, user_xr):
     print(f'  Re={r}, x_r/h={x:.4f}')
 
-# --- Reference data ---
-# Armaly et al. 2D computation (dashed) — from digitised CSV
+# Reference data
+# Armaly et al. 2D computation (dashed)
 armaly_2d_data = np.loadtxt(os.path.join(results_dir, 'armaly_computation.csv'), delimiter=',')
 armaly_2d_data = armaly_2d_data[armaly_2d_data[:, 0].argsort()]
 armaly_2d_re, armaly_2d_xr = armaly_2d_data[:, 0], armaly_2d_data[:, 1]
 
-# Kim & Moin computed results (from digitised CSV)
+# Kim & Moin computed results
 km_data = np.loadtxt(os.path.join(results_dir, 'kim_moin_results.csv'), delimiter=',')
 km_re, km_xr = km_data[:, 0], km_data[:, 1]
 
@@ -44,9 +44,8 @@ km_re, km_xr = km_data[:, 0], km_data[:, 1]
 armaly_num_data = np.loadtxt(os.path.join(results_dir, 'armaly_experimental.csv'), delimiter=',')
 armaly_num_re, armaly_num_xr = armaly_num_data[:, 0], armaly_num_data[:, 1]
 
-# --- Plot ---
-fig, ax = plt.subplots(figsize=(5, 5))
 
+fig, ax = plt.subplots(figsize=(5, 5))
 
 ax.scatter(armaly_num_re, armaly_num_xr, marker='o', s=40, facecolors='none',
            edgecolors='k', linewidths=1.0, label='Armaly et al. (experimental)')
