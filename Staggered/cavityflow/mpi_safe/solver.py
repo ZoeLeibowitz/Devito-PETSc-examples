@@ -6,7 +6,7 @@ from devito import (Grid, TimeFunction, Function, Eq, Operator, Border,
 from devito.symbolics import retrieve_functions
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
-from devito.mpi.distributed import MPI as _MPI
+from devito.mpi.distributed import MPI
 
 configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
@@ -88,7 +88,7 @@ def _neumann_left(eq, t, subdomain):
                 mapper[f] = -f.subs({xind: xind_target})
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
-
+# not sure if these are acc quite right for neumann pressure?  maybe it's not 2nd order?
 def _neumann_right(eq, t, subdomain):
     # lhs, rhs = eq.evaluate.args
 
@@ -460,9 +460,9 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
                 du = u.data[0] - u.data[1]
                 dv = v.data[0] - v.data[1]
-                local_sq = float(np.sum(du**2) + np.sum(dv**2))
-                global_sq = grid.comm.allreduce(local_sq, op=_MPI.SUM)
-                norm = float(np.sqrt(global_sq))
+
+                # If I use the chunking method then need to fix this in parallel...
+                norm = float(np.sqrt(np.sum(du**2) + np.sum(dv**2)))
 
                 if norm0 is None:
                     norm0 = norm if norm > 0 else 1.0
@@ -484,18 +484,30 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
         op_interp_v(time_M=tb)
         op_vorticity.apply(time_M=tb)
         op_stream.apply(time_M=tb)
-
+    
         u_g = u.data_gather(rank=0)
         v_g = v.data_gather(rank=0)
-        u_snap = u_g[tb] if grid.comm.rank == 0 else None
-        v_snap = v_g[tb] if grid.comm.rank == 0 else None
+
+        comm = grid.comm
+        if comm is not None and configuration['mpi']:
+            _my_rank = comm.rank
+            if comm != MPI.COMM_NULL and _my_rank == 0:
+                u_snap = u_g[tb]
+                v_snap = v_g[tb]
+            else:
+                u_snap = None
+                v_snap = None
+        else:
+            _my_rank = 0
+            u_snap = u.data[tb]
+            v_snap = v.data[tb]
 
         return (x_coord.copy(), y_coord.copy(),
                 plotfunc_u.data_gather(rank=0),
                 plotfunc_v.data_gather(rank=0),
                 vorticity.data_gather(rank=0),
                 stream.data_gather(rank=0),
-                grid.comm,
+                _my_rank,
                 u_snap,
                 v_snap)
 

@@ -10,15 +10,15 @@ rank = 1
 
 # Build solver
 h = 1       # step height
-Re = 300
+Re = 50
 
 grid_size = 41
 run_solver = make_solver(ny=grid_size, nx=None, ab2=True, implicit_diffusion=False)
 
-t_end = 500
+t_end = 55
 
 # _original is before interpolation back to node
-x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=False)
+x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(Re, tol=1e-4, t_end=t_end, fixed=True)
 
 if my_rank == 0:
     np.savetxt(f'u_original_{rank}.txt', u_original, fmt='%12.6f')

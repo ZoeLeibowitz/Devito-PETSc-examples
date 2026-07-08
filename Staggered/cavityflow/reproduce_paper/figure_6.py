@@ -40,7 +40,7 @@ re.data = np.float64(400.)
 # dt = (0.45 * dx**2 * re.data )/ 4 
 dt = 0.01                                                                           
 nt = int(50.0 / dt)
-# from IPython import embed; embed()
+
 so = 2
     
 
@@ -76,7 +76,6 @@ class Sub3(SubDomain):
     def define(self, dimensions):
         x, y = dimensions
         return {x: ('middle', nx-2, 1), y: ('middle', ny-2, 1)}
-    
 
 
 class Sub4(SubDomain):

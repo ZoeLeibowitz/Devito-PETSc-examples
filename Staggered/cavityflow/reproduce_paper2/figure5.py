@@ -27,12 +27,13 @@ fig, axes = pyplot.subplots(3, 2, figsize=(15, 10))
 for ax, (re_val, run, title) in zip(axes.flat, cases):
 
     # 'run' is a function
-    x, y, U_data, V_data = run(re_val)
+    x, y, U_data, V_data, _ = run(re_val)
 
     U = U_data.T
     V = V_data.T
 
     # compute vector magnitude at each point
+    # arrows point in direction of velocity vector (U,V). e.g if (U,V)=(-1,-1) then the arrow points down and left.
     mag = np.sqrt(U**2 + V**2)
     # where vel is zero, set magnitude to 1 to avoid division by zero when normalising arrows
     mag[mag == 0] = 1.0

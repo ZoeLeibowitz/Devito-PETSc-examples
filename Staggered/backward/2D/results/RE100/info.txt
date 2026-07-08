@@ -60,3 +60,5 @@ Operator `kernel_finalize` ran in 0.01 s
 
 
 
+time:
+~1.25s per timestep × 3200 steps ≈ 67 minutes total

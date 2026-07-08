@@ -22,7 +22,7 @@ def compute_vorticity(rank):
     u_fn.data[:] = u_arr
     v_fn.data[:] = v_arr
 
-    # vorticity is staggered=NODE so lives at grid corners (no offset)
+    # compute vorticity at pressure nodes
     vorticity = Function(name='vorticity', grid=grid, space_order=2, staggered=(x,y))
     op = Operator([Eq(vorticity, v_fn.dx - u_fn.dy, subdomain=grid.interior)])
     op.apply()

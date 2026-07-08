@@ -4,12 +4,12 @@ Lid-driven cavity flow solver (Kim & Moin 1985, fractional step method).
 Usage:
     from solver import make_solver
     run = make_solver(nx=65, ny=65)   # compiles operator once
-    x, y, u, v = run(re_val=400)
+    x, y, u, v, omega = run(re_val=400)
 """
 import os
 import numpy as np
 
-from devito import (Grid, TimeFunction, Function, Eq, Operator,
+from devito import (Grid, TimeFunction, Function, Eq, Operator, Border,
                     configuration, SubDomain, NODE, switchconfig, Constant)
 from devito.symbolics import retrieve_functions
 from devito.petsc import petscsolve, EssentialBC
@@ -81,7 +81,7 @@ def _neumann_right(eq, t, subdomain):
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
-def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
+def make_solver(nx, ny, ab2=False, implicit_diffusion=False, rtol=1e-7):
     """
     Parameters
     ----------
@@ -91,6 +91,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     implicit_diffusion : bool
         Use Crank-Nicolson (semi-implicit) for diffusion.
         Default False keeps diffusion fully explicit.
+    rtol : float
+        Relative tolerance for the PETSc solver.
     """
     so = 2
 
@@ -275,7 +277,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     u_tent_solve = petscsolve([eq_u_tent] + bc_u_tent, u.forward,
                               options_prefix='utent_solve',
-                              solver_parameters={'ksp_type': 'cg'})
+                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': rtol})
 
     bc_u_halo = [Eq(u[t+1, x, ny-1], 2 - u[t+1, x, ny-2])]
     bc_u_halo += [Eq(u[t+1, x, -1], -u[t+1, x, 0])]
@@ -291,7 +293,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     v_tent_solve = petscsolve([eq_v_tent] + bc_v_tent, v.forward,
                               options_prefix='vtent_solve',
-                              solver_parameters={'ksp_type': 'cg'})
+                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': rtol})
 
     bc_v_halo = [Eq(v[t+1, nx-1, y], -v[t+1, nx-2, y])]
     bc_v_halo += [Eq(v[t+1, -1, y], -v[t+1, 0, y])]
@@ -301,6 +303,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     bc_tmp_p.data[:] = 0.
 
     sub = subdomains
+    # TODO: fix this for clarity just use STRINGS WITH the actual subdomain numbers
     bc_p = [_neumann_left(_neumann_top(eq_p, p, sub[0]), p, sub[0])]
     bc_p += [_neumann_top(eq_p, p, sub[1])]
     bc_p += [_neumann_right(_neumann_top(eq_p, p, sub[2]), p, sub[2])]
@@ -316,7 +319,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     pressure_solve = petscsolve([eq_p] + bc_p, p,
                                 options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'cg'})
+                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': rtol})
 
     # Velocity correction
     update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=grid.subdomains['sub15'])
@@ -340,20 +343,37 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
     with switchconfig(language='petsc'):
         op = Operator(exprs)
+        print(op.ccode)
 
     plotfunc_u = Function(name='plotfunc_u', grid=grid, space_order=so,
                           staggered=NODE)
     plotfunc_v = Function(name='plotfunc_v', grid=grid, space_order=so,
                           staggered=NODE)
+    vorticity = Function(name='vorticity', grid=grid, space_order=so,
+                         staggered=NODE)
+    stream = Function(name='psi', grid=grid, space_order=so,
+                         staggered=NODE)
     op_interp_u = Operator(Eq(plotfunc_u, u))
     op_interp_v = Operator(Eq(plotfunc_v, v))
+
+    vorticity_eqn = Eq(vorticity, v.dx - u.dy)
+    op_vorticity = Operator(vorticity_eqn)
+
+    border = Border(grid, 1)
+    stream_bc = [EssentialBC(stream, 0., subdomain=border)]
+    stream_eqn = Eq(stream.laplace, -(v.dx - u.dy), subdomain=grid.interior)
+    stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
+
+    with switchconfig(language='petsc'):
+        op_stream = Operator([stream_solver])
+
 
     x_coord = np.linspace(0, 1, nx)
     y_coord = np.linspace(0, 1, ny)
 
     # run the solver at given reynolds number, for the given grid size
     # TODO: just run it to t_end=50 (100 is excessive?)
-    def run_cavity_flow(re_val, t_end=100.0, tol=1e-3, check_every=200):
+    def run_cavity_flow(re_val, t_end=400.0, tol=1e-3, check_every=200):
 
         u.data[:] = 0.
         v.data[:] = 0.
@@ -364,6 +384,15 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
         dt_conv = 0.5 * dx
         # dt_diff = (0.5 * re_val * dx**2) / 4.0
         # dt_val = min(dt_conv, dt_diff)
+
+        # worded from paper:
+        # Implicit treatment of the viscous terms
+        # eliminates the numerical viscous stability restriction. This restriction is particularly
+        # severe for low-Reynolds-number flows
+
+
+        # from textbook: steady-state at low re should be assumed to be converged when the error norm
+        # decreases by at least 3 orders of magnitude.
 
         if implicit_diffusion:
             # Diffusion is unconditionally stable — no constraint
@@ -379,23 +408,6 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
         print(f'Re={re_val}: dt={dt_val}, max_steps={max_steps}')
 
-        # using ab2=False, implicit_diffusion=False
-        # Re=1: dt=3.0517578125e-05, max_steps=3276800
-        # Re=100: dt=0.0030517578125, max_steps=32768
-        # Re=400: dt=0.0078125, max_steps=12800
-        # Re=1000: dt=0.005208333333333333, max_steps=19200
-        # Re=2000: dt=0.005208333333333333, max_steps=19200
-        # Re=5000: dt=0.005208333333333333, max_steps=19200
-
-
-        # using ab2=True, implicit_diffusion=True
-        # Re=1: dt=0.0078125, max_steps=12800
-        # Re=100: dt=0.0078125, max_steps=12800
-        # Re=400: dt=0.0078125, max_steps=12800
-        # Re=1000: dt=0.005208333333333333, max_steps=19200
-        # Re=2000: dt=0.005208333333333333, max_steps=19200
-        # Re=5000: dt=0.005208333333333333, max_steps=19200
-
         norm0 = None
         norm = float('inf')
         step = 0
@@ -409,8 +421,9 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
                 op.apply(time_m=step, time_M=step + chunk - 1, dt=dt_val)
             step += chunk
 
-            norm = max(float(np.max(np.abs(u.data[0] - u.data[1]))),
-                       float(np.max(np.abs(v.data[0] - v.data[1]))))
+            du = u.data[0] - u.data[1]
+            dv = v.data[0] - v.data[1]
+            norm = float(np.sqrt(np.sum(du**2) + np.sum(dv**2)))
 
             if norm0 is None:
                 norm0 = norm if norm > 0 else 1.0
@@ -422,20 +435,6 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
                 print(f'converged at t={step*dt_val} '
                       f'(step {step}/{max_steps}), rel={norm/norm0}')
 
-                # using ab2=False, implicit_diffusion=False
-                # for Re=1, converged at t=0.10986328125 (step 3600/3276800), rel=0.000899480653748847
-                # for Re=100, converged at t=11.5966796875 (step 3800/32768), rel=0.000821451240979905
-                # for Re=400, converged at t=29.6875 (step 3800/12800), rel=0.0008275613709279477
-                # for Re=1000, converged at t=35.416666666666664 (step 6800/19200), rel=0.0008561727993892858
-                # for Re=2000, converged at t=45.83333333333333 (step 8800/19200), rel=0.0008914514581267094
-                # for Re=5000, blows up at t=4.948 step=950 norm=1.781e+150 rel=1.365e+152
-
-                # using ab2=True, implicit_diffusion=True
-                # for Re=1, converged at t=4.6875 (step 600/12800), rel=4.131420827351506e-06
-                # for Re=100, converged at t=15.625 (step 2000/12800), rel=0.0003314111946133087
-                # for Re=400, converged at t=29.6875 (step 3800/12800), rel=0.0008406765418948296
-                # for Re=1000, converged at t=35.416666666666664 (step 6800/19200), rel=0.0008683054715087989
-                # for Re=2000, converged at t=45.83333333333333 (step 8800/19200), rel=0.0009153363968314503
                 break
 
         else:
@@ -443,7 +442,12 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
 
         op_interp_u(time_M=0)
         op_interp_v(time_M=0)
+        op_vorticity.apply(time_M=0)
+        op_stream.apply(time_M=0)
 
-        return (x_coord.copy(), y_coord.copy(), np.array(plotfunc_u.data), np.array(plotfunc_v.data))
+        return (x_coord.copy(), y_coord.copy(),
+                np.array(plotfunc_u.data), np.array(plotfunc_v.data),
+                np.array(vorticity.data),
+                np.array(stream.data))
 
     return run_cavity_flow

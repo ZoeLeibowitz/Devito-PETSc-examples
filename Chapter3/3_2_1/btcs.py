@@ -89,7 +89,7 @@ phi.data[0] = np.sin(np.pi * X / Lx)  # Initial condition
 eqn = Eq(phi.dt, alpha * phi.forward.laplace, subdomain=grid.interior)
 
 # If you want to try CN, use:
-# eqn = Eq(u.dt, (alpha/2.)*(u.laplace + u.forward.laplace), subdomain=grid.interior)
+eqn = Eq(phi.dt, (alpha/2.)*(phi.laplace + phi.forward.laplace), subdomain=grid.interior)
 
 bc.data[:] = np.float64(0.0)
 

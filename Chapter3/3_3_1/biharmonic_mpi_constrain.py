@@ -1,11 +1,11 @@
 # ref - https://github.com/bueler/p4pdes/blob/master/c/ch7/biharm.c
-# DEVITO_MPI=1 mpiexec -n <nprocs> python3 biharmoinc_mpi.py
+# DEVITO_MPI=1 mpiexec -n <nprocs> python3 biharmonic_mpi_constrain.py
 
 
 import os
 import numpy as np
 
-from devito import (Grid, Function, Eq, Operator, switchconfig,
+from devito import (Grid, Function, Eq, Operator,
                     configuration, SubDomain)
 
 from devito.petsc import petscsolve, EssentialBC
