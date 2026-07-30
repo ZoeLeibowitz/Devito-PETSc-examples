@@ -31,7 +31,9 @@ on:
   workflow_dispatch:  # allow manual trigger
 
 env:
-  DOCKER_IMAGE: devitocodes/devito-petsc:latest
+  # temporary test with geometric_multigrid image
+  DOCKER_IMAGE: zoeleibowitz/devito-petsc:geometric_multigrid
+  # DOCKER_IMAGE: devitocodes/devito-petsc:latest
 
 jobs:
   run-chapter3:
