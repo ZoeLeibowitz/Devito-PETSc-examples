@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from devito import Grid, Function, Eq, Operator, NODE
@@ -45,4 +46,8 @@ def compute_vorticity(rank):
 
 
 if __name__ == '__main__':
-    compute_vorticity(2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-nranks', type=int, default=1,
+                         help='number of ranks used to originally generate the data')
+    args = parser.parse_args()
+    compute_vorticity(args.nranks)

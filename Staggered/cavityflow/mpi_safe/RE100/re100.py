@@ -4,18 +4,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import numpy as np
 from matplotlib import pyplot
 from solver import make_solver
+from devito.mpi.distributed import MPI
 
 
-rank = 2
+rank = MPI.COMM_WORLD.Get_size()
 
 # Build solver
-grid_size = 65
-# run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
-run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=False, implicit_diffusion=True)
+grid_size = 97
+run_solver = make_solver(nx=grid_size, ny=grid_size, ab2=True, implicit_diffusion=True)
 
-# t_end = 21
+
 t_end = 21
-# t_end= 3
+
 # _original is before interpolation back to node
 x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original = run_solver(100, tol=1e-4, t_end=t_end, fixed=True)
 
