@@ -91,6 +91,7 @@ solver_params0 = {
 }
 
 
+# TODO: also add a ksp iteration plot to show that the number of iterations is independent of the grid size
 solver_params1 = {
     'snes_type': 'ksponly',
     'ksp_type': 'cg',

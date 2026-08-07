@@ -101,16 +101,18 @@ def _neumann_right(eq, t, subdomain):
                 mapper[f] = f.subs({xind: x_dim - spacing})
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
+
 def make_circle(x_msh, y_msh, centre_x, centre_y, radius):
     return np.sqrt((x_msh - centre_x) **2 + (y_msh - centre_y) **2) - radius
 
-def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None):
+
+def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, centre=None):
 
     # create a sdf for each "staggered grid"
 
     x, y = grid.dimensions
 
-    # dummy - oversight in schism 
+    # dummy - oversight in schism
     sdf = Function(name='sdf', grid=grid, space_order=2, staggered=NODE)
 
     sdf_x = Function(name='sdf_x', grid=grid, space_order=2, staggered=x)
@@ -121,8 +123,7 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None):
     y_coords = np.linspace(0, grid.extent[1], grid.shape[1])
     x_msh , y_msh = np.meshgrid(x_coords, y_coords, indexing='ij')
 
-    centre_x, centre_y = (2., 2.)
-    radius = 0.5
+    centre_x, centre_y = centre
     sdf.data[:] = make_circle(x_msh, y_msh, centre_x, centre_y, radius)
 
     sdf_x.data[:] = make_circle(x_msh+grid.spacing[0]/2, y_msh, centre_x, centre_y, radius)
@@ -141,32 +142,34 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None):
     # Setup bcs
     zero = sp.core.numbers.Zero()
 
-    # cutouff is how close you can get to the boundary ....
-    # cutoff = {(h_x/2, h_y/2): 0.}  # Maybe add this to the BoundaryGeometry kwargs
-    # by default, the cutoff is half a grid spacing so this means that it by default uses points that are further away than half a grid spacing ....nothing closer to the boundary
-    # e.g might need to make it smaller for the pressure field 
-    bg = BoundaryGeometry((sdf,sdf_x,sdf_y,sdf_x_y))
+    # cutoff is how close a point can get to the boundary before being excluded
+    # from the fluid solve entirely
+    cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
+              (grid.dimensions[0].spacing/2, zero): 0.1,
+              (zero, grid.dimensions[1].spacing/2): 0.1}
+    bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
+    bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
 
-    bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u,v,p))
-    # print(p)
-    # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0)])
+    boundary = Boundary(bcs, bg)
 
-    boundary = Boundary(bcs , bg)
-    # print(derivs)
     subs = boundary.substitutions(tuple(derivs))
-            
+
     return subs
 
 
-def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
+def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
 
     # ab2 - Adams-Bashforth 2 for convection, otherwise forward Euler
     # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
+    # u_max - peak parabolic inflow velocity (DFG 2D-1: 0.3, DFG 2D-2/2D-3: 1.5)
     so = 2
 
-    x_extent = 22.
-    y_extent = 4.1
+    # DFG benchmark's own physical units: D=0.1, channel 2.2 x 0.41, ν=0.001
+    x_extent = 2.2
+    y_extent = 0.41
+    radius = 0.05
+    centre_x, centre_y = (0.2, 0.2)
     if nx is None:
         nx = int(round((x_extent / y_extent) * (ny - 1))) + 1
     dx_phys = x_extent / (nx - 1)
@@ -305,16 +308,13 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
         Sub20, Sub21, Sub22
     ])
 
-
-
     grid = Grid(shape=(nx, ny), extent=(x_extent, y_extent), subdomains=subdomains,
                 dtype=np.float64)
-
 
     x, y = grid.dimensions
     t = grid.stepping_dim
 
-    re = Constant(name='re', dtype=np.float64)
+    nu = Constant(name='nu', dtype=np.float64)
     dt_c = Constant(name='dt_c', dtype=np.float64)
 
     time_order = 2 if ab2 else 1
@@ -327,7 +327,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
     u_inflow = Function(name='u_inflow', grid=grid, space_order=so, staggered=y)
     for j in range(ny - 1):
         y_j = j * dy_phys + dy_phys / 2  # staggered y position for u
-        u_inflow.data[0, j] = 4.0 * 1.5 * y_j * (y_extent - y_j) / y_extent**2  # u_max=1.5, u_avg=1.0
+        u_inflow.data[0, j] = 4.0 * u_max * y_j * (y_extent - y_j) / y_extent**2
 
 
     # Convection
@@ -340,11 +340,11 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
 
     # Diffusion
     if implicit_diffusion:
-        diff_u = (1./(2.*re))*(u.dx2 + u.dy2) + (1./(2.*re))*(u.forward.dx2 + u.forward.dy2)
-        diff_v = (1./(2.*re))*(v.dx2 + v.dy2) + (1./(2.*re))*(v.forward.dx2 + v.forward.dy2)
+        diff_u = (nu/2.)*(u.dx2 + u.dy2) + (nu/2.)*(u.forward.dx2 + u.forward.dy2)
+        diff_v = (nu/2.)*(v.dx2 + v.dy2) + (nu/2.)*(v.forward.dx2 + v.forward.dy2)
     else:
-        diff_u = (1./re)*(u.dx2 + u.dy2)
-        diff_v = (1./re)*(v.dx2 + v.dy2)
+        diff_u = nu*(u.dx2 + u.dy2)
+        diff_v = nu*(v.dx2 + v.dy2)
 
     eq_u_tent = Eq(u.dt + conv_u, diff_u, subdomain=grid.subdomains['sub15'])
     eq_v_tent = Eq(v.dt + conv_v, diff_v, subdomain=grid.subdomains['sub17'])
@@ -359,10 +359,6 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
     bc_u_tent += [_neumann_right(eq_u_tent, u, subdomain=grid.subdomains['sub11'])]
     bc_u_tent += [_neumann_bottom(eq_u_tent, u, subdomain=grid.subdomains['sub12'])]
     bc_u_tent += [_neumann_top(eq_u_tent, u, subdomain=grid.subdomains['sub13'])]
-
-    u_tent_solve = petscsolve([eq_u_tent] + bc_u_tent, u.forward,
-                              options_prefix='utent_solve',
-                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
     
     # This can be done in postprocessing before doing the interpolation but just doing it here for ease
     # Essentially, I apply this mapping already when updating the nodes for u along sub13
@@ -376,10 +372,6 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
     bc_v_tent += [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub19'])]
     bc_v_tent += [_neumann_left(eq_v_tent, v, subdomain=grid.subdomains['sub20'])]
     bc_v_tent += [_neumann_right(eq_v_tent, v, subdomain=grid.subdomains['sub16'])]
-
-    v_tent_solve = petscsolve([eq_v_tent] + bc_v_tent, v.forward,
-                              options_prefix='vtent_solve',
-                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
     bc_v_halo = [Eq(v.forward, v.forward.subs({x+x.spacing/2: x-x.spacing/2}), subdomain=grid.subdomains['sub21'])]
 
@@ -399,15 +391,11 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
     bc_p += [_neumann_bottom(eq_p, p, grid.subdomains['sub8'])]
     
     bc_p += [_neumann_right(_neumann_bottom(eq_p, p, grid.subdomains['sub9']), p, grid.subdomains['sub9'])]
-    bc_p += [_neumann_left(_neumann_bottom(eq_p, p, grid.subdomains['sub7']), p, grid.subdomains['sub7'])]
-
-    pressure_solve = petscsolve([eq_p] + bc_p, p,
-                                options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-4})
 
     # Velocity correction
-    update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=grid.subdomains['sub15'])
-    update_v = Eq(v.forward, v.forward - dt_c*p.dy, subdomain=grid.subdomains['sub17'])
+    # p.dx/p.dy need x0 pinned explicitly to the unstaggered location for schism to work correctly with staggering
+    update_u = Eq(u.forward, u.forward - dt_c*p.dx(x0={x: x}), subdomain=grid.subdomains['sub15'])
+    update_v = Eq(v.forward, v.forward - dt_c*p.dy(x0={y: y}), subdomain=grid.subdomains['sub17'])
 
     bc_u = [Eq(u.forward, u_inflow, subdomain=grid.subdomains['sub22'])]
     # Simple halo copy for outflow: u[nx] = u[nx-1] (first-order Neumann, no dx2 stencil here)
@@ -421,22 +409,32 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
     bc_v += [_neumann_right(update_v, v, subdomain=grid.subdomains['sub16'])]
     
 
-    derivs = retrieve_derivatives([u_tent_solve] + [v_tent_solve] + [pressure_solve] + [update_u] + [update_v], mode='unique')
-    print([u_tent_solve])
-    ib_subs = setup_immersed_bcs(grid, u, v, p, derivs)
+    derivs = retrieve_derivatives([eq_u_tent] + [eq_v_tent] + [eq_p] + [update_u] + [update_v], mode='unique')
+    derivs = [d for d in derivs if grid.stepping_dim not in d.dims]
+    print([derivs])
 
+    ib_subs = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y))
+
+    pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
+                                options_prefix='pressure_solve',
+                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-4})
+
+    u_tent_solve = petscsolve([eq_u_tent.subs(ib_subs)] + bc_u_tent, u.forward,
+                              options_prefix='utent_solve',
+                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
+
+    v_tent_solve = petscsolve([eq_v_tent.subs(ib_subs)] + bc_v_tent, v.forward,
+                              options_prefix='vtent_solve',
+                              solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
     exprs = ([u_tent_solve] + bc_u_halo +
              [v_tent_solve] + bc_v_halo +
              [pressure_solve] +
-             [update_u] + bc_u + bc_u_halo +
-             [update_v] + bc_v + bc_v_halo)
-
+             [update_u.subs(ib_subs)] + bc_u + bc_u_halo +
+             [update_v.subs(ib_subs)] + bc_v + bc_v_halo)
 
     with switchconfig(language='petsc'):
         op = Operator(exprs)
-        # print(op.ccode)
-
 
     # then gather to rank 0 here?
 
@@ -444,20 +442,24 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
                           staggered=NODE)
     plotfunc_v = Function(name='plotfunc_v', grid=grid, space_order=so,
                           staggered=NODE)
-    
+    plotfunc_p = Function(name='plotfunc_p', grid=grid, space_order=so,
+                          staggered=NODE)
+
     vorticity = Function(name='vorticity', grid=grid, space_order=so,
                         staggered=NODE)
-    
+
     stream = Function(name='psi', grid=grid, space_order=so,
                          staggered=NODE)
-    
+
 
     eq_interp_u = Eq(plotfunc_u, u)
     op_interp_u = Operator([eq_interp_u])
 
     eq_interp_v = Eq(plotfunc_v, v)
-    # eq_interp_v = [eq_interp_v]
     op_interp_v = Operator([eq_interp_v])
+
+    eq_interp_p = Eq(plotfunc_p, p)
+    op_interp_p = Operator([eq_interp_p])
 
     vorticity_eqn = Eq(vorticity, v.dx - u.dy)
     op_vorticity = Operator(vorticity_eqn)
@@ -478,24 +480,32 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
 
         # If fixed is True, run for exactly t_end time in a single op.apply(), otherwise chunk the run
         # and check convergence every check_every steps.
-        # u.data[:] = 0.
-        # v.data[:] = 0.
-        # p.data[:] = 0.
+        # Initial condition per Griebel/Dornseifer/Neunhoeffer ch.5 "Flow Past
+        # an Obstacle", scaled to the free-stream velocity: UI = u_max, VI = 0.0, PI = 0.0
+        u.data[:] = u_max
+        v.data[:] = 0.
+        p.data[:] = 0.
 
-        u_max = 1.5  # parabolic inlet peak (Gartling)
+        # nu is derived from the target Re and the actual physical D/Ubar, rather
+        # than set independently, so Re can never silently drift out of sync with
+        # the geometry/inflow scale (DFG 2D-1: D=0.1, Ubar=0.2, Re=20 -> nu=0.001,
+        # exactly the benchmark's own viscosity).
+        D = 2. * radius
+        u_bar = (2./3.) * u_max
+        nu_val = u_bar * D / re_val
         dt_conv = 0.5 * min(dx_phys, dy_phys) / u_max
 
         if implicit_diffusion:
             dt_val = dt_conv
         else:
-            dt_diff = (0.5 * re_val * min(dx_phys, dy_phys)**2) / 4.0
+            dt_diff = (0.5 * min(dx_phys, dy_phys)**2) / (4.0 * nu_val)
             dt_val = min(dt_conv, dt_diff)
 
-        re.data = np.float64(re_val)
+        nu.data = np.float64(nu_val)
         dt_c.data = np.float64(dt_val)
         max_steps = int(t_end/dt_val)
 
-        print(f'Re={re_val}: dt={dt_val}, max_steps={max_steps}')
+        print(f'Re={re_val} (nu={nu_val}): dt={dt_c.data}, max_steps={max_steps}')
 
         n_slots = time_order + 1
 
@@ -539,11 +549,13 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
 
         op_interp_u(time_M=tb)
         op_interp_v(time_M=tb)
+        op_interp_p()
         op_vorticity.apply(time_M=tb)
         op_stream.apply(time_M=tb)
-    
+
         u_g = u.data_gather(rank=0)
         v_g = v.data_gather(rank=0)
+        p_g = p.data_gather(rank=0)
 
         comm = grid.comm
         if comm is not None and configuration['mpi']:
@@ -559,6 +571,45 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
             u_snap = u.data[tb]
             v_snap = v.data[tb]
 
+        delta_p = None
+        if _my_rank == 0:
+            def extrap_p(field, x_boundary, y_line, direction, npts=2):
+                j_lo = int(np.floor((y_line - dy_phys/2) / dy_phys))
+                i = int(np.floor((x_boundary - dx_phys/2) / dx_phys)) \
+                    + (1 if direction > 0 else 0)
+                found = []
+                while len(found) < npts:
+                    val = 0.5*(field[i, j_lo] + field[i, j_lo + 1])
+                    if val != 0.0:
+                        xi = i*dx_phys + dx_phys/2
+                        found.append((xi, val))
+                    i += direction
+                # Lagrange interpolation/extrapolation through `found`,
+                # evaluated at x_boundary
+                total = 0.0
+                for k, (xk, yk) in enumerate(found):
+                    term = yk
+                    for m, (xm, _) in enumerate(found):
+                        if m != k:
+                            term *= (x_boundary - xm)/(xk - xm)
+                    total += term
+                return total
+
+            # DFG benchmark points (0.15, 0.2) and (0.25, 0.2), in the solver's
+            # own units now that geometry/velocity match the benchmark exactly
+            p_front = extrap_p(p_g, 0.15, 0.2, direction=-1, npts=2)
+            p_rear = extrap_p(p_g, 0.25, 0.2, direction=1, npts=2)
+            delta_p = float(p_front - p_rear)
+            print(f'Delta p (front - rear) = {delta_p}  '
+                  f'(DFG 2D-1 target: 0.11752016697)')
+
+            p_front_q = extrap_p(p_g, 0.15, 0.2, direction=-1, npts=3)
+            p_rear_q = extrap_p(p_g, 0.25, 0.2, direction=1, npts=3)
+            delta_p_q = float(p_front_q - p_rear_q)
+            print(f'Delta p (quadratic, 3-point extrapolation) = {delta_p_q}  '
+                  f'(DFG 2D-1 target: 0.11752016697)')
+
+
         return (x_coord.copy(), y_coord.copy(),
                 plotfunc_u.data_gather(rank=0),
                 plotfunc_v.data_gather(rank=0),
@@ -566,6 +617,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False):
                 stream.data_gather(rank=0),
                 _my_rank,
                 u_snap,
-                v_snap)
+                v_snap,
+                delta_p,
+                plotfunc_p.data_gather(rank=0))
 
     return run_cavity_flow
