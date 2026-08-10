@@ -106,7 +106,7 @@ def make_circle(x_msh, y_msh, centre_x, centre_y, radius):
     return np.sqrt((x_msh - centre_x) **2 + (y_msh - centre_y) **2) - radius
 
 
-def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, centre=None):
+def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, centre=None, nu=None):
 
     # create a sdf for each "staggered grid"
 
@@ -145,11 +145,19 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
     # cutoff is how close a point can get to the boundary before being excluded
     # from the fluid solve entirely
     cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
-              (grid.dimensions[0].spacing/2, zero): 0.1,
-              (zero, grid.dimensions[1].spacing/2): 0.1}
+              (grid.dimensions[0].spacing/2, zero): 0.05,
+              (zero, grid.dimensions[1].spacing/2): 0.05}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
     bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
+
+
+    # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx - nu*u.laplace, 0), Eq(p.dy - nu*v.laplace, 0)], funcs=(u, v, p))
+
+    # bcs = BoundaryConditions(
+    #     [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0)],
+    #     funcs=(u, v, p)
+    # )
 
     boundary = Boundary(bcs, bg)
 
@@ -254,12 +262,6 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
             x, y = dimensions
             return {x: ('middle', 1, 1), y: ('middle', ny-2, 1)}
 
-    class Sub22(SubDomain):
-        name = 'sub22'
-        def define(self, dimensions):
-            x, y = dimensions
-            return {x: ('left', 1), y: ('left', ny-1)}
-
     class Sub15(SubDomain):
         name = 'sub15'
         def define(self, dimensions):
@@ -301,6 +303,12 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('right', 1), y: y}
+
+    class Sub22(SubDomain):
+        name = 'sub22'
+        def define(self, dimensions):
+            x, y = dimensions
+            return {x: ('left', 1), y: ('left', ny-1)}
 
     subdomains = tuple(cls() for cls in [
         Sub1, Sub2, Sub3, Sub4, Sub5, Sub6, Sub7, Sub8, Sub9, Sub10,
@@ -385,11 +393,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     bc_p += [_neumann_top(eq_p, p, grid.subdomains['sub2'])]
     bc_p += [_neumann_right(_neumann_top(eq_p, p, grid.subdomains['sub3']), p, grid.subdomains['sub3'])]
     bc_p += [_neumann_left(eq_p, p, grid.subdomains['sub4'])]
-
     bc_p += [_neumann_right(eq_p, p, grid.subdomains['sub6'])]
-
     bc_p += [_neumann_bottom(eq_p, p, grid.subdomains['sub8'])]
-    
     bc_p += [_neumann_right(_neumann_bottom(eq_p, p, grid.subdomains['sub9']), p, grid.subdomains['sub9'])]
 
     # Velocity correction
@@ -413,7 +418,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     derivs = [d for d in derivs if grid.stepping_dim not in d.dims]
     print([derivs])
 
-    ib_subs = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y))
+    ib_subs = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y), nu=nu)
 
     pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
                                 options_prefix='pressure_solve',
@@ -451,6 +456,10 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     stream = Function(name='psi', grid=grid, space_order=so,
                          staggered=NODE)
 
+    psi_bc = Function(name='psi_bc', grid=grid, space_order=so, staggered=NODE)
+    for j in range(ny):
+        y_j = j * dy_phys
+        psi_bc.data[:, j] = (4.0*u_max/y_extent**2) * (y_extent*y_j**2/2.0 - y_j**3/3.0)
 
     eq_interp_u = Eq(plotfunc_u, u)
     op_interp_u = Operator([eq_interp_u])
@@ -465,7 +474,10 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     op_vorticity = Operator(vorticity_eqn)
 
     border = Border(grid, 1)
-    stream_bc = [EssentialBC(stream, 0., subdomain=border)]
+    stream_bc = [
+        EssentialBC(stream, psi_bc, subdomain=border),
+        Eq(stream, stream.subs({x: x - x.spacing}), subdomain=grid.subdomains['sub21']),
+    ]
     stream_eqn = Eq(stream.laplace, -(v.dx - u.dy), subdomain=grid.interior)
     stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
 
