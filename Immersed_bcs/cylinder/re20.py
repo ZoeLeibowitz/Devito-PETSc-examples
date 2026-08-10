@@ -12,9 +12,10 @@ rank = MPI.COMM_WORLD.Get_size()
 # 2.2 x 0.41 channel (D=0.1 cylinder), same relative resolution (dx/D=0.1) as
 # the previous x10-scaled grid, so cost/step-count is unchanged.
 nx, ny = 221, 42
+# TODO: switch to implicit etc..
 run_solver = make_solver(nx=nx, ny=ny, ab2=False, implicit_diffusion=False, u_max=0.3)
 
-t_end = 20.0
+t_end = 50.0
 
 # _original is before interpolation back to node
 # fixed=False: run in chunks, checking ||u(t)-u(t-dt)|| every check_every steps
@@ -87,25 +88,44 @@ if my_rank == 0:
         ax.add_patch(pyplot.Circle((centre_x, centre_y), radius,
                                     facecolor='white', edgecolor='black', linewidth=0.75, zorder=5))
 
-    fig, (ax_speed, ax_p, ax_psi) = pyplot.subplots(3, 1, figsize=(10, 8))
+    fig, (ax_speed, ax_p, ax_psi, ax_text) = pyplot.subplots(4, 1, figsize=(10, 10.5))
 
-    im_speed = ax_speed.contourf(x, y, speed.T, levels=30, cmap='jet')
+    # vmin/vmax match the DFG reference plots' own colorbars (read off the
+    # reference images at https://wwwold.mathematik.tu-dortmund.de/~featflow/
+    # en/benchmarks/cfdbenchmarking/flow/dfg_benchmark1_re20.html) so colors
+    # are directly comparable to the benchmark page's figures.
+    im_speed = ax_speed.pcolormesh(x, y, speed.T, shading='gouraud', cmap='jet', vmin=0, vmax=0.405)
     pyplot.colorbar(im_speed, ax=ax_speed)
     draw_cylinder(ax_speed)
     ax_speed.set_title('Velocity magnitude')
     ax_speed.set_aspect('equal')
 
-    im_p = ax_p.contourf(x, y, P_data.T, levels=30, cmap='jet')
+    im_p = ax_p.pcolormesh(x, y, P_data.T, shading='gouraud', cmap='jet', vmin=-0.0115, vmax=0.131)
     pyplot.colorbar(im_p, ax=ax_p)
     draw_cylinder(ax_p)
     ax_p.set_title('Pressure')
     ax_p.set_aspect('equal')
-
-    im_psi = ax_psi.contour(x, y, Stream_data.T, levels=30, cmap='jet')
+    
+    im_psi = ax_psi.pcolormesh(x, y, Stream_data.T, shading='gouraud', cmap='jet')
     pyplot.colorbar(im_psi, ax=ax_psi)
     draw_cylinder(ax_psi)
     ax_psi.set_title('Streamfunction')
     ax_psi.set_aspect('equal')
+
+    dp_target = 0.11752016697
+    dp_error_pct = abs(delta_p - dp_target) / dp_target * 100
+
+    summary_text = (
+        f"DFG 2D-1 benchmark (Re=20, steady)\n\n"
+        f"Grid: {nx} x {ny}  (dx=dy=0.01)\n"
+        f"t_end: {t_end}\n\n"
+        f"$\\Delta p$ computed: {delta_p:.11f}\n"
+        f"$\\Delta p$ target:   {dp_target:.11f}\n"
+        f"error: {dp_error_pct:.2f}%"
+    )
+    ax_text.axis('off')
+    ax_text.text(0.05, 0.5, summary_text, transform=ax_text.transAxes,
+                  fontsize=11, va='center', ha='left', family='monospace')
 
     for ax in (ax_speed, ax_p, ax_psi):
         ax.set_xlabel('x')
