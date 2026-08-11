@@ -13,20 +13,21 @@ rank = MPI.COMM_WORLD.Get_size()
 # the previous x10-scaled grid, so cost/step-count is unchanged.
 nx, ny = 221, 42
 # TODO: switch to implicit etc..
-run_solver = make_solver(nx=nx, ny=ny, ab2=False, implicit_diffusion=False, u_max=0.3)
+run_solver = make_solver(nx=nx, ny=ny, ab2=True, implicit_diffusion=True, u_max=0.3)
 
-t_end = 50.0
+t_end = 30.0
 
 # _original is before interpolation back to node
 # fixed=False: run in chunks, checking ||u(t)-u(t-dt)|| every check_every steps
 # and stopping once the relative change drops below tol, rather than blindly
 # running to a guessed t_end.
-x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original, delta_p, P_data = run_solver(20, tol=1e-5, t_end=t_end, check_every=400, fixed=True)
+x, y, U_data, V_data, Omega_data, Stream_data, my_rank, u_original, v_original, p_original, delta_p, P_data = run_solver(20, tol=1e-5, t_end=t_end, check_every=400, fixed=True)
 
 if my_rank == 0:
-    # staggered u and v
+    # staggered u, v and p
     np.savetxt(f'u_original_{rank}.txt', u_original, fmt='%12.6f')
     np.savetxt(f'v_original_{rank}.txt', v_original, fmt='%12.6f')
+    np.savetxt(f'p_original_{rank}.txt', p_original, fmt='%12.6f')
 
 if my_rank == 0:
 

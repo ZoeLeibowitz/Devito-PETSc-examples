@@ -5,7 +5,7 @@ import sympy as sp
 import matplotlib.pyplot as plt
 
 from devito import (Grid, TimeFunction, Function, Eq, Operator, Border,
-                    configuration, SubDomain, NODE, switchconfig, Constant, solve)
+                    configuration, SubDomain, NODE, switchconfig, Constant, solve, Derivative)
 from devito.symbolics import retrieve_functions, retrieve_derivatives
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -149,21 +149,25 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
               (zero, grid.dimensions[1].spacing/2): 0.05}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
-    bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
+    # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
+
+
+
+    # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0), Eq(u.laplace, 0), Eq(v.laplace, 0)], funcs=(u, v, p))
 
 
     # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx - nu*u.laplace, 0), Eq(p.dy - nu*v.laplace, 0)], funcs=(u, v, p))
 
-    # bcs = BoundaryConditions(
-    #     [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0)],
-    #     funcs=(u, v, p)
-    # )
+    bcs = BoundaryConditions(
+        [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.laplace - bg.n[1]*v.laplace, 0)],
+        funcs=(u, v, p)
+    )
 
     boundary = Boundary(bcs, bg)
 
     subs = boundary.substitutions(tuple(derivs))
 
-    return subs
+    return subs, boundary
 
 
 def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
@@ -418,11 +422,11 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     derivs = [d for d in derivs if grid.stepping_dim not in d.dims]
     print([derivs])
 
-    ib_subs = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y), nu=nu)
+    ib_subs, boundary = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y), nu=nu)
 
     pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
                                 options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-4})
+                                solver_parameters={'ksp_type': 'gmres', 'ksp_rtol': 1e-4})
 
     u_tent_solve = petscsolve([eq_u_tent.subs(ib_subs)] + bc_u_tent, u.forward,
                               options_prefix='utent_solve',
@@ -461,14 +465,19 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         y_j = j * dy_phys
         psi_bc.data[:, j] = (4.0*u_max/y_extent**2) * (y_extent*y_j**2/2.0 - y_j**3/3.0)
 
-    eq_interp_u = Eq(plotfunc_u, u)
-    op_interp_u = Operator([eq_interp_u])
+    # eq_interp_u = Eq(plotfunc_u, u)
+    eq_interp_u = Eq(plotfunc_u, Derivative(u, (y, 0), x0={y: y}))
+    interp_subs_u = boundary.substitutions((Derivative(u, (y, 0), x0={y: y}),))
+    op_interp_u = Operator([eq_interp_u.subs(interp_subs_u)])
 
-    eq_interp_v = Eq(plotfunc_v, v)
-    op_interp_v = Operator([eq_interp_v])
+    # eq_interp_v = Eq(plotfunc_v, v)
+    eq_interp_v = Eq(plotfunc_v, Derivative(v, (x, 0), x0={x: x}))
+    interp_subs_v = boundary.substitutions((Derivative(v, (x, 0), x0={x: x}),))
+    op_interp_v = Operator([eq_interp_v.subs(interp_subs_v)])
 
-    eq_interp_p = Eq(plotfunc_p, p)
-    op_interp_p = Operator([eq_interp_p])
+    eq_interp_p = Eq(plotfunc_p, Derivative(p, (x, 0), (y, 0), x0={x: x, y: y}))
+    interp_subs_p = boundary.substitutions((Derivative(p, (x, 0), (y, 0), x0={x: x, y: y}),))
+    op_interp_p = Operator([eq_interp_p.subs(interp_subs_p)])
 
     vorticity_eqn = Eq(vorticity, v.dx - u.dy)
     op_vorticity = Operator(vorticity_eqn)
@@ -478,7 +487,9 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         EssentialBC(stream, psi_bc, subdomain=border),
         Eq(stream, stream.subs({x: x - x.spacing}), subdomain=grid.subdomains['sub21']),
     ]
-    stream_eqn = Eq(stream.laplace, -(v.dx - u.dy), subdomain=grid.interior)
+    stream_eqn = Eq(stream.laplace, -(v.dx(x0={x: x}) - u.dy(y0={y: y})), subdomain=grid.interior)
+    sub2 = boundary.substitutions((v.dx(x0={x: x}), u.dy(y0={y: y})))
+    stream_eqn = stream_eqn.subs(sub2)
     stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
 
     with switchconfig(language='petsc'):
@@ -575,13 +586,16 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
             if comm != MPI.COMM_NULL and _my_rank == 0:
                 u_snap = u_g[tb]
                 v_snap = v_g[tb]
+                p_snap = p_g
             else:
                 u_snap = None
                 v_snap = None
+                p_snap = None
         else:
             _my_rank = 0
             u_snap = u.data[tb]
             v_snap = v.data[tb]
+            p_snap = p.data
 
         delta_p = None
         if _my_rank == 0:
@@ -630,6 +644,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
                 _my_rank,
                 u_snap,
                 v_snap,
+                p_snap,
                 delta_p,
                 plotfunc_p.data_gather(rank=0))
 
