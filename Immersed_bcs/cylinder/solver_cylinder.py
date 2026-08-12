@@ -146,7 +146,8 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
     # from the fluid solve entirely
     cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
               (grid.dimensions[0].spacing/2, zero): 0.05,
-              (zero, grid.dimensions[1].spacing/2): 0.05}
+              (zero, grid.dimensions[1].spacing/2): 0.05,
+              (zero, zero): 0.05}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
     # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))

@@ -115,6 +115,19 @@ ax_v.set_aspect('equal')
 pyplot.tight_layout()
 pyplot.savefig(f'velocity_fields.png', dpi=150, bbox_inches='tight')
 
+# pressure, pre-interpolation, masked with x_y_mask (p's own staggered
+# subgrid -- already the tightest of the three, no fluid-side exclusion at
+# its current cutoff, unlike node_mask which P_data/plotfunc_p use elsewhere)
+fig_p_orig, ax_p_orig = pyplot.subplots(figsize=(11, 3))
+im_p_orig = ax_p_orig.imshow(masked(p_original, x_y_mask).T, origin='lower', extent=imshow_extent)
+pyplot.colorbar(im_p_orig, ax=ax_p_orig)
+draw_cylinder(ax_p_orig)
+ax_p_orig.set_xlabel('x')
+ax_p_orig.set_ylabel('y')
+ax_p_orig.set_title('pressure (original, pre-interpolation)')
+ax_p_orig.set_aspect('equal')
+pyplot.savefig(f'pressure_original.png', dpi=150, bbox_inches='tight')
+
 # vorticity
 fig_omega, ax_omega = pyplot.subplots(figsize=(6, 5))
 im_omega = ax_omega.contourf(x, y, Omega_data.T, levels=20)
