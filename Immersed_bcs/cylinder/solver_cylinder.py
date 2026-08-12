@@ -400,6 +400,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     bc_p += [_neumann_right(eq_p, p, grid.subdomains['sub6'])]
     bc_p += [_neumann_bottom(eq_p, p, grid.subdomains['sub8'])]
     bc_p += [_neumann_right(_neumann_bottom(eq_p, p, grid.subdomains['sub9']), p, grid.subdomains['sub9'])]
+    bc_p += [_neumann_left(_neumann_bottom(eq_p, p, grid.subdomains['sub7']), p, grid.subdomains['sub7'])]
 
     # Velocity correction
     # p.dx/p.dy need x0 pinned explicitly to the unstaggered location for schism to work correctly with staggering
@@ -453,10 +454,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
                           staggered=NODE)
     plotfunc_p = Function(name='plotfunc_p', grid=grid, space_order=so,
                           staggered=NODE)
-
     vorticity = Function(name='vorticity', grid=grid, space_order=so,
                         staggered=NODE)
-
     stream = Function(name='psi', grid=grid, space_order=so,
                          staggered=NODE)
 
@@ -466,6 +465,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         psi_bc.data[:, j] = (4.0*u_max/y_extent**2) * (y_extent*y_j**2/2.0 - y_j**3/3.0)
 
     # eq_interp_u = Eq(plotfunc_u, u)
+    # Use zero derivatives instead of just the functions so we can apply the immersed boundary substitutions to them
+    # to make sure the interpolations are boundary aware
     eq_interp_u = Eq(plotfunc_u, Derivative(u, (y, 0), x0={y: y}))
     interp_subs_u = boundary.substitutions((Derivative(u, (y, 0), x0={y: y}),))
     op_interp_u = Operator([eq_interp_u.subs(interp_subs_u)])
@@ -479,7 +480,9 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     interp_subs_p = boundary.substitutions((Derivative(p, (x, 0), (y, 0), x0={x: x, y: y}),))
     op_interp_p = Operator([eq_interp_p.subs(interp_subs_p)])
 
-    vorticity_eqn = Eq(vorticity, v.dx - u.dy)
+    vorticity_eqn = Eq(vorticity, v.dx(x0={x: x}) - u.dy(x0={y: y}))
+    vort_subs = boundary.substitutions((v.dx(x0={x: x}), u.dy(x0={y: y})))
+    vorticity_eqn = vorticity_eqn.subs(vort_subs)
     op_vorticity = Operator(vorticity_eqn)
 
     border = Border(grid, 1)
@@ -487,14 +490,13 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         EssentialBC(stream, psi_bc, subdomain=border),
         Eq(stream, stream.subs({x: x - x.spacing}), subdomain=grid.subdomains['sub21']),
     ]
-    stream_eqn = Eq(stream.laplace, -(v.dx(x0={x: x}) - u.dy(y0={y: y})), subdomain=grid.interior)
-    sub2 = boundary.substitutions((v.dx(x0={x: x}), u.dy(y0={y: y})))
+    stream_eqn = Eq(stream.laplace, -(v.dx(x0={x: x}) - u.dy(x0={y: y})), subdomain=grid.interior)
+    sub2 = boundary.substitutions((v.dx(x0={x: x}), u.dy(x0={y: y})))
     stream_eqn = stream_eqn.subs(sub2)
     stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
 
     with switchconfig(language='petsc'):
         op_stream = Operator([stream_solver])
-
 
     x_coord = np.linspace(0, x_extent, nx)
     y_coord = np.linspace(0, y_extent, ny)
@@ -580,6 +582,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         v_g = v.data_gather(rank=0)
         p_g = p.data_gather(rank=0)
 
+
+        zero = sp.core.numbers.Zero()
         comm = grid.comm
         if comm is not None and configuration['mpi']:
             _my_rank = comm.rank
@@ -591,50 +595,23 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
                 u_snap = None
                 v_snap = None
                 p_snap = None
+            node_mask = None
+            x_mask = None
+            y_mask = None
+            x_y_mask = None
         else:
             _my_rank = 0
             u_snap = u.data[tb]
             v_snap = v.data[tb]
             p_snap = p.data
-
-        delta_p = None
-        if _my_rank == 0:
-            def extrap_p(field, x_boundary, y_line, direction, npts=2):
-                j_lo = int(np.floor((y_line - dy_phys/2) / dy_phys))
-                i = int(np.floor((x_boundary - dx_phys/2) / dx_phys)) \
-                    + (1 if direction > 0 else 0)
-                found = []
-                while len(found) < npts:
-                    val = 0.5*(field[i, j_lo] + field[i, j_lo + 1])
-                    if val != 0.0:
-                        xi = i*dx_phys + dx_phys/2
-                        found.append((xi, val))
-                    i += direction
-                # Lagrange interpolation/extrapolation through `found`,
-                # evaluated at x_boundary
-                total = 0.0
-                for k, (xk, yk) in enumerate(found):
-                    term = yk
-                    for m, (xm, _) in enumerate(found):
-                        if m != k:
-                            term *= (x_boundary - xm)/(xk - xm)
-                    total += term
-                return total
-
-            # DFG benchmark points (0.15, 0.2) and (0.25, 0.2), in the solver's
-            # own units now that geometry/velocity match the benchmark exactly
-            p_front = extrap_p(p_g, 0.15, 0.2, direction=-1, npts=2)
-            p_rear = extrap_p(p_g, 0.25, 0.2, direction=1, npts=2)
-            delta_p = float(p_front - p_rear)
-            print(f'Delta p (front - rear) = {delta_p}  '
-                  f'(DFG 2D-1 target: 0.11752016697)')
-
-            p_front_q = extrap_p(p_g, 0.15, 0.2, direction=-1, npts=3)
-            p_rear_q = extrap_p(p_g, 0.25, 0.2, direction=1, npts=3)
-            delta_p_q = float(p_front_q - p_rear_q)
-            print(f'Delta p (quadratic, 3-point extrapolation) = {delta_p_q}  '
-                  f'(DFG 2D-1 target: 0.11752016697)')
-
+            node_mask = boundary.geometry.interior_mask[zero, zero]
+            # x_mask/y_mask/x_y_mask match v's/u's/p's own staggering
+            # (sdf_x, sdf_y, sdf_x_y respectively) -- for masking the raw,
+            # pre-interpolation u_original/v_original/p_original fields,
+            # which live on those subgrids, not the NODE one node_mask covers
+            x_mask = boundary.geometry.interior_mask[x.spacing/2, zero]
+            y_mask = boundary.geometry.interior_mask[zero, y.spacing/2]
+            x_y_mask = boundary.geometry.interior_mask[x.spacing/2, y.spacing/2]
 
         return (x_coord.copy(), y_coord.copy(),
                 plotfunc_u.data_gather(rank=0),
@@ -645,7 +622,10 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
                 u_snap,
                 v_snap,
                 p_snap,
-                delta_p,
-                plotfunc_p.data_gather(rank=0))
+                plotfunc_p.data_gather(rank=0),
+                node_mask,
+                x_mask,
+                y_mask,
+                x_y_mask)
 
     return run_cavity_flow
