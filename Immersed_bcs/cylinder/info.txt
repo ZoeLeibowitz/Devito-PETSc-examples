@@ -1,0 +1,33 @@
+1. 221_42_01
+- t_end=25
+- 221 x 42 grid
+- ab2=False, implicit=False
+bcs = [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.laplace - bg.n[1]*v.laplace, 0)]
+- gmres pressure solve
+- cutoffs: p=0, u,v=0.05, node=0.05
+
+
+
+2. 331_62_01
+- same as 221_42_01 but 331 x 62 grid
+- finer grid
+
+
+
+3. 221_42_02
+- same as 221_42_01 but with different cutoffs.
+- cutoffs: p=0, u,v=0.5, node=0
+
+
+
+4. 331_62_02
+- same as 331_62_01 but different cutoffs
+- cutoffs: p:=0, u,v=0.5, node:0
+
+
+
+5. 331_62_03
+- same as 331_62_02 but different cutoffs
+- cutoffs: p=0.1, u,v=0.5, node=0.1
+
+
