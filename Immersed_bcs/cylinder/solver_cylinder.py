@@ -144,10 +144,15 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
 
     # cutoff is how close a point can get to the boundary before being excluded
     # from the fluid solve entirely
+    # cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
+    #           (grid.dimensions[0].spacing/2, zero): 0.05,
+    #           (zero, grid.dimensions[1].spacing/2): 0.05,
+    #           (zero, zero): 0.05}
+
     cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
-              (grid.dimensions[0].spacing/2, zero): 0.05,
-              (zero, grid.dimensions[1].spacing/2): 0.05,
-              (zero, zero): 0.05}
+              (grid.dimensions[0].spacing/2, zero): 0.5,
+              (zero, grid.dimensions[1].spacing/2): 0.5,
+              (zero, zero): 0.1}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
     # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
@@ -168,7 +173,7 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
 
     subs = boundary.substitutions(tuple(derivs))
 
-    return subs, boundary
+    return subs, boundary, bg
 
 
 def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
@@ -424,7 +429,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     derivs = [d for d in derivs if grid.stepping_dim not in d.dims]
     print([derivs])
 
-    ib_subs, boundary = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y), nu=nu)
+    ib_subs, boundary, bg = setup_immersed_bcs(grid, u, v, p, derivs, radius=radius, centre=(centre_x, centre_y), nu=nu)
 
     pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
                                 options_prefix='pressure_solve',
@@ -485,15 +490,19 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
     vort_subs = boundary.substitutions((v.dx(x0={x: x}), u.dy(x0={y: y})))
     vorticity_eqn = vorticity_eqn.subs(vort_subs)
     op_vorticity = Operator(vorticity_eqn)
+    psi_cyl = Constant(name='psi_cyl', dtype=np.float64)
+    bcs_stream = BoundaryConditions([Eq(stream, 0)], funcs=(stream,))
+    boundary_stream = Boundary(bcs_stream, bg)
+    stream_lap_subs = boundary_stream.substitutions((stream.dx2, stream.dy2))
 
     border = Border(grid, 1)
     stream_bc = [
-        EssentialBC(stream, psi_bc, subdomain=border),
+        EssentialBC(stream, psi_bc - psi_cyl, subdomain=border),
         Eq(stream, stream.subs({x: x - x.spacing}), subdomain=grid.subdomains['sub21']),
     ]
     stream_eqn = Eq(stream.laplace, -(v.dx(x0={x: x}) - u.dy(x0={y: y})), subdomain=grid.interior)
     sub2 = boundary.substitutions((v.dx(x0={x: x}), u.dy(x0={y: y})))
-    stream_eqn = stream_eqn.subs(sub2)
+    stream_eqn = stream_eqn.subs(sub2).subs(stream_lap_subs)
     stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
 
     with switchconfig(language='petsc'):
@@ -577,6 +586,20 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
         op_interp_v(time_M=tb)
         op_interp_p()
         op_vorticity.apply(time_M=tb)
+
+        # psi_cyl: line-integrate the converged u field from the bottom wall
+        # (psi=0 by this solver's convention) up to the cylinder's lower
+        # surface, giving the single streamline value the cylinder sits on
+        # (u=v=0 on the cylinder makes it one streamline, but not necessarily
+        # psi=0). NOTE: assumes non-MPI (plain numpy indexing into u.data),
+        # matching this block's existing non-parallel-only pieces below.
+        x_idx = int(round(centre_x / dx_phys))
+        y_upper = centre_y - radius
+        j_upper = int(np.floor(y_upper / dy_phys - 0.5))
+        y_col = (np.arange(j_upper + 1) + 0.5) * dy_phys
+        u_col = np.array(u.data[tb])[x_idx, :j_upper + 1]
+        psi_cyl.data = np.float64(np.trapz(u_col, y_col))
+
         op_stream.apply(time_M=tb)
 
         u_g = u.data_gather(rank=0)
