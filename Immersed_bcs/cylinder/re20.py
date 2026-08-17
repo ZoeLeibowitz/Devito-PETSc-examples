@@ -11,7 +11,7 @@ nx, ny = 331, 62
 # nx, ny = 221, 42
 run_solver = make_solver(nx=nx, ny=ny, ab2=False, implicit_diffusion=False, u_max=0.3)
 
-t_end = 20  # matches the other short sanity-check runs used to gauge pressure trend
+t_end = 20
 
 suffix = '_331_62_04'
 

@@ -7,11 +7,9 @@ bcs = [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.la
 - cutoffs: p=0, u,v=0.05, node=0.05
 
 
-
 2. 331_62_01
 - same as 221_42_01 but 331 x 62 grid
 - finer grid
-
 
 
 3. 221_42_02
@@ -19,11 +17,9 @@ bcs = [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.la
 - cutoffs: p=0, u,v=0.5, node=0
 
 
-
 4. 331_62_02
 - same as 331_62_01 but different cutoffs
 - cutoffs: p:=0, u,v=0.5, node:0
-
 
 
 5. 331_62_03
@@ -31,6 +27,11 @@ bcs = [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.la
 - cutoffs: p=0.1, u,v=0.5, node=0.1
 
 
-
+5. 331_62_04 - BEST 
+- tend = 20
+- cutoffs: p=0, u,v=0.3, node=0
+- gmres
+- 14000s - approx 4 hours
+- ab2 False, implicit diffusion False
 
 

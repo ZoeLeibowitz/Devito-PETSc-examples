@@ -433,8 +433,7 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
 
     pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
                                 options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'gmres', 'ksp_rtol': 1e-4,
-                                                   'ksp_max_it': 50000})
+                                solver_parameters={'ksp_type': 'gmres', 'ksp_rtol': 1e-4})
 
     u_tent_solve = petscsolve([eq_u_tent.subs(ib_subs)] + bc_u_tent, u.forward,
                               options_prefix='utent_solve',
