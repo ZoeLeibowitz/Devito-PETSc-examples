@@ -7,13 +7,13 @@ from devito.mpi.distributed import MPI
 # 2.2 x 0.41 channel (D=0.1 cylinder), same relative resolution (dx/D=0.1) as
 # the previous x10-scaled grid, so cost/step-count is unchanged.
 nx, ny = 331, 62
+# nx, ny = 441, 83
 # nx, ny = 221, 42
-# TODO: switch to implicit etc..
 run_solver = make_solver(nx=nx, ny=ny, ab2=False, implicit_diffusion=False, u_max=0.3)
 
-t_end = 20.0
+t_end = 20  # matches the other short sanity-check runs used to gauge pressure trend
 
-suffix = '_331_62_03'
+suffix = '_331_62_04'
 
 # _original is before interpolation back to node
 # fixed=False: run in chunks, checking ||u(t)-u(t-dt)|| every check_every steps

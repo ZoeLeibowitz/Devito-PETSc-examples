@@ -31,3 +31,6 @@ bcs = [Eq(u, 0), Eq(v, 0), Eq(-bg.n[0]*p.dx - bg.n[1]*p.dy, 0), Eq(-bg.n[0]*u.la
 - cutoffs: p=0.1, u,v=0.5, node=0.1
 
 
+
+
+

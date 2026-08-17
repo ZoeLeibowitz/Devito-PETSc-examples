@@ -149,10 +149,10 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
     #           (zero, grid.dimensions[1].spacing/2): 0.05,
     #           (zero, zero): 0.05}
 
-    cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0.1,
-              (grid.dimensions[0].spacing/2, zero): 0.5,
-              (zero, grid.dimensions[1].spacing/2): 0.5,
-              (zero, zero): 0.1}
+    cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0,
+              (grid.dimensions[0].spacing/2, zero): 0.3,
+              (zero, grid.dimensions[1].spacing/2): 0.3,
+              (zero, zero): 0}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 
     # bcs = BoundaryConditions([Eq(u, 0), Eq(v, 0), Eq(p.dx, 0), Eq(p.dy, 0)], funcs=(u, v, p))
@@ -433,7 +433,8 @@ def make_solver(ny, nx=None, ab2=False, implicit_diffusion=False, u_max=0.3):
 
     pressure_solve = petscsolve([eq_p.subs(ib_subs)] + bc_p, p,
                                 options_prefix='pressure_solve',
-                                solver_parameters={'ksp_type': 'gmres', 'ksp_rtol': 1e-4})
+                                solver_parameters={'ksp_type': 'gmres', 'ksp_rtol': 1e-4,
+                                                   'ksp_max_it': 50000})
 
     u_tent_solve = petscsolve([eq_u_tent.subs(ib_subs)] + bc_u_tent, u.forward,
                               options_prefix='utent_solve',
