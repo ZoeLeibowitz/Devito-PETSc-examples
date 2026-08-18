@@ -150,8 +150,8 @@ def setup_immersed_bcs(grid, u=None, v=None, p=None, derivs=None, radius=None, c
     #           (zero, zero): 0.05}
 
     cutoff = {(grid.dimensions[0].spacing/2, grid.dimensions[1].spacing/2): 0,
-              (grid.dimensions[0].spacing/2, zero): 0.3,
-              (zero, grid.dimensions[1].spacing/2): 0.3,
+              (grid.dimensions[0].spacing/2, zero): 0.2,
+              (zero, grid.dimensions[1].spacing/2): 0.2,
               (zero, zero): 0}
     bg = BoundaryGeometry((sdf, sdf_x, sdf_y, sdf_x_y), cutoff=cutoff)
 

@@ -13,7 +13,7 @@ run_solver = make_solver(nx=nx, ny=ny, ab2=False, implicit_diffusion=False, u_ma
 
 t_end = 20
 
-suffix = '_331_62_04'
+suffix = '_331_62_05'
 
 # _original is before interpolation back to node
 # fixed=False: run in chunks, checking ||u(t)-u(t-dt)|| every check_every steps
