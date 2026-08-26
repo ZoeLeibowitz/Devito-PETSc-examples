@@ -1,0 +1,2 @@
+Re=350, grid=601x41
+Reattachment length x_r/h = 11.6020  (x_r = 11.6020)

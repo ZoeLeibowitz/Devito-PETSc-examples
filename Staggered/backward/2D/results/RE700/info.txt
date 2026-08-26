@@ -1,0 +1,15 @@
+
+
+
+
+
+t=613.3333333333334 step=36800 norm=5.630242186651025e-06 rel=9.42714081370646e-05
+converged at t=613.3333333333334 (step 36800/48000), rel=9.42714081370646e-05
+    Linear pressure_solve_ solve converged due to CONVERGED_RTOL iterations 1005
+
+
+Reattachment x_r/h = 11.6020
+
+
+
+7hrs
