@@ -78,7 +78,7 @@ draw_card(y_symfunc, h_card, header_h, "2", "Symbolic Functions",
 draw_arrow(y_symfunc, y_symeq + h_card)
 
 draw_card(y_symeq, h_card, header_h, "3", "Symbolic Equations",
-          "eqn = Eq(u.dt, alpha*u.laplace)")
+          "eqn = Eq(u.dt, alpha**2 * u.laplace)")
 draw_arrow(y_symeq, y_op + h_card)
 
 draw_card(y_op, h_card, header_h, "4", "Operator", "op = Operator(eqn)")
