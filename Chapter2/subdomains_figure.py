@@ -61,7 +61,7 @@ def draw_panel(ax, title, lo, hi, shape_label):
             inside = lo <= x <= hi and lo <= y <= hi
             ax.scatter(
                 x, y,
-                s=42 if inside else 22,
+                s=42,
                 color=DOT_IN if inside else DOT_OUT,
                 zorder=3,
                 clip_on=False,
