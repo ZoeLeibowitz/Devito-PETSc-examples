@@ -11,7 +11,6 @@ TEXT_DARK = "#1B3A1F"
 
 STAGES = [
     ("Equations lowering", "Input Equations → Lowered Equations", False),
-    ("Local analysis", "", False),
     ("Clustering", "Lowered Equations → Clusters", True),
     ("Symbolic optimisation", "Clusters → Clusters", True),
     ("IET construction", "Clusters → IET", False),
@@ -20,10 +19,7 @@ STAGES = [
     ("Synthesis", "IET → CGen AST → C string", True),
     ("JIT Compilation", "C string → kernel.c → kernel.so", False),
 ]
-STAGES = [(f"{i}.  {title}", subtitle, highlighted)
-          for i, (title, subtitle, highlighted) in enumerate(STAGES, start=1)]
-
-fig, ax = plt.subplots(figsize=(5.4, 8.1))
+fig, ax = plt.subplots(figsize=(5.4, 7.2))
 ax.axis("off")
 
 card_w = 4.4
