@@ -14,12 +14,11 @@ STAGES = [
     ("Clustering", "Lowered Equations → Clusters", True),
     ("Symbolic optimisation", "Clusters → Clusters", True),
     ("IET construction", "Clusters → IET", False),
-    ("IET analysis", "IET → IET", False),
     ("IET optimisation", "IET → IET", True),
     ("Synthesis", "IET → CGen AST → C string", True),
     ("JIT Compilation", "C string → kernel.c → kernel.so", False),
 ]
-fig, ax = plt.subplots(figsize=(5.4, 7.2))
+fig, ax = plt.subplots(figsize=(5.4, 6.3))
 ax.axis("off")
 
 card_w = 4.4
