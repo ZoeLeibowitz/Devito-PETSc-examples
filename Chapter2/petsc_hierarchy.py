@@ -8,7 +8,7 @@ from matplotlib.patches import FancyBboxPatch, Rectangle
 # see Figure 1.1 in https://petsc.org/release/manual/manual.pdf
 
 SOLVER = dict(edge="#1E4F8C", fill="#EEF4FB", tab="#C9DDF2", text="#12304F")
-SIDE = dict(edge="#5B2A7A", fill="#F6F0F9", tab="#E1CFEA", text="#3A1A4F")
+DOMAIN = dict(edge="#5B2A7A", fill="#F6F0F9", tab="#E1CFEA", text="#3A1A4F")
 DATA = dict(edge="#9A4A12", fill="#FDF4EB", tab="#F6D9BD", text="#4F260A")
 BODY_TEXT = "#333333"
 
@@ -67,12 +67,12 @@ y_data = y_vec
 draw_card(left, y_ts, main_w, h_card, "TS", "Time Steppers",
           ["Forward Euler  ·  Backward Euler  ·  RK  ·  …"], SOLVER)
 draw_card(side_x, y_ts, side_w, h_card, "DM", "Domain Management",
-          ["DMDA · DMPlex · DMShell · …"], SIDE)
+          ["DMDA · DMPlex · DMShell · …"], DOMAIN)
 
 draw_card(left, y_snes, main_w, h_card, "SNES", "Nonlinear Solvers",
           ["Newton line search · Trust region · NGMRES · …"], SOLVER)
 draw_card(side_x, y_snes, side_w, h_card, "TAO", "Optimisation",
-          ["Newton · Levenberg–Marquardt · …"], SIDE)
+          ["Newton · Levenberg–Marquardt · …"], SOLVER)
 
 draw_card(left, y_ksp, full_w, h_card, "KSP", "Krylov Subspace Methods",
           ["CG  ·  GMRES  ·  BiCGStab  ·  MINRES  ·  Richardson  ·  Chebyshev  ·  …"], SOLVER)
