@@ -1,52 +1,70 @@
 """
 Steady-state Poisson equation, adapted from Devito's tutorial notebook
 (devito/examples/cfd/06_poisson.ipynb, "Example 6: Poisson equation").
+
+Solves the same problem as solving_poisson_with_snes/snes_poisson_2d.c
+(ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c):
+    -p_xx - p_yy = b(x,y) = x e^y on the unit square,
+    Dirichlet BCs from the exact solution p(x,y) = -x e^y:
+    p(0,y) = 0, p(1,y) = -e^y, p(x,0) = -x, p(x,1) = -x e.
 """
 import numpy as np
 
-from devito import Grid, Function, TimeFunction, Eq, Operator, solve, configuration
+from devito import (Grid, Function, TimeFunction, Eq, Operator, solve,
+                    configuration, Border)
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
 configuration['log-level'] = 'ERROR'
 
-nx, ny = 50, 50
-nt = 100
-Lx, Ly = 2.0, 1.0
 
-grid = Grid(shape=(nx, ny), extent=(Lx, Ly))
+nx, ny = 17, 17
+nt = 2000
+Lx, Ly = 1.0, 1.0
+
+grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
+
+# Boundary layer of thickness 1 on all sides, to implement BCs
+border = Border(grid, 1)
+
+x_coord = np.linspace(0, Lx, nx)
+y_coord = np.linspace(0, Ly, ny)
+X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 
 b = Function(name='b', grid=grid)
-b.data[:] = 0.
-b.data[int(nx / 4), int(ny / 4)] = -100
-b.data[int(3 * nx / 4), int(3 * ny / 4)] = 100
+b.data[:] = X * np.exp(Y)
 
+p_exact = -X * np.exp(Y)
+
+# Only the boundary values are used, via the Border BC
+bc = Function(name='bc', grid=grid)
+bc.data[:] = p_exact
 
 p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
 
-# Create Laplace equation base on `p`
+# Create Poisson equation based on `p`
 eq = Eq(-p.laplace, b)
 # Solve for the central stencil point
 stencil = solve(eq, p)
 # Let stencil populate the buffer `p.forward`, restricted to grid.interior
 eq_stencil = Eq(p.forward, stencil, subdomain=grid.interior)
 
-# p is initialised to 0 everywhere and grid.interior never updates the
-# boundary layer, so it stays fixed at 0 - already satisfying the
-# homogeneous Dirichlet BC, with no separate BC equations needed.
-op = Operator([eq_stencil])
+# Dirichlet BCs, set on the boundary
+bc_stencil = Eq(p.forward, bc, subdomain=border)
+
+op = Operator([eq_stencil, bc_stencil])
 op(time=nt)
 
 buffer_size = p.time_order + 1
-final_idx = nt % buffer_size
+final_idx = (nt + 1) % buffer_size  # op(time=nt) runs nt + 1 sweeps
 p_final = p.data[final_idx]
 
-
-x_coord = np.linspace(0, Lx, nx)
-y_coord = np.linspace(0, Ly, ny)
-X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
+errinf = np.abs(p_final - p_exact).max()
+err2h = np.linalg.norm(p_final - p_exact) / np.sqrt((nx - 1) * (ny - 1))
+print(f"problem on {nx} x {ny} point 2D grid:\n"
+      f"  error |p-pexact|_inf = {errinf:.3e}, |p-pexact|_h = {err2h:.3e}")
 
 fig = plt.figure(figsize=(11, 7), dpi=100)
 ax = fig.add_subplot(111, projection='3d')

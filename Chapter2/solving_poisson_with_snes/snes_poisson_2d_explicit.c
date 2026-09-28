@@ -1,5 +1,5 @@
 static char help[] = "Example adapted from Ed Bueler - petsc4pdes.\n"
-                     "Solves structured-grid Poisson problem in 2D - matrix free version.\n"
+                     "Solves structured-grid Poisson problem in 2D.\n"
                      "Equation is\n"
                      "    - p_xx - p_yy = b,\n"
                      "subject to Dirichlet boundary conditions.\n"
@@ -31,14 +31,13 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
   return x * PetscExpReal(y); // note  b = - (p_xx + p_yy) = - p
 }
 
-PetscErrorCode JacMult(Mat J, Vec X, Vec Y);
+PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy);
 PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
 int main(int argc, char **argv)
 {
-  Mat           J;
   DM            da;
   KSP           ksp;
   PC            pc;
@@ -60,7 +59,6 @@ int main(int argc, char **argv)
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
-  PetscCall(DMSetMatType(da, MATSHELL));
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
   PetscCall(SNESSetType(snes, SNESKSPONLY));
   PetscCall(SNESGetKSP(snes, &ksp));
@@ -69,13 +67,10 @@ int main(int argc, char **argv)
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetType(pc, PCNONE));
   PetscCall(SNESSetDM(snes, da));
-  PetscCall(DMCreateMatrix(da, &J));
-  PetscCall(SNESSetJacobian(snes, J, J, MatMFFDComputeJacobian, NULL));
-  // Set the matrix-free matmult action for J
-  PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))JacMult));
   PetscCall(SNESSetFunction(snes, NULL, FormFunctionGlobal, (void *)(da)));
+  // Assemble the Jacobian explicitly (AIJ matrix created from the DMDA)
+  PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, (void *)(da)));
   PetscCall(SNESSetFromOptions(snes));
-  PetscCall(MatSetDM(J, da));
   PetscCall(DMSetApplicationContext(da, &user));
   PetscCall(DMCreateGlobalVector(da, &pglobal));
   PetscCall(InitialState(da, pglobal, &user)); // zero interior, p = g on boundary
@@ -98,7 +93,6 @@ int main(int argc, char **argv)
                         "  error |p-pexact|_inf = %.3e, |p-pexact|_h = %.3e\n",
                         gridstr, errinf, err2h));
   PetscCall(VecDestroy(&pglobal));
-  PetscCall(MatDestroy(&J));
   PetscCall(SNESDestroy(&snes));
   PetscCall(DMDestroy(&da));
   PetscCall(PetscFinalize());
@@ -162,57 +156,66 @@ PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode JacMult(Mat J, Vec X, Vec Y)
+PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
 {
-  DM            dm;
+  DM            dm = (DM)(dummy);
   DMDALocalInfo info;
-  Vec           xloc, yloc;
-  PetscScalar   xymin[2], xymax[2], hx, hy, scdiag;
-  PetscInt      i, j, xs, ys, xm, ym;
-  PetscScalar   pe, pw, pn, ps;
-  PetscScalar **x_p;
-  PetscScalar **y_p;
+  Vec           p_local;
+  PetscScalar **ap;
+  PetscReal     xymin[2], xymax[2], hx, hy, scdiag, v[5];
+  PetscInt      i, j, ncols;
+  MatStencil    col[5], row;
+
   PetscFunctionBeginUser;
-  PetscCall(VecSet(Y, 0.0));
-  PetscCall(MatGetDM(J, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
 
-  PetscCall(DMGetLocalVector(dm, &xloc));
-  PetscCall(DMGetLocalVector(dm, &yloc));
-  PetscCall(DMGlobalToLocalBegin(dm, X, INSERT_VALUES, xloc));
-  PetscCall(DMGlobalToLocalEnd(dm, X, INSERT_VALUES, xloc));
-  PetscCall(VecSet(yloc, 0.0));
-  PetscCall(DMDAVecGetArray(dm, yloc, &y_p));
-  PetscCall(DMDAVecGetArray(dm, xloc, &x_p));
+  PetscCall(DMGetLocalVector(dm, &p_local));
+  PetscCall(DMGlobalToLocalBegin(dm, p, INSERT_VALUES, p_local));
+  PetscCall(DMGlobalToLocalEnd(dm, p, INSERT_VALUES, p_local));
+  PetscCall(DMDAVecGetArray(dm, p_local, &ap));
+
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
   hy     = (xymax[1] - xymin[1]) / (info.my - 1);
   scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
 
-  DMDAGetCorners(dm, &xs, &ys, NULL, &xm, &ym, NULL);
-
   for (j = info.ys; j < info.ys + info.ym; j++) {
+    row.j    = j;
+    col[0].j = j;
     for (i = info.xs; i < info.xs + info.xm; i++) {
+      row.i    = i;
+      col[0].i = i;
+      ncols    = 1;
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
-        y_p[j][i] = scdiag * x_p[j][i];
+        v[0] = scdiag; // boundary rows: F = scdiag * (p - g)
       } else {
-        pe        = (i + 1 == info.mx - 1) ? 0.0 : x_p[j][i + 1];
-        pw        = (i - 1 == 0) ? 0.0 : x_p[j][i - 1];
-        pn        = (j + 1 == info.my - 1) ? 0.0 : x_p[j + 1][i];
-        ps        = (j - 1 == 0) ? 0.0 : x_p[j - 1][i];
-        y_p[j][i] = scdiag * x_p[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn);
+        v[0] = scdiag;
+        if (i - 1 > 0) {
+          col[ncols].j = j;     col[ncols].i = i - 1; v[ncols++] = -hy / hx;
+        }
+        if (i + 1 < info.mx - 1) {
+          col[ncols].j = j;     col[ncols].i = i + 1; v[ncols++] = -hy / hx;
+        }
+        if (j - 1 > 0) {
+          col[ncols].j = j - 1; col[ncols].i = i;     v[ncols++] = -hx / hy;
+        }
+        if (j + 1 < info.my - 1) {
+          col[ncols].j = j + 1; col[ncols].i = i;     v[ncols++] = -hx / hy;
+        }
       }
+      PetscCall(MatSetValuesStencil(Jpre, 1, &row, ncols, col, v, INSERT_VALUES));
     }
   }
 
-  PetscCall(DMDAVecRestoreArray(dm, yloc, &y_p));
-  PetscCall(DMDAVecRestoreArray(dm, xloc, &x_p));
+  PetscCall(MatAssemblyBegin(Jpre, MAT_FINAL_ASSEMBLY));
+  PetscCall(MatAssemblyEnd(Jpre, MAT_FINAL_ASSEMBLY));
+  if (J != Jpre) {
+    PetscCall(MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY));
+    PetscCall(MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY));
+  }
 
-  PetscCall(DMLocalToGlobalBegin(dm, yloc, ADD_VALUES, Y));
-  PetscCall(DMLocalToGlobalEnd(dm, yloc, ADD_VALUES, Y));
-
-  PetscCall(DMRestoreLocalVector(dm, &xloc));
-  PetscCall(DMRestoreLocalVector(dm, &yloc));
+  PetscCall(DMDAVecRestoreArray(dm, p_local, &ap));
+  PetscCall(DMRestoreLocalVector(dm, &p_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
