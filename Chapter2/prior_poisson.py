@@ -45,20 +45,20 @@ p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
 
 # Create Poisson equation based on `p`
-eq = Eq(-p.laplace, b)
+eqn = Eq(-p.laplace, b)
 # Solve for the central stencil point
-stencil = solve(eq, p)
+stencil = solve(eqn, p)
 # Let stencil populate the buffer `p.forward`, restricted to grid.interior
-eq_stencil = Eq(p.forward, stencil, subdomain=grid.interior)
+stencil = Eq(p.forward, stencil, subdomain=grid.interior)
 
 # Dirichlet BCs, set on the boundary
-bc_stencil = Eq(p.forward, bc, subdomain=border)
+bc_eq = Eq(p.forward, bc, subdomain=border)
 
-op = Operator([eq_stencil, bc_stencil])
-op(time=nt)
+op = Operator([stencil, bc_eq])
+op.apply(time=nt)
 
 buffer_size = p.time_order + 1
-final_idx = (nt + 1) % buffer_size  # op(time=nt) runs nt + 1 sweeps
+final_idx = (nt + 1) % buffer_size  # op.apply(time=nt) runs nt + 1 sweeps
 p_final = p.data[final_idx]
 
 errinf = np.abs(p_final - p_exact).max()
