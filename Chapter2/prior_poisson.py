@@ -44,7 +44,7 @@ bc.data[:] = p_exact
 p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
 
-# Create Poisson equation based on `p`
+# Define the Poisson equation for `p`
 eqn = Eq(-p.laplace, b)
 # Solve for the central stencil point
 stencil = solve(eqn, p)
