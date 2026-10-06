@@ -40,7 +40,6 @@ int main(int argc, char **argv)
 {
   DM            da;
   KSP           ksp;
-  PC            pc;
   SNES          snes;
   Vec           pglobal, p_exact, p_exact_local;
   DMDALocalInfo info;
@@ -64,8 +63,6 @@ int main(int argc, char **argv)
   PetscCall(SNESGetKSP(snes, &ksp));
   PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
   PetscCall(KSPSetType(ksp, KSPCG));
-  PetscCall(KSPGetPC(ksp, &pc));
-  PetscCall(PCSetType(pc, PCNONE));
   PetscCall(SNESSetDM(snes, da));
   PetscCall(SNESSetFunction(snes, NULL, FormFunctionGlobal, (void *)(da)));
   // Assemble the Jacobian explicitly (AIJ matrix created from the DMDA)
