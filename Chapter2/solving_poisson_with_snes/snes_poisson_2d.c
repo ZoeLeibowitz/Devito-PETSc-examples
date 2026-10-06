@@ -46,7 +46,6 @@ int main(int argc, char **argv)
   DMDALocalInfo info;
   PetscScalar   errinf, normconst2h, err2h;
   char          gridstr[99];
-  PetscInt      N = 17;
   PoissonCtx    user;
 
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
@@ -55,7 +54,7 @@ int main(int argc, char **argv)
   user.g_bdry = &p_exact_2D;
 
   user.b_rhs  = &b_rhs_2D;
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, N, N, PETSC_DECIDE, PETSC_DECIDE, 1, 1, NULL, NULL, &da));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 17, 17, PETSC_DECIDE, PETSC_DECIDE, 1, 1, NULL, NULL, &da));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
