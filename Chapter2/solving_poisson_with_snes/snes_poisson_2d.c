@@ -133,9 +133,9 @@ PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
   scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
 
   for (j = info.ys; j < info.ys + info.ym; j++) {
-    y = j * hy;
+    y = xymin[1] + j * hy;
     for (i = info.xs; i < info.xs + info.xm; i++) {
-      x = i * hx;
+      x = xymin[0] + i * hx;
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
         aF[j][i] = ap[j][i] - user->g_bdry(x, y, user);
         aF[j][i] *= scdiag;
@@ -165,7 +165,7 @@ PetscErrorCode JacMult(Mat J, Vec X, Vec Y)
   DMDALocalInfo info;
   Vec           xloc, yloc;
   PetscScalar   xymin[2], xymax[2], hx, hy, scdiag;
-  PetscInt      i, j, xs, ys, xm, ym;
+  PetscInt      i, j;
   PetscScalar   pe, pw, pn, ps;
   PetscScalar **x_p;
   PetscScalar **y_p;
@@ -185,8 +185,6 @@ PetscErrorCode JacMult(Mat J, Vec X, Vec Y)
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
   hy     = (xymax[1] - xymin[1]) / (info.my - 1);
   scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
-
-  DMDAGetCorners(dm, &xs, &ys, NULL, &xm, &ym, NULL);
 
   for (j = info.ys; j < info.ys + info.ym; j++) {
     for (i = info.xs; i < info.xs + info.xm; i++) {

@@ -127,9 +127,9 @@ PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
   scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
 
   for (j = info.ys; j < info.ys + info.ym; j++) {
-    y = j * hy;
+    y = xymin[1] + j * hy;
     for (i = info.xs; i < info.xs + info.xm; i++) {
-      x = i * hx;
+      x = xymin[0] + i * hx;
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
         aF[j][i] = ap[j][i] - user->g_bdry(x, y, user);
         aF[j][i] *= scdiag;
@@ -157,19 +157,12 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
 {
   DM            dm = (DM)(dummy);
   DMDALocalInfo info;
-  Vec           p_local;
-  PetscScalar **ap;
   PetscReal     xymin[2], xymax[2], hx, hy, scdiag, v[5];
   PetscInt      i, j, ncols;
   MatStencil    col[5], row;
 
   PetscFunctionBeginUser;
   PetscCall(DMDAGetLocalInfo(dm, &info));
-
-  PetscCall(DMGetLocalVector(dm, &p_local));
-  PetscCall(DMGlobalToLocalBegin(dm, p, INSERT_VALUES, p_local));
-  PetscCall(DMGlobalToLocalEnd(dm, p, INSERT_VALUES, p_local));
-  PetscCall(DMDAVecGetArray(dm, p_local, &ap));
 
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
@@ -210,9 +203,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
     PetscCall(MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY));
   }
-
-  PetscCall(DMDAVecRestoreArray(dm, p_local, &ap));
-  PetscCall(DMRestoreLocalVector(dm, &p_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
