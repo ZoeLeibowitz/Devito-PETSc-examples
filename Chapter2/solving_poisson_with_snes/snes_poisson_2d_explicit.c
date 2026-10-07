@@ -113,6 +113,7 @@ PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
 
   PetscCall(DMGetLocalVector(dm, &p_local));
   PetscCall(DMGetLocalVector(dm, &F_local));
+  PetscCall(VecSet(F_local, 0.0));
   PetscCall(DMGlobalToLocalBegin(dm, p, INSERT_VALUES, p_local));
   PetscCall(DMGlobalToLocalEnd(dm, p, INSERT_VALUES, p_local));
 
