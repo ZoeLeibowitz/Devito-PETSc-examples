@@ -31,8 +31,8 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
   return x * PetscExpReal(y); // note  b = - (p_xx + p_yy) = - p
 }
 
-PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy);
-PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy);
+PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *ctx);
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
@@ -111,9 +111,9 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
 {
-  DM            dm = (DM)(dummy);
+  DM            dm = (DM)ctx; // the DMDA passed to SNESSetFunction
   PetscInt      i, j;
   DMDALocalInfo info;
   PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
@@ -167,9 +167,9 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
+PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *ctx)
 {
-  DM            dm = (DM)(dummy);
+  DM            dm = (DM)ctx; // the DMDA passed to SNESSetJacobian
   DMDALocalInfo info;
   PetscReal     xymin[2], xymax[2], hx, hy, sigma, v[5];
   PetscInt      i, j, ncols;

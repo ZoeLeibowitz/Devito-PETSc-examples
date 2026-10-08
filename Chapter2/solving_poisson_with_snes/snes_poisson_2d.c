@@ -32,7 +32,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
 }
 
 PetscErrorCode JacMult(Mat J, Vec X, Vec Y);
-PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy);
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
@@ -117,9 +117,9 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
 {
-  DM            dm = (DM)(dummy);
+  DM            dm = (DM)ctx; // the DMDA passed to SNESSetFunction
   PetscInt      i, j;
   DMDALocalInfo info;
   PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
