@@ -48,29 +48,44 @@ int main(int argc, char **argv)
   PoissonCtx    user;
 
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
+
+  // Problem data, collected in the user context
   user.Lx     = 1.0;
   user.Ly     = 1.0;
+  user.b_rhs  = &b_rhs_2D;
   user.g_bdry = &p_exact_2D;
 
-  user.b_rhs  = &b_rhs_2D;
+  // 17 x 17 grid, one dof per point, process layout chosen by PETSc, star stencil of width one
   PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 17, 17, PETSC_DECIDE, PETSC_DECIDE, 1, 1, NULL, NULL, &da));
+  PetscCall(DMSetApplicationContext(da, &user));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
+  // Coordinates, from which the callbacks compute the spacing
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
+
+  // Nonlinear solver on the grid, with residual and Jacobian callbacks,
+  // which receive the DMDA and its user context
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
-  PetscCall(SNESSetType(snes, SNESKSPONLY));
-  PetscCall(SNESGetKSP(snes, &ksp));
-  PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
-  PetscCall(KSPSetType(ksp, KSPCG));
   PetscCall(SNESSetDM(snes, da));
   PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
-  // Assemble the Jacobian explicitly (AIJ matrix created from the DMDA)
+  // Jacobian routine assembles J into the MATAIJ matrix that SNES creates from the DMDA
   PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, (void *)(da)));
+
+  // Linear problem, so a single Newton step (KSPONLY), solved with CG since the Jacobian is SPD
+  PetscCall(SNESSetType(snes, SNESKSPONLY));
+  PetscCall(SNESGetKSP(snes, &ksp));
+  PetscCall(KSPSetType(ksp, KSPCG));
+  PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
   PetscCall(SNESSetFromOptions(snes));
-  PetscCall(DMSetApplicationContext(da, &user));
+
+  // Initial guess, g on the boundary and zero elsewhere
   PetscCall(DMCreateGlobalVector(da, &pglobal));
-  PetscCall(InitialState(da, pglobal, &user)); // zero interior, p = g on boundary
+  PetscCall(InitialState(da, pglobal, &user));
+  // NULL right hand side, as the terms in b and g are kept in F
+  // rather than passed here as a separate vector
   PetscCall(SNESSolve(snes, NULL, pglobal));
+
+  // Errors against the exact solution
   PetscCall(DMDAGetLocalInfo(da, &info));
   PetscCall(DMCreateLocalVector(da, &p_exact_local));
   PetscCall(DMCreateGlobalVector(da, &p_exact));
@@ -101,7 +116,7 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
   DM            dm = (DM)(dummy);
   PetscInt      i, j;
   DMDALocalInfo info;
-  PetscScalar   scdiag, hx, hy, darea, x, y, pe, pw, pn, ps;
+  PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
   PetscScalar **aF, **ap, xymin[2], xymax[2];
   PoissonCtx   *user;
   Vec           p_local, F_local;
@@ -123,8 +138,7 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
   hy     = (xymax[1] - xymin[1]) / (info.my - 1);
-  darea  = hx * hy;
-  scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
+  sigma  = 2.0 * (hy / hx + hx / hy); // diagonal scaling
 
   for (j = info.ys; j < info.ys + info.ym; j++) {
     y = xymin[1] + j * hy;
@@ -132,13 +146,13 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
       x = xymin[0] + i * hx;
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
         aF[j][i] = ap[j][i] - user->g_bdry(x, y, user);
-        aF[j][i] *= scdiag;
+        aF[j][i] *= sigma;
       } else {
         pe       = (i + 1 == info.mx - 1) ? user->g_bdry(x + hx, y, user) : ap[j][i + 1];
         pw       = (i - 1 == 0) ? user->g_bdry(x - hx, y, user) : ap[j][i - 1];
         pn       = (j + 1 == info.my - 1) ? user->g_bdry(x, y + hy, user) : ap[j + 1][i];
         ps       = (j - 1 == 0) ? user->g_bdry(x, y - hy, user) : ap[j - 1][i];
-        aF[j][i] = scdiag * ap[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn) - darea * user->b_rhs(x, y, user);
+        aF[j][i] = sigma * ap[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn) - hx * hy * user->b_rhs(x, y, user);
       }
     }
   }
@@ -157,7 +171,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
 {
   DM            dm = (DM)(dummy);
   DMDALocalInfo info;
-  PetscReal     xymin[2], xymax[2], hx, hy, scdiag, v[5];
+  PetscReal     xymin[2], xymax[2], hx, hy, sigma, v[5];
   PetscInt      i, j, ncols;
   MatStencil    col[5], row;
 
@@ -167,7 +181,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
   hy     = (xymax[1] - xymin[1]) / (info.my - 1);
-  scdiag = 2.0 * (hy / hx + hx / hy); // diagonal scaling
+  sigma  = 2.0 * (hy / hx + hx / hy); // diagonal scaling
 
   for (j = info.ys; j < info.ys + info.ym; j++) {
     row.j    = j;
@@ -177,9 +191,9 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
       col[0].i = i;
       ncols    = 1;
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
-        v[0] = scdiag; // boundary rows: F = scdiag * (p - g)
+        v[0] = sigma; // boundary rows: F = sigma * (p - g)
       } else {
-        v[0] = scdiag;
+        v[0] = sigma;
         if (i - 1 > 0) {
           col[ncols].j = j;     col[ncols].i = i - 1; v[ncols++] = -hy / hx;
         }
@@ -197,6 +211,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy)
     }
   }
 
+  // Assemble the matrix once all entries are inserted
   PetscCall(MatAssemblyBegin(Jpre, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(Jpre, MAT_FINAL_ASSEMBLY));
   if (J != Jpre) {
