@@ -32,7 +32,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
 }
 
 PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *dummy);
-PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy);
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
   PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
   PetscCall(KSPSetType(ksp, KSPCG));
   PetscCall(SNESSetDM(snes, da));
-  PetscCall(SNESSetFunction(snes, NULL, FormFunctionGlobal, (void *)(da)));
+  PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
   // Assemble the Jacobian explicitly (AIJ matrix created from the DMDA)
   PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, (void *)(da)));
   PetscCall(SNESSetFromOptions(snes));
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
 {
   DM            dm = (DM)(dummy);
   PetscInt      i, j;

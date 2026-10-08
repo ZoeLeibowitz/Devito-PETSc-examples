@@ -32,7 +32,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
 }
 
 PetscErrorCode JacMult(Mat J, Vec X, Vec Y);
-PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy);
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
   PetscCall(SNESSetJacobian(snes, J, J, MatMFFDComputeJacobian, NULL));
   // Set the matrix-free matmult action for J
   PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))JacMult));
-  PetscCall(SNESSetFunction(snes, NULL, FormFunctionGlobal, (void *)(da)));
+  PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
   PetscCall(SNESSetFromOptions(snes));
   PetscCall(MatSetDM(J, da));
   PetscCall(DMSetApplicationContext(da, &user));
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode FormFunctionGlobal(SNES snes, Vec p, Vec F, void *dummy)
+PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *dummy)
 {
   DM            dm = (DM)(dummy);
   PetscInt      i, j;
