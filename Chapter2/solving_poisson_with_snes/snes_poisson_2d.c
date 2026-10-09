@@ -31,7 +31,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
   return x * PetscExpReal(y); // note  b = - (p_xx + p_yy) = - p
 }
 
-PetscErrorCode JacMult(Mat J, Vec X, Vec Y);
+PetscErrorCode JacMult(Mat J, Vec v, Vec Jv);
 PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
@@ -172,28 +172,28 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode JacMult(Mat J, Vec X, Vec Y)
+PetscErrorCode JacMult(Mat J, Vec v, Vec Jv)
 {
   DM            dm;
   DMDALocalInfo info;
-  Vec           xloc, yloc;
+  Vec           v_local, Jv_local;
   PetscScalar   xymin[2], xymax[2], hx, hy, sigma;
   PetscInt      i, j;
-  PetscScalar   pe, pw, pn, ps;
-  PetscScalar **x_p;
-  PetscScalar **y_p;
+  PetscScalar   ve, vw, vn, vs;
+  PetscScalar **av;
+  PetscScalar **aJv;
   PetscFunctionBeginUser;
-  PetscCall(VecSet(Y, 0.0));
+  PetscCall(VecSet(Jv, 0.0));
   PetscCall(MatGetDM(J, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
 
-  PetscCall(DMGetLocalVector(dm, &xloc));
-  PetscCall(DMGetLocalVector(dm, &yloc));
-  PetscCall(DMGlobalToLocalBegin(dm, X, INSERT_VALUES, xloc));
-  PetscCall(DMGlobalToLocalEnd(dm, X, INSERT_VALUES, xloc));
-  PetscCall(VecSet(yloc, 0.0));
-  PetscCall(DMDAVecGetArray(dm, yloc, &y_p));
-  PetscCall(DMDAVecGetArray(dm, xloc, &x_p));
+  PetscCall(DMGetLocalVector(dm, &v_local));
+  PetscCall(DMGetLocalVector(dm, &Jv_local));
+  PetscCall(DMGlobalToLocalBegin(dm, v, INSERT_VALUES, v_local));
+  PetscCall(DMGlobalToLocalEnd(dm, v, INSERT_VALUES, v_local));
+  PetscCall(VecSet(Jv_local, 0.0));
+  PetscCall(DMDAVecGetArray(dm, Jv_local, &aJv));
+  PetscCall(DMDAVecGetArray(dm, v_local, &av));
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
   hy     = (xymax[1] - xymin[1]) / (info.my - 1);
@@ -202,25 +202,25 @@ PetscErrorCode JacMult(Mat J, Vec X, Vec Y)
   for (j = info.ys; j < info.ys + info.ym; j++) {
     for (i = info.xs; i < info.xs + info.xm; i++) {
       if (i == 0 || i == info.mx - 1 || j == 0 || j == info.my - 1) {
-        y_p[j][i] = sigma * x_p[j][i];
+        aJv[j][i] = sigma * av[j][i];
       } else {
-        pe        = (i + 1 == info.mx - 1) ? 0.0 : x_p[j][i + 1];
-        pw        = (i - 1 == 0) ? 0.0 : x_p[j][i - 1];
-        pn        = (j + 1 == info.my - 1) ? 0.0 : x_p[j + 1][i];
-        ps        = (j - 1 == 0) ? 0.0 : x_p[j - 1][i];
-        y_p[j][i] = sigma * x_p[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn);
+        ve        = (i + 1 == info.mx - 1) ? 0.0 : av[j][i + 1];
+        vw        = (i - 1 == 0) ? 0.0 : av[j][i - 1];
+        vn        = (j + 1 == info.my - 1) ? 0.0 : av[j + 1][i];
+        vs        = (j - 1 == 0) ? 0.0 : av[j - 1][i];
+        aJv[j][i] = sigma * av[j][i] - (hy / hx) * (vw + ve) - (hx / hy) * (vs + vn);
       }
     }
   }
 
-  PetscCall(DMDAVecRestoreArray(dm, yloc, &y_p));
-  PetscCall(DMDAVecRestoreArray(dm, xloc, &x_p));
+  PetscCall(DMDAVecRestoreArray(dm, Jv_local, &aJv));
+  PetscCall(DMDAVecRestoreArray(dm, v_local, &av));
 
-  PetscCall(DMLocalToGlobalBegin(dm, yloc, ADD_VALUES, Y));
-  PetscCall(DMLocalToGlobalEnd(dm, yloc, ADD_VALUES, Y));
+  PetscCall(DMLocalToGlobalBegin(dm, Jv_local, ADD_VALUES, Jv));
+  PetscCall(DMLocalToGlobalEnd(dm, Jv_local, ADD_VALUES, Jv));
 
-  PetscCall(DMRestoreLocalVector(dm, &xloc));
-  PetscCall(DMRestoreLocalVector(dm, &yloc));
+  PetscCall(DMRestoreLocalVector(dm, &v_local));
+  PetscCall(DMRestoreLocalVector(dm, &Jv_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
