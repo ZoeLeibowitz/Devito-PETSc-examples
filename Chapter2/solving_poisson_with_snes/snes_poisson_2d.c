@@ -73,7 +73,6 @@ int main(int argc, char **argv)
   PetscCall(DMSetMatType(da, MATSHELL));
   PetscCall(DMCreateMatrix(da, &J));
   PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))JacMult));
-  PetscCall(MatSetDM(J, da));
   PetscCall(SNESSetJacobian(snes, J, J, MatMFFDComputeJacobian, NULL));
 
   // Linear problem, so a single Newton step (KSPONLY), solved with CG since the Jacobian is SPD
