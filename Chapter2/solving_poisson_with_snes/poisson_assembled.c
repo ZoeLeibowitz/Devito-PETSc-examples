@@ -1,5 +1,5 @@
 static char help[] = "Example adapted from Ed Bueler - petsc4pdes.\n"
-                     "Solves structured-grid Poisson problem in 2D.\n"
+                     "Solves structured-grid Poisson problem in 2D - assembled version.\n"
                      "Equation is\n"
                      "    - p_xx - p_yy = b,\n"
                      "subject to Dirichlet boundary conditions.\n"

@@ -2,7 +2,7 @@
 Steady-state Poisson equation, adapted from Devito's tutorial notebook
 (devito/examples/cfd/06_poisson.ipynb, "Example 6: Poisson equation").
 
-Solves the same problem as solving_poisson_with_snes/snes_poisson_2d.c
+Solves the same problem as solving_poisson_with_snes/poisson_matfree.c
 (ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c):
     -p_xx - p_yy = b(x,y) = x e^y on the unit square,
     Dirichlet BCs from the exact solution p(x,y) = -x e^y:
