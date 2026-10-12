@@ -65,10 +65,10 @@ int main(int argc, char **argv)
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
 
   // Nonlinear solver on the grid, with residual and Jacobian callbacks,
-  // which receive the DMDA and its user context
+  // which retrieve the DMDA and its user context
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
   PetscCall(SNESSetDM(snes, da));
-  PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
+  PetscCall(SNESSetFunction(snes, NULL, FormFunction, NULL));
   // Shell Jacobian, whose action on a vector is computed by JacobianMult
   PetscCall(DMSetMatType(da, MATSHELL));
   PetscCall(DMCreateMatrix(da, &J));
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 
 PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
 {
-  DM            dm = (DM)ctx; // the DMDA passed to SNESSetFunction
+  DM            dm;
   PetscInt      i, j;
   DMDALocalInfo info;
   PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
@@ -127,6 +127,8 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   Vec           p_local, F_local;
 
   PetscFunctionBeginUser;
+  // The DMDA attached to the solver by SNESSetDM
+  PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
   PetscCall(DMGetApplicationContext(dm, &user));
   PetscCall(VecSet(F, 0.0));

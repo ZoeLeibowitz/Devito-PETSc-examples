@@ -64,12 +64,12 @@ int main(int argc, char **argv)
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
 
   // Nonlinear solver on the grid, with residual and Jacobian callbacks,
-  // which receive the DMDA and its user context
+  // which retrieve the DMDA and its user context
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
   PetscCall(SNESSetDM(snes, da));
-  PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
+  PetscCall(SNESSetFunction(snes, NULL, FormFunction, NULL));
   // Jacobian routine assembles J into the MATAIJ matrix that SNES creates from the DMDA
-  PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, (void *)(da)));
+  PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, NULL));
 
   // Linear problem, so a single Newton step (KSPONLY), solved with CG since the Jacobian is SPD
   PetscCall(SNESSetType(snes, SNESKSPONLY));
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
 PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
 {
-  DM            dm = (DM)ctx; // the DMDA passed to SNESSetFunction
+  DM            dm;
   PetscInt      i, j;
   DMDALocalInfo info;
   PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
@@ -122,6 +122,8 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   Vec           p_local, F_local;
 
   PetscFunctionBeginUser;
+  // The DMDA attached to the solver by SNESSetDM
+  PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
   PetscCall(DMGetApplicationContext(dm, &user));
   PetscCall(VecSet(F, 0.0));
@@ -169,13 +171,15 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
 
 PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *ctx)
 {
-  DM            dm = (DM)ctx; // the DMDA passed to SNESSetJacobian
+  DM            dm;
   DMDALocalInfo info;
   PetscReal     xymin[2], xymax[2], hx, hy, sigma, v[5];
   PetscInt      i, j, ncols;
   MatStencil    col[5], row;
 
   PetscFunctionBeginUser;
+  // The DMDA attached to the solver by SNESSetDM
+  PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
 
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
