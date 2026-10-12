@@ -55,7 +55,7 @@ int main(int argc, char **argv)
   user.b_rhs  = &b_rhs_2D;
   user.g_bdry = &p_exact_2D;
 
-  // 17 x 17 grid, one dof per point, process layout chosen by PETSc, star stencil of width one
+  // 17 x 17 grid, one dof per point, parallel layout chosen by PETSc, star stencil of width one
   PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 17, 17, PETSC_DECIDE, PETSC_DECIDE, 1, 1, NULL, NULL, &da));
   PetscCall(DMSetApplicationContext(da, &user));
   PetscCall(DMSetFromOptions(da));
@@ -63,10 +63,10 @@ int main(int argc, char **argv)
   // Coordinates, from which the callbacks compute the spacing
   PetscCall(DMDASetUniformCoordinates(da, 0.0, user.Lx, 0.0, user.Ly, 0.0, 1.0));
 
-  // Nonlinear solver on the grid, with residual and Jacobian callbacks,
-  // which retrieve the DMDA and its user context
+  // Create the nonlinear solver on the grid
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
   PetscCall(SNESSetDM(snes, da));
+  // Set the residual callback
   PetscCall(SNESSetFunction(snes, NULL, FormFunction, NULL));
   // Jacobian routine assembles J into the MATAIJ matrix that SNES creates from the DMDA
   PetscCall(SNESSetJacobian(snes, NULL, NULL, FormJacobian, NULL));
@@ -81,8 +81,7 @@ int main(int argc, char **argv)
   // Initial guess, g on the boundary and zero elsewhere
   PetscCall(DMCreateGlobalVector(da, &pglobal));
   PetscCall(InitialState(da, pglobal, &user));
-  // NULL right hand side, as the terms in b and g are kept in F
-  // rather than passed here as a separate vector
+  // Solve F(p) = 0, overwriting pglobal with the solution
   PetscCall(SNESSolve(snes, NULL, pglobal));
 
   // Errors against the exact solution
@@ -122,7 +121,7 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   Vec           p_local, F_local;
 
   PetscFunctionBeginUser;
-  // The DMDA attached to the solver by SNESSetDM
+  // Get the DMDA from the solver
   PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
   PetscCall(DMGetApplicationContext(dm, &user));
@@ -178,7 +177,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *ctx)
   MatStencil    col[5], row;
 
   PetscFunctionBeginUser;
-  // The DMDA attached to the solver by SNESSetDM
+  // Get the DMDA from the solver
   PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
 
