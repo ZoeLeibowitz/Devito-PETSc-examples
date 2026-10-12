@@ -31,7 +31,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
   return x * PetscExpReal(y); // note  b = - (p_xx + p_yy) = - p
 }
 
-PetscErrorCode JacMult(Mat J, Vec v, Vec Jv);
+PetscErrorCode JacobianMult(Mat J, Vec v, Vec Jv);
 PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx);
 PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
@@ -69,10 +69,10 @@ int main(int argc, char **argv)
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
   PetscCall(SNESSetDM(snes, da));
   PetscCall(SNESSetFunction(snes, NULL, FormFunction, (void *)(da)));
-  // Shell Jacobian, whose action on a vector is computed by JacMult
+  // Shell Jacobian, whose action on a vector is computed by JacobianMult
   PetscCall(DMSetMatType(da, MATSHELL));
   PetscCall(DMCreateMatrix(da, &J));
-  PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))JacMult));
+  PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))JacobianMult));
   PetscCall(SNESSetJacobian(snes, J, J, MatMFFDComputeJacobian, NULL));
 
   // Linear problem, so a single Newton step (KSPONLY), solved with CG since the Jacobian is SPD
@@ -172,7 +172,7 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode JacMult(Mat J, Vec v, Vec Jv)
+PetscErrorCode JacobianMult(Mat J, Vec v, Vec Jv)
 {
   DM            dm;
   DMDALocalInfo info;
