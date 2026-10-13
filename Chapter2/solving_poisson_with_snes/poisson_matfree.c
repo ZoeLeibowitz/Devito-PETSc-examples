@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   PetscCall(SNESSetType(snes, SNESKSPONLY));
   PetscCall(SNESGetKSP(snes, &ksp));
   PetscCall(KSPSetType(ksp, KSPCG));
-  PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+  PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
   PetscCall(SNESSetFromOptions(snes));
 
   // Initial guess, g on the boundary and zero elsewhere
