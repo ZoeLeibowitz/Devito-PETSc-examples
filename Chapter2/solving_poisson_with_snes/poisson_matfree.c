@@ -33,7 +33,7 @@ static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
 
 PetscErrorCode JacobianMult(Mat J, Vec v, Vec Jv);
 PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx);
-PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user);
+PetscErrorCode FormExact(DM da, Vec p, PoissonCtx *user);
 PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user);
 
 int main(int argc, char **argv)
@@ -42,10 +42,9 @@ int main(int argc, char **argv)
   DM            da;
   KSP           ksp;
   SNES          snes;
-  Vec           pglobal, p_exact, p_exact_local;
+  Vec           pglobal, p_exact;
   DMDALocalInfo info;
-  PetscScalar   errinf, normconst2h, err2h;
-  char          gridstr[99];
+  PetscReal     errmax;
   PoissonCtx    user;
 
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
@@ -88,24 +87,14 @@ int main(int argc, char **argv)
   // Solve F(p) = 0, overwriting pglobal with the solution
   PetscCall(SNESSolve(snes, NULL, pglobal));
 
-  // Errors against the exact solution
+  // Maximum error against the exact solution
+  PetscCall(VecDuplicate(pglobal, &p_exact));
+  PetscCall(FormExact(da, p_exact, &user));
+  PetscCall(VecAXPY(pglobal, -1.0, p_exact)); // pglobal <- pglobal - p_exact
+  PetscCall(VecNorm(pglobal, NORM_INFINITY, &errmax));
   PetscCall(DMDAGetLocalInfo(da, &info));
-  PetscCall(DMCreateLocalVector(da, &p_exact_local));
-  PetscCall(DMCreateGlobalVector(da, &p_exact));
-  PetscCall(FormExact(&info, p_exact_local, &user));
-  PetscCall(DMLocalToGlobal(da, p_exact_local, INSERT_VALUES, p_exact));
-  PetscCall(VecAXPY(pglobal, -1.0, p_exact)); // p <- p + (-1.0) pexact
-  PetscCall(VecDestroy(&p_exact));            // no longer needed
-  PetscCall(VecDestroy(&p_exact_local));
-  PetscCall(VecNorm(pglobal, NORM_INFINITY, &errinf));
-  PetscCall(VecNorm(pglobal, NORM_2, &err2h));
-  normconst2h = PetscSqrtReal((PetscScalar)(info.mx - 1) * (info.my - 1));
-  snprintf(gridstr, 99, "%d x %d point 2D", info.mx, info.my);
-  err2h /= normconst2h; // like continuous L2
-  PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                        "problem on %s grid:\n"
-                        "  error |p-pexact|_inf = %.3e, |p-pexact|_h = %.3e\n",
-                        gridstr, errinf, err2h));
+  PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%d x %d grid, maximum error %.3e\n", info.mx, info.my, (double)errmax));
+  PetscCall(VecDestroy(&p_exact));
   PetscCall(VecDestroy(&pglobal));
   PetscCall(MatDestroy(&J));
   PetscCall(SNESDestroy(&snes));
@@ -251,23 +240,26 @@ PetscErrorCode InitialState(DM da, Vec p, PoissonCtx *user)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode FormExact(DMDALocalInfo *info, Vec p, PoissonCtx *user)
+PetscErrorCode FormExact(DM da, Vec p, PoissonCtx *user)
 {
-  PetscInt    i, j;
-  PetscScalar xymin[2], xymax[2], hx, hy, x, y, **ap;
+  DMDALocalInfo info;
+  PetscInt      i, j;
+  PetscScalar   xymin[2], xymax[2], hx, hy, x, y, **ap;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetBoundingBox(info->da, xymin, xymax));
-  hx = (xymax[0] - xymin[0]) / (info->mx - 1);
-  hy = (xymax[1] - xymin[1]) / (info->my - 1);
-  PetscCall(DMDAVecGetArray(info->da, p, &ap));
-  for (j = info->gys; j < info->gys + info->gym; j++) {
+  PetscCall(DMDAGetLocalInfo(da, &info));
+  PetscCall(DMGetBoundingBox(da, xymin, xymax));
+  hx = (xymax[0] - xymin[0]) / (info.mx - 1);
+  hy = (xymax[1] - xymin[1]) / (info.my - 1);
+  // The boundary function g is the exact solution, evaluated at every locally owned point
+  PetscCall(DMDAVecGetArray(da, p, &ap));
+  for (j = info.ys; j < info.ys + info.ym; j++) {
     y = xymin[1] + j * hy;
-    for (i = info->gxs; i < info->gxs + info->gxm; i++) {
+    for (i = info.xs; i < info.xs + info.xm; i++) {
       x        = xymin[0] + i * hx;
       ap[j][i] = user->g_bdry(x, y, user);
     }
   }
-  PetscCall(DMDAVecRestoreArray(info->da, p, &ap));
+  PetscCall(DMDAVecRestoreArray(da, p, &ap));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
