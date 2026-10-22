@@ -1,7 +1,7 @@
 static char help[] = "Example adapted from Ed Bueler - petsc4pdes.\n"
                      "Solves structured-grid Poisson problem in 2D - assembled version.\n"
                      "Equation is\n"
-                     "    - p_xx - p_yy = b,\n"
+                     "    - p_xx - p_yy = f,\n"
                      "subject to Dirichlet boundary conditions.\n"
                      "Defaults to a SNESType of KSPONLY and a KSPType of CG.\n\n";
 
@@ -13,8 +13,8 @@ static char help[] = "Example adapted from Ed Bueler - petsc4pdes.\n"
 typedef struct {
   // domain dimensions
   PetscScalar Lx, Ly;
-  // right-hand-side b(x,y)
-  PetscScalar (*b_rhs)(PetscScalar x, PetscScalar y, void *ctx);
+  // right-hand-side f(x,y)
+  PetscScalar (*f_rhs)(PetscScalar x, PetscScalar y, void *ctx);
   // Dirichlet boundary condition g(x,y)
   PetscScalar (*g_bdry)(PetscScalar x, PetscScalar y, void *ctx);
 } PoissonCtx;
@@ -25,10 +25,10 @@ static PetscScalar p_exact_2D(PetscScalar x, PetscScalar y, void *ctx)
   return -x * PetscExpReal(y);
 }
 
-// right-hand-side function  b(x,y) = - laplacian p
-static PetscScalar b_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
+// right-hand-side function  f(x,y) = - laplacian p
+static PetscScalar f_rhs_2D(PetscScalar x, PetscScalar y, void *ctx)
 {
-  return x * PetscExpReal(y); // note  b = - (p_xx + p_yy) = - p
+  return x * PetscExpReal(y); // note  f = - (p_xx + p_yy) = - p
 }
 
 PetscErrorCode FormJacobian(SNES snes, Vec p, Mat J, Mat Jpre, void *ctx);
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
   // Problem data, collected in the user context
   user.Lx     = 1.0;
   user.Ly     = 1.0;
-  user.b_rhs  = &b_rhs_2D;
+  user.f_rhs  = &f_rhs_2D;
   user.g_bdry = &p_exact_2D;
 
   // 17 x 17 grid, one dof per point, parallel layout chosen by PETSc, star stencil of width one
@@ -142,7 +142,7 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
         pw       = (i - 1 == 0) ? user->g_bdry(x - hx, y, user) : ap[j][i - 1];
         pn       = (j + 1 == info.my - 1) ? user->g_bdry(x, y + hy, user) : ap[j + 1][i];
         ps       = (j - 1 == 0) ? user->g_bdry(x, y - hy, user) : ap[j - 1][i];
-        aF[j][i] = sigma * ap[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn) - hx * hy * user->b_rhs(x, y, user);
+        aF[j][i] = sigma * ap[j][i] - (hy / hx) * (pw + pe) - (hx / hy) * (ps + pn) - hx * hy * user->f_rhs(x, y, user);
       }
     }
   }

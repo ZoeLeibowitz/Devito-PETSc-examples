@@ -5,7 +5,7 @@ Listing petscsolve_poisson of the thesis).
 Solves the same problem as prior_poisson.py and
 solving_poisson_with_snes/poisson_matfree.c
 (ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c):
-    -p_xx - p_yy = b(x,y) = x e^y on the unit square,
+    -p_xx - p_yy = f(x,y) = x e^y on the unit square,
     Dirichlet BCs from the exact solution p(x,y) = -x e^y:
     p(0,y) = 0, p(1,y) = -e^y, p(x,0) = -x, p(x,1) = -x e.
 
@@ -42,14 +42,14 @@ grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
 # Border selects the boundary layer, one grid point thick
 border = Border(grid, 1)
 
-# Grid point coordinates, for b and bc
+# Grid point coordinates, for f and bc
 x_coord = np.linspace(0, Lx, nx)
 y_coord = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 
-# The source term b
-b = Function(name='b', grid=grid)
-b.data[:] = X * np.exp(Y)
+# The source term f
+f = Function(name='f', grid=grid)
+f.data[:] = X * np.exp(Y)
 
 # Exact solution, for the boundary values and the error
 bc = Function(name='bc', grid=grid)
@@ -59,7 +59,7 @@ bc.data[:] = -X * np.exp(Y)
 p = Function(name='p', grid=grid, space_order=2)
 
 # The Poisson equation on the interior
-eqn = Eq(-p.laplace, b, subdomain=grid.interior)
+eqn = Eq(-p.laplace, f, subdomain=grid.interior)
 # Dirichlet values, taken from bc on the border only
 bc_eq = EssentialBC(p, bc, subdomain=border)
 

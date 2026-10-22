@@ -4,7 +4,7 @@ Steady-state Poisson equation, adapted from Devito's tutorial notebook
 
 Solves the same problem as solving_poisson_with_snes/poisson_matfree.c
 (ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c):
-    -p_xx - p_yy = b(x,y) = x e^y on the unit square,
+    -p_xx - p_yy = f(x,y) = x e^y on the unit square,
     Dirichlet BCs from the exact solution p(x,y) = -x e^y:
     p(0,y) = 0, p(1,y) = -e^y, p(x,0) = -x, p(x,1) = -x e.
 """
@@ -32,8 +32,8 @@ x_coord = np.linspace(0, Lx, nx)
 y_coord = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 
-b = Function(name='b', grid=grid)
-b.data[:] = X * np.exp(Y)
+f = Function(name='f', grid=grid)
+f.data[:] = X * np.exp(Y)
 
 p_exact = -X * np.exp(Y)
 
@@ -45,7 +45,7 @@ p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
 
 # Define the Poisson equation for `p`
-eqn = Eq(-p.laplace, b)
+eqn = Eq(-p.laplace, f)
 # Solve for the central stencil point
 stencil = solve(eqn, p)
 # Let stencil populate the buffer `p.forward`, restricted to grid.interior
