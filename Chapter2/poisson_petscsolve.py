@@ -33,6 +33,7 @@ configuration['log-level'] = 'WARNING'
 # Initialise PETSc, passing on any command line options
 PetscInitialize()
 
+# Number of grid points and side lengths of the domain
 nx, ny = 17, 17
 Lx, Ly = 1.0, 1.0
 # Double precision, matching the PETSc build
@@ -40,6 +41,7 @@ grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
 # Border selects the boundary layer, one grid point thick
 border = Border(grid, 1)
 
+# Grid point coordinates, for b, bc and the exact solution
 x_coord = np.linspace(0, Lx, nx)
 y_coord = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
@@ -48,7 +50,7 @@ X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 b = Function(name='b', grid=grid)
 b.data[:] = X * np.exp(Y)
 
-# Dirichlet boundary data, taken from the exact solution
+# Exact solution, for the boundary values and the error
 bc = Function(name='bc', grid=grid)
 bc.data[:] = -X * np.exp(Y)
 
@@ -57,7 +59,7 @@ p = Function(name='p', grid=grid, space_order=2)
 
 # The Poisson equation on the interior
 eqn = Eq(-p.laplace, b, subdomain=grid.interior)
-# The Dirichlet boundary values on the border
+# Dirichlet values, taken from bc on the border only
 bc_eq = EssentialBC(p, bc, subdomain=border)
 
 # Specify solver parameters via a Python dictionary
@@ -68,13 +70,12 @@ poisson = petscsolve([eqn, bc_eq], target=p,
                      solver_parameters=params,
                      options_prefix='poisson')
 
+# Generate the code with the PETSc backend and run it
 op = Operator(poisson, language='petsc')
 op.apply()
 
-# Maximum error against the exact solution
-p_exact = Function(name='p_exact', grid=grid)
-p_exact.data[:] = -X * np.exp(Y)
+# Maximum error against the exact solution, held in bc
 err = Function(name='err', grid=grid)
-err.data[:] = np.abs(p.data - p_exact.data)
+err.data[:] = np.abs(p.data - bc.data)
 print('%d x %d grid, maximum error %.3e'
       % (nx, ny, mmax(err)))
