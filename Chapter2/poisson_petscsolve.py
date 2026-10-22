@@ -33,7 +33,7 @@ configuration['log-level'] = 'WARNING'
 # Initialise PETSc, passing on any command line options
 PetscInitialize()
 
-# Number of grid points and side lengths of the domain
+# Number of grid points and the unit square domain
 nx, ny = 17, 17
 Lx, Ly = 1.0, 1.0
 # Double precision, matching the PETSc build
