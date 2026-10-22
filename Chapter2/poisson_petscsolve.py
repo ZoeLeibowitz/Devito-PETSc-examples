@@ -36,7 +36,7 @@ PetscInitialize()
 # Number of grid points and the unit square domain
 nx, ny = 17, 17
 Lx, Ly = 1.0, 1.0
-# Double precision, matching the PETSc build
+# Create the grid with PETSc's precision, here double
 grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
 # Border selects the boundary layer, one grid point thick
 border = Border(grid, 1)
