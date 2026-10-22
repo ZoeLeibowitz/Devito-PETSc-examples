@@ -10,9 +10,10 @@ solving_poisson_with_snes/poisson_matfree.c
     p(0,y) = 0, p(1,y) = -e^y, p(x,0) = -x, p(x,1) = -x e.
 
 The solver settings are equivalent to those of the second and fourth runs in
-Listing petsc_poisson_run (CG, no preconditioner, ksp_rtol 1e-12). The solve
-has the options prefix poisson_, so its options can be set on the command
-line. Running
+Listing petsc_poisson_run (CG, no preconditioner, ksp_rtol 1e-12). They are
+chosen to demonstrate the interface and to match the hand written code, not
+for efficiency. The solve has the options prefix poisson_, so its options can
+be set on the command line. Running
     python poisson_petscsolve.py -poisson_ksp_converged_reason
 gives the same 60 iterations and maximum error as
     solving_poisson_with_snes/poisson_matfree -ksp_converged_reason
