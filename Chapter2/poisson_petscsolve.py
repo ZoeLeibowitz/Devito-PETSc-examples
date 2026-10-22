@@ -41,7 +41,7 @@ grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
 # Border selects the boundary layer, one grid point thick
 border = Border(grid, 1)
 
-# Grid point coordinates, for b, bc and the exact solution
+# Grid point coordinates, for b and bc
 x_coord = np.linspace(0, Lx, nx)
 y_coord = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
