@@ -67,12 +67,12 @@ bc_eq = EssentialBC(p, p_exact, subdomain=border)
 params = {'ksp_type': 'cg', 'pc_type': 'none',
           'ksp_rtol': 1e-12}
 # Solve for p, specifying a prefix for command line options
-poisson = petscsolve([eqn, bc_eq], target=p,
+solve_p = petscsolve([eqn, bc_eq], target=p,
                      solver_parameters=params,
                      options_prefix='poisson')
 
 # Generate the code with the PETSc backend and run it
-op = Operator(poisson, language='petsc')
+op = Operator(solve_p, language='petsc')
 op.apply()
 
 # Maximum error against the exact solution
