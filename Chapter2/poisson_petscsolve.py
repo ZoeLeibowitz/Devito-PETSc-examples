@@ -42,7 +42,7 @@ grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
 # Border selects the boundary layer, one grid point thick
 border = Border(grid, 1)
 
-# Grid point coordinates, for f and bc
+# Grid point coordinates, for f and p_exact
 x_coord = np.linspace(0, Lx, nx)
 y_coord = np.linspace(0, Ly, ny)
 X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
@@ -52,16 +52,16 @@ f = Function(name='f', grid=grid)
 f.data[:] = X * np.exp(Y)
 
 # Exact solution, for the boundary values and the error
-bc = Function(name='bc', grid=grid)
-bc.data[:] = -X * np.exp(Y)
+p_exact = Function(name='p_exact', grid=grid)
+p_exact.data[:] = -X * np.exp(Y)
 
 # The solution field p
 p = Function(name='p', grid=grid, space_order=2)
 
 # The Poisson equation on the interior
 eqn = Eq(-p.laplace, f, subdomain=grid.interior)
-# Dirichlet values, taken from bc on the border only
-bc_eq = EssentialBC(p, bc, subdomain=border)
+# The Dirichlet condition on the border
+bc_eq = EssentialBC(p, p_exact, subdomain=border)
 
 # Specify solver parameters via a Python dictionary
 params = {'ksp_type': 'cg', 'pc_type': 'none',
@@ -75,8 +75,8 @@ poisson = petscsolve([eqn, bc_eq], target=p,
 op = Operator(poisson, language='petsc')
 op.apply()
 
-# Maximum error against the exact solution, held in bc
+# Maximum error against the exact solution
 err = Function(name='err', grid=grid)
-err.data[:] = np.abs(p.data - bc.data)
+err.data[:] = np.abs(p.data - p_exact.data)
 print('%d x %d grid, maximum error %.3e'
       % (nx, ny, mmax(err)))

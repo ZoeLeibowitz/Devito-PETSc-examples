@@ -35,11 +35,9 @@ X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 f = Function(name='f', grid=grid)
 f.data[:] = X * np.exp(Y)
 
-p_exact = -X * np.exp(Y)
-
-# Only the boundary values are used, via the Border BC
-bc = Function(name='bc', grid=grid)
-bc.data[:] = p_exact
+# Exact solution, of which only the boundary values are used, via the Border BC
+p_exact = Function(name='p_exact', grid=grid)
+p_exact.data[:] = -X * np.exp(Y)
 
 p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
@@ -52,7 +50,7 @@ stencil = solve(eqn, p)
 stencil = Eq(p.forward, stencil, subdomain=grid.interior)
 
 # Dirichlet BCs, set on the boundary
-bc_eq = Eq(p.forward, bc, subdomain=border)
+bc_eq = Eq(p.forward, p_exact, subdomain=border)
 
 op = Operator([stencil, bc_eq])
 op.apply(time=nt)
@@ -61,8 +59,8 @@ buffer_size = p.time_order + 1
 final_idx = (nt + 1) % buffer_size  # op.apply(time=nt) runs nt + 1 sweeps
 p_final = p.data[final_idx]
 
-errinf = np.abs(p_final - p_exact).max()
-err2h = np.linalg.norm(p_final - p_exact) / np.sqrt((nx - 1) * (ny - 1))
+errinf = np.abs(p_final - p_exact.data).max()
+err2h = np.linalg.norm(p_final - p_exact.data) / np.sqrt((nx - 1) * (ny - 1))
 print(f"problem on {nx} x {ny} point 2D grid:\n"
       f"  error |p-pexact|_inf = {errinf:.3e}, |p-pexact|_h = {err2h:.3e}")
 
