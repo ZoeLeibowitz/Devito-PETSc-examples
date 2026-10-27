@@ -107,23 +107,20 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
   PetscScalar   sigma, hx, hy, x, y, pe, pw, pn, ps;
   PetscScalar **aF, **ap, xymin[2], xymax[2];
   PoissonCtx   *user;
-  Vec           p_local, F_local;
+  Vec           p_local;
 
   PetscFunctionBeginUser;
   // Get the DMDA from the solver
   PetscCall(SNESGetDM(snes, &dm));
   PetscCall(DMDAGetLocalInfo(dm, &info));
   PetscCall(DMGetApplicationContext(dm, &user));
-  PetscCall(VecSet(F, 0.0));
 
   PetscCall(DMGetLocalVector(dm, &p_local));
-  PetscCall(DMGetLocalVector(dm, &F_local));
-  PetscCall(VecSet(F_local, 0.0));
   PetscCall(DMGlobalToLocalBegin(dm, p, INSERT_VALUES, p_local));
   PetscCall(DMGlobalToLocalEnd(dm, p, INSERT_VALUES, p_local));
 
   PetscCall(DMDAVecGetArray(dm, p_local, &ap));
-  PetscCall(DMDAVecGetArray(dm, F_local, &aF));
+  PetscCall(DMDAVecGetArray(dm, F, &aF));
 
   PetscCall(DMGetBoundingBox(dm, xymin, xymax));
   hx     = (xymax[0] - xymin[0]) / (info.mx - 1);
@@ -147,13 +144,9 @@ PetscErrorCode FormFunction(SNES snes, Vec p, Vec F, void *ctx)
     }
   }
   PetscCall(DMDAVecRestoreArray(dm, p_local, &ap));
-  PetscCall(DMDAVecRestoreArray(dm, F_local, &aF));
-
-  PetscCall(DMLocalToGlobalBegin(dm, F_local, ADD_VALUES, F));
-  PetscCall(DMLocalToGlobalEnd(dm, F_local, ADD_VALUES, F));
+  PetscCall(DMDAVecRestoreArray(dm, F, &aF));
 
   PetscCall(DMRestoreLocalVector(dm, &p_local));
-  PetscCall(DMRestoreLocalVector(dm, &F_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
