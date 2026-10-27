@@ -125,15 +125,15 @@ arrow(name_cx, rows[-1][0], name_cx, y_out + h_out)
 
 # What the PETSc code generation adds to each stage
 (y1, h1), (y2, h2), (y3, h3), (y4, h4), (y5, h5), (y6, h6), (y7, h7) = rows
-addition(y2 + m, h2 - 2 * m, ["solve kept in its own loop nest"])
+addition(y2 + m, h2 - 2 * m, ["solve placed in its own Cluster"])
 addition(y4 + m, h4 - 2 * m, ["solve becomes a single IET node"])
 # IET optimisation has one addition per marker
 hB = h_add
 yA = y5 + h5 - m - hB
 marker(addition(yA, hB, ["callbacks generated"])[0], 3)
-marker(addition(yA - m - hB, hB, ["setup and solve calls generated"])[0], 4)
+marker(addition(yA - m - hB, hB, ["calls to set up and run the solver"])[0], 4)
 yB = y5 + m
-marker(addition(yB, hB, ["user contexts completed"])[0], 5)
+marker(addition(yB, hB, ["callback data collected in structs"])[0], 5)
 assert abs((yA - m - hB) - (yB + hB + m)) < 1e-9, "IET optimisation additions"
 marker(addition(y6 + m, h6 - 2 * m, ["PETSc types and headers"])[0], 6)
 marker(addition(y7 + m, h7 - 2 * m, ["linked against PETSc"])[0], 7)
@@ -162,7 +162,7 @@ b_out = (card_x, y_out, card_r, y_out + h_out)
 box(card_x, y_out, card_w, h_out, "#333333", "white")
 text(cx, y_out + h_out - 0.12, "Generated code", b_out, ha="center", fontsize=8.5,
      fontweight="bold", color="#222222")
-text(cx, y_out + h_out / 2 - 0.03, r"$\mathtt{Kernel}$, with the setup and solve calls", b_out,
+text(cx, y_out + h_out / 2 - 0.03, r"$\mathtt{Kernel}$, with the calls to set up and run the solver", b_out,
      ha="center", fontsize=7.5, color="#222222")
 text(cx, y_out + 0.11, r"callbacks ($\mathtt{FormFunction0}$, $\mathtt{MatMult0}$, ...)", b_out,
      ha="center", fontsize=7.5, color="#222222")
