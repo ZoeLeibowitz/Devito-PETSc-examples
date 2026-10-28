@@ -179,7 +179,7 @@ text(cx, y_out + h_out - 0.12, "Generated code", b_out, ha="center", fontsize=8.
      fontweight="bold", color="#222222")
 text(cx, y_out + h_out / 2 - 0.03, r"$\mathtt{Kernel}$, with the calls to set up and run the solver", b_out,
      ha="center", fontsize=7.5, color="#222222")
-text(cx, y_out + 0.11, r"callbacks ($\mathtt{FormFunction0}$, $\mathtt{MatMult0}$, ...)", b_out,
+text(cx, y_out + 0.11, r"callbacks ($\mathtt{FormFunction0}$, $\mathtt{JacobianMult0}$, ...)", b_out,
      ha="center", fontsize=7.5, color="#222222")
 marker(y_out + h_out / 2, 8)
 
