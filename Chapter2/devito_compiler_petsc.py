@@ -10,7 +10,7 @@ TEXT_DARK = "#1B3A1F"
 # What the PETSc code generation adds
 DARK_BLUE = "#0D47A1"
 FILL_BLUE = "#E3F2FD"
-NAV = "#37474F"
+NAV = "#607D8B"
 
 STAGES = [
     "Equations lowering",
@@ -31,8 +31,13 @@ m = 0.07
 h_add, add_w = 0.20, 1.84
 add_x = card_r - m - add_w
 name_cx = (card_x + add_x) / 2
-h_card, h_tall, gap = h_add + 2 * m, 3 * h_add + 4 * m, 0.12
+# The cards are taller than their additions need, so each stage has room around
+# its name, while the additions keep the same size and side margin
+m_v = 0.10
+h_card, h_tall, gap = h_add + 2 * m_v, 3 * h_add + 2 * m + 2 * m_v, 0.17
 h_in, h_out = 0.60, 0.55
+# The gap below the input is taller, to hold the call that creates the Operator
+gap_in = 0.27
 pad = 0.07
 
 mx = W - 0.17
@@ -41,7 +46,7 @@ bx = card_r + 0.10
 # Vertical layout, top to bottom, with y = 0 at the top
 y_in = -0.04 - h_in
 rows = []
-y = y_in - gap
+y = y_in - gap_in
 for i, _ in enumerate(STAGES):
     h = h_tall if i == IET_OPT else h_card
     rows.append((y - h, h))
@@ -123,28 +128,38 @@ for i, (title, (y0, h)) in enumerate(zip(STAGES, rows)):
     arrow(name_cx, top, name_cx, y0 + h)
 arrow(name_cx, rows[-1][0], name_cx, y_out + h_out)
 
+# The equation is passed to an Operator, which applies the stages, so the call
+# that creates it labels the first arrow
+y1_top = rows[0][0] + rows[0][1]
+text(name_cx + 0.09, (y_in + y1_top) / 2, "Operator(..., language='petsc')",
+     (name_cx, y1_top, card_r, y_in), ha="left", fontsize=7.5, family="monospace",
+     color="#333333")
+
 # What the PETSc code generation adds to each stage
 (y1, h1), (y2, h2), (y3, h3), (y4, h4), (y5, h5), (y6, h6), (y7, h7) = rows
-addition(y2 + m, h2 - 2 * m, ["solve placed in its own Cluster"])
-addition(y4 + m, h4 - 2 * m, ["solve becomes a single IET node"])
+addition(y2 + m_v, h_add, ["solve kept in its own Cluster"])
+addition(y4 + m_v, h_add, ["solve becomes a single IET node"])
 # IET optimisation has one addition per marker
 hB = h_add
-yA = y5 + h5 - m - hB
+yA = y5 + h5 - m_v - hB
 marker(addition(yA, hB, ["callbacks generated"])[0], 3)
 marker(addition(yA - m - hB, hB, ["calls to set up and run the solver"])[0], 4)
-yB = y5 + m
+yB = y5 + m_v
 marker(addition(yB, hB, ["callback data collected in structs"])[0], 5)
 assert abs((yA - m - hB) - (yB + hB + m)) < 1e-9, "IET optimisation additions"
-marker(addition(y6 + m, h6 - 2 * m, ["PETSc types and headers"])[0], 6)
-marker(addition(y7 + m, h7 - 2 * m, ["linked against PETSc"])[0], 7)
+marker(addition(y6 + m_v, h_add, ["PETSc types and headers"])[0], 6)
+marker(addition(y7 + m_v, h_add, ["linked against PETSc"])[0], 7)
 
 # Marker 2 spans equations lowering to IET construction
 marker(bracket(y1 + h1 / 2, y4 + h4 / 2), 2)
 
 # Recursive compilation of the callbacks
 lx = 0.20
-y_start = y5 + 0.12
-y_end = y1 + h1 - 0.08
+# The loop leaves level with the callbacks addition, since generating the
+# callbacks is what starts the recursive compilation
+y_start = yA + hB / 2
+# and it returns level with the name of equations lowering
+y_end = y1 + h1 / 2
 ax.plot([card_x, lx, lx], [y_start, y_start, y_end], color=DARK_BLUE, lw=1.3, zorder=2)
 arrow(lx, y_end, card_x, y_end, color=DARK_BLUE, lw=1.3)
 
