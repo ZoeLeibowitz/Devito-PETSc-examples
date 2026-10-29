@@ -35,9 +35,12 @@ X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 f = Function(name='f', grid=grid)
 f.data[:] = X * np.exp(Y)
 
-# Exact solution, of which only the boundary values are used, via the Border BC
+# Exact solution, for the error
 p_exact = Function(name='p_exact', grid=grid)
 p_exact.data[:] = -X * np.exp(Y)
+# Boundary values g, from the exact solution
+g = Function(name='g', grid=grid)
+g.data[:] = p_exact.data
 
 p = TimeFunction(name='p', grid=grid, space_order=2)
 p.data[:] = 0.
@@ -50,7 +53,7 @@ stencil = solve(eqn, p)
 stencil = Eq(p.forward, stencil, subdomain=grid.interior)
 
 # Dirichlet BCs, set on the boundary
-bc_eq = Eq(p.forward, p_exact, subdomain=border)
+bc_eq = Eq(p.forward, g, subdomain=border)
 
 op = Operator([stencil, bc_eq])
 op.apply(time=nt)

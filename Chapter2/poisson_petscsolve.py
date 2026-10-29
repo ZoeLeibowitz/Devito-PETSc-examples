@@ -51,9 +51,12 @@ X, Y = np.meshgrid(x_coord, y_coord, indexing='ij')
 f = Function(name='f', grid=grid)
 f.data[:] = X * np.exp(Y)
 
-# Exact solution, for the boundary values and the error
+# Exact solution, for the error
 p_exact = Function(name='p_exact', grid=grid)
 p_exact.data[:] = -X * np.exp(Y)
+# Boundary values g, from the exact solution
+g = Function(name='g', grid=grid)
+g.data[:] = p_exact.data
 
 # The solution field p
 p = Function(name='p', grid=grid, space_order=2)
@@ -61,7 +64,7 @@ p = Function(name='p', grid=grid, space_order=2)
 # The Poisson equation on the interior
 eqn = Eq(-p.laplace, f, subdomain=grid.interior)
 # The Dirichlet condition on the border
-bc_eq = EssentialBC(p, p_exact, subdomain=border)
+bc_eq = EssentialBC(p, g, subdomain=border)
 
 # Specify solver parameters via a Python dictionary
 params = {'ksp_type': 'cg', 'pc_type': 'none',
