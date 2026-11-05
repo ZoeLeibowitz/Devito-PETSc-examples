@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax)
+                    configuration, SubDomain, Border, norm, mmax)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -24,6 +24,11 @@ os.environ['CC'] = 'mpicc'
 # ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c
 
 PetscInitialize()
+
+# The boundary points can be selected in two equivalent ways, with Devito's
+# Border, which covers every face of the grid at once, or with one user
+# defined SubDomain per face (the classes below)
+USE_BORDER = True
 
 # Subdomains to implement BCs
 
@@ -76,16 +81,6 @@ class SubRight(SubDomain):
         return {x: ('right', 1), y: y, z: z}
 
 
-sub1 = SubTop()
-sub2 = SubBottom()
-sub3 = SubLeft()
-sub4 = SubRight()
-sub5 = SubBack()
-sub6 = SubFront()
-
-
-subdomains = (sub1, sub2, sub3, sub4, sub5, sub6)
-
 def exact(x, y, z):
     return -x*np.float64(np.exp(y+z))
 
@@ -102,7 +97,7 @@ ksp_iters = []
 
 for n in n_values:
     grid = Grid(
-        shape=(n, n, n), extent=(Lx, Ly, Lz), subdomains=subdomains, dtype=np.float64
+        shape=(n, n, n), extent=(Lx, Ly, Lz), dtype=np.float64
     )
 
     u = Function(name='u', grid=grid, space_order=2)
@@ -146,14 +141,16 @@ for n in n_values:
     # u(x,y,1) = -x*exp(y+1)
     bc.data[:, :, -1] = -X_Z * np.exp(Y_Z + 1.0)
 
-    # # Create boundary condition expressions using subdomains
-    bcs = []
-    bcs += [EssentialBC(u, bc, subdomain=sub1)]  # top
-    bcs += [EssentialBC(u, bc, subdomain=sub2)]  # bottom
-    bcs += [EssentialBC(u, bc, subdomain=sub3)]  # subleft
-    bcs += [EssentialBC(u, bc, subdomain=sub4)]  # subright
-    bcs += [EssentialBC(u, bc, subdomain=sub5)]  # subback
-    bcs += [EssentialBC(u, bc, subdomain=sub6)]  # subfront
+    # Create boundary condition expressions
+    if USE_BORDER:
+        # Border selects the outermost layer of points on every face
+        bcs = [EssentialBC(u, bc, subdomain=Border(grid, 1))]
+    else:
+        # One SubDomain per face, which do not overlap at the edges or corners
+        subdomains = (SubTop(grid=grid), SubBottom(grid=grid),
+                      SubLeft(grid=grid), SubRight(grid=grid),
+                      SubBack(grid=grid), SubFront(grid=grid))
+        bcs = [EssentialBC(u, bc, subdomain=s) for s in subdomains]
 
     exprs = [eqn] + bcs
     petsc = petscsolve(

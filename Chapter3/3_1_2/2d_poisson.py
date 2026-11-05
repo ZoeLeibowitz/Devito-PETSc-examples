@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm, mmax)
+                    configuration, SubDomain, Border, norm, mmax)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -20,6 +20,11 @@ os.environ['CC'] = 'mpicc'
 # ref - https://github.com/bueler/p4pdes/blob/master/c/ch6/fish.c
 
 PetscInitialize()
+
+# The boundary points can be selected in two equivalent ways, with Devito's
+# Border, which covers every edge of the grid at once, or with one user
+# defined SubDomain per edge (the classes below)
+USE_BORDER = True
 
 # Subdomains to implement BCs
 class SubTop(SubDomain):
@@ -54,13 +59,6 @@ class SubRight(SubDomain):
         return {x: ('right', 1), y: y}
 
 
-sub1 = SubTop()
-sub2 = SubBottom()
-sub3 = SubLeft()
-sub4 = SubRight()
-
-subdomains = (sub1, sub2, sub3, sub4)
-
 def exact(x, y):
     return -x*np.float64(np.exp(y))
 
@@ -76,7 +74,7 @@ ksp_iters = []
 
 for n in n_values:
     grid = Grid(
-        shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
+        shape=(n, n), extent=(Lx, Ly), dtype=np.float64
     )
 
     u = Function(name='u', grid=grid, space_order=2)
@@ -97,11 +95,15 @@ for n in n_values:
     bc.data[:, 0] = -tmpx
     bc.data[:, -1] = -tmpx*np.exp(1)
 
-    # # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u, bc, subdomain=sub1)]
-    bcs += [EssentialBC(u, bc, subdomain=sub2)]
-    bcs += [EssentialBC(u, bc, subdomain=sub3)]
-    bcs += [EssentialBC(u, bc, subdomain=sub4)]
+    # Create boundary condition expressions
+    if USE_BORDER:
+        # Border selects the outermost layer of points on every edge
+        bcs = [EssentialBC(u, bc, subdomain=Border(grid, 1))]
+    else:
+        # One SubDomain per edge, which do not overlap at the corners
+        subdomains = (SubTop(grid=grid), SubBottom(grid=grid),
+                      SubLeft(grid=grid), SubRight(grid=grid))
+        bcs = [EssentialBC(u, bc, subdomain=s) for s in subdomains]
 
     exprs = [eqn] + bcs
     petsc = petscsolve(

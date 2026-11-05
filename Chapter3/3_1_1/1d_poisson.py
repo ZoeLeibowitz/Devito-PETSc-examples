@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain, norm)
+                    configuration, SubDomain, Border, norm)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -21,6 +21,11 @@ os.environ['CC'] = 'mpicc'
 
 PetscInitialize()
 
+# The boundary points can be selected in two equivalent ways, with Devito's
+# Border, which covers both ends of the domain at once, or with one user
+# defined SubDomain per end (the classes below)
+USE_BORDER = True
+
 # Subdomains to implement BCs
 class SubLeft(SubDomain):
     name = 'subleft'
@@ -36,12 +41,6 @@ class SubRight(SubDomain):
     def define(self, dimensions):
         x, = dimensions
         return {x: ('right', 1)}
-
-
-sub1 = SubLeft()
-sub2 = SubRight()
-
-subdomains = (sub1, sub2,)
 
 
 def exact(x):
@@ -60,7 +59,7 @@ ksp_iters = []
 
 for n in n_values:
     grid = Grid(
-        shape=(n,), extent=(Lx,), subdomains=subdomains, dtype=np.float64
+        shape=(n,), extent=(Lx,), dtype=np.float64
     )
 
     u = Function(name='u', grid=grid, space_order=2)
@@ -75,9 +74,14 @@ for n in n_values:
     bc.data[0] = -np.float64(1.0)  # u(0) = -1
     bc.data[-1] = -np.float64(np.exp(1.0))  # u(1) = -e
 
-    # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u, bc, subdomain=sub1)]
-    bcs += [EssentialBC(u, bc, subdomain=sub2)]
+    # Create boundary condition expressions
+    if USE_BORDER:
+        # Border selects the point at each end of the domain
+        bcs = [EssentialBC(u, bc, subdomain=Border(grid, 1))]
+    else:
+        # One SubDomain per end
+        subdomains = (SubLeft(grid=grid), SubRight(grid=grid))
+        bcs = [EssentialBC(u, bc, subdomain=s) for s in subdomains]
 
     exprs = [eqn] + bcs
     petsc = petscsolve(
