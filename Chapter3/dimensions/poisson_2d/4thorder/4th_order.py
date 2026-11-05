@@ -242,7 +242,7 @@ plt.ylabel(r'$\infty$-norm error')
 plt.title('Convergence Plot')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_2_forced_4thorder.png", dpi=200)
+plt.savefig("poisson_2d_forced_4thorder.png", dpi=200)
 plt.show()
 
 

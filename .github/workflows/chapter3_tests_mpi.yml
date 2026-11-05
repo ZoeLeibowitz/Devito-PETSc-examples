@@ -39,56 +39,56 @@ jobs:
     - name: Pull prebuilt Docker image
       run: docker pull $DOCKER_IMAGE
 
-    ################################## 311 ##################################
-    - name: Run 3_1_1 - parallel
+    ########################### dimensions/poisson_1d ###########################
+    - name: Run dimensions/poisson_1d - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_1 \
+          -w /workspace/Chapter3/dimensions/poisson_1d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 1d_poisson_mpi.py
 
-    - name: Run 3_1_1 - parallel - constrain bcs
+    - name: Run dimensions/poisson_1d - parallel - constrain bcs
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_1 \
+          -w /workspace/Chapter3/dimensions/poisson_1d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 1d_poisson_constrain_mpi.py
 
-    ################################## 312 ##################################
-    - name: Run 3_1_2 - parallel
+    ########################### dimensions/poisson_2d ###########################
+    - name: Run dimensions/poisson_2d - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_2 \
+          -w /workspace/Chapter3/dimensions/poisson_2d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 2d_poisson_mpi.py
 
-    - name: Run 3_1_2 - parallel - constrain bcs
+    - name: Run dimensions/poisson_2d - parallel - constrain bcs
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_2 \
+          -w /workspace/Chapter3/dimensions/poisson_2d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 2d_poisson_constrain_mpi.py
 
-    ################################## 313 ##################################
-    # TODO: add the constrain bc test for 313
-    - name: Run 3_1_3 - parallel
+    ########################### dimensions/poisson_3d ###########################
+    # TODO: add the constrain bc test for poisson_3d
+    - name: Run dimensions/poisson_3d - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_3 \
+          -w /workspace/Chapter3/dimensions/poisson_3d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 3d_poisson_mpi.py
@@ -228,9 +228,7 @@ jobs:
         BRANCH_NAME="update-ch3-$(date +%s)"
         git checkout -b $BRANCH_NAME
 
-        git add Chapter3/3_1_1/*.png
-        git add Chapter3/3_1_2/*.png
-        git add Chapter3/3_1_3/*.png
+        git add Chapter3/dimensions/*/*.png
         git add Chapter3/3_1_4/*.png
 
         git add Chapter3/3_1_6/*.png

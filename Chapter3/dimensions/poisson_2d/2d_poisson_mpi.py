@@ -111,15 +111,13 @@ for n in n_values:
         exprs,
         target=u,
         solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
-        options_prefix='poisson_2d',
-        constrain_bcs=True
+        options_prefix='poisson_2d'
     )
 
-    # with switchconfig(log_level='DEBUG'):
+    # with switchconfig():
     op = Operator(petsc, language='petsc')
     # summary = op.apply()
     op.apply()
-    # args = op.arguments()
 
     # iters = summary.petsc[('section0', 'poisson_2d')].KSPGetIterationNumber
     # ksp_iters.append(iters)
@@ -163,7 +161,7 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_2_constrain_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"poisson_2d_mpi_procs{size}.png", dpi=200)
     plt.show()
 
 

@@ -6,9 +6,7 @@ on:
       - main
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
-      - 'Chapter3/3_1_1/*.png'
-      - 'Chapter3/3_1_2/*.png'
-      - 'Chapter3/3_1_3/*.png'
+      - 'Chapter3/dimensions/**/*.png'
       - 'Chapter3/3_1_4/*.png'
       #  TODO: Add the neumann example for 3_1_5
       - 'Chapter3/3_1_6/*.png'
@@ -55,32 +53,32 @@ jobs:
     - name: Pull prebuilt Docker image
       run: docker pull $DOCKER_IMAGE
 
-    # Run 3_1_1 - serial
-    - name: Run 3_1_1 - serial
+    # Run dimensions/poisson_1d - serial
+    - name: Run dimensions/poisson_1d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_1 \
+          -w /workspace/Chapter3/dimensions/poisson_1d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 1d_poisson.py
 
-    # Run 3_1_2 - serial
-    - name: Run 3_1_2 - serial
+    # Run dimensions/poisson_2d - serial
+    - name: Run dimensions/poisson_2d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_2 \
+          -w /workspace/Chapter3/dimensions/poisson_2d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 2d_poisson.py
 
-    # Run 3_1_3 - serial
-    - name: Run 3_1_3 - serial
+    # Run dimensions/poisson_3d - serial
+    - name: Run dimensions/poisson_3d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_3 \
+          -w /workspace/Chapter3/dimensions/poisson_3d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 3d_poisson.py
@@ -219,9 +217,7 @@ jobs:
       run: |
         BRANCH_NAME="update-ch3-$(date +%s)"
         git checkout -b $BRANCH_NAME
-        git add Chapter3/3_1_1/*.png
-        git add Chapter3/3_1_2/*.png
-        git add Chapter3/3_1_3/*.png
+        git add Chapter3/dimensions/*/*.png
         git add Chapter3/3_1_4/*.png
     
         git add Chapter3/3_1_6/*.png
