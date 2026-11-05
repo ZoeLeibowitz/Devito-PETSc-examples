@@ -121,15 +121,14 @@ assert slope < 2.1
 
 # Convergence Plot
 plt.figure(figsize=(6, 5))
-plt.loglog(dx, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(dx, infinity_norms, 'o-', label=rf'Observed order $\hat{{q}} = {slope:.3f}$', color='orange')
 plt.loglog(
     dx, np.exp(intercept) * dx**2,
     'k--',
-    label=r'Reference slope $O(h^2)$'
+    label='Reference line of slope 2'
 )
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
+plt.xlabel(r'Grid spacing $h$')
+plt.ylabel(r'$\|e\|_\infty$')
 plt.legend()
 plt.tight_layout()
 plt.savefig("poisson_1d.png", dpi=200)
