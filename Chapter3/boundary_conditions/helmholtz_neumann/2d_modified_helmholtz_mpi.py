@@ -302,6 +302,6 @@ if comm.rank == 0:
     plt.title(f'Convergence Plot (MPI processes = {size})')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"3_1_6_mpi_procs{size}.png", dpi=200)
+    plt.savefig(f"helmholtz_neumann_mpi_procs{size}.png", dpi=200)
     plt.show()
 

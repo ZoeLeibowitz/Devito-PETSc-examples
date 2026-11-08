@@ -9,7 +9,7 @@ on:
       - 'Chapter3/dimensions/**/*.png'
       - 'Chapter3/3_1_4/*.png'
       #  TODO: Add the neumann example for 3_1_5
-      - 'Chapter3/3_1_6/*.png'
+      - 'Chapter3/boundary_conditions/**/*.png'
       - 'Chapter3/3_1_7/*.png'
       - 'Chapter3/3_1_8/*.png'
       - 'Chapter3/3_1_9/*.png'
@@ -95,12 +95,12 @@ jobs:
 
     # Don't run 3_1_5 yet -> need to fix nullspace treatment
 
-    # Run 3_1_6 - serial
-    - name: Run 3_1_6 - serial
+    # Run boundary_conditions/helmholtz_neumann - serial
+    - name: Run boundary_conditions/helmholtz_neumann - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_6 \
+          -w /workspace/Chapter3/boundary_conditions/helmholtz_neumann \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 2d_modified_helmholtz.py
@@ -220,7 +220,7 @@ jobs:
         git add Chapter3/dimensions/*/*.png
         git add Chapter3/3_1_4/*.png
     
-        git add Chapter3/3_1_6/*.png
+        git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/3_1_7/*.png
         git add Chapter3/3_1_8/*.png
         git add Chapter3/3_1_9/*.png

@@ -292,7 +292,7 @@ plt.ylabel(r'$\infty$-norm error')
 plt.title('Convergence Plot')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_6.png", dpi=200)
+plt.savefig("helmholtz_neumann.png", dpi=200)
 plt.show()
 
 
