@@ -272,6 +272,11 @@ for n in n_values:
     discrete_l2_norm = norm(diff) / np.sqrt(n_interior)
     discrete_l2_norms.append(discrete_l2_norm)
 
+    # Keep a coarse solution for the comparison plot
+    if n == 33:
+        X_plot, Y_plot = X.copy(), Y.copy()
+        u_plot, exact_plot = u.data[:].copy(), analytical.copy()
+
 print(infinity_norms)
 slope, intercept = np.polyfit(np.log(h), np.log(infinity_norms), 1)
 assert slope > 1.9
@@ -279,15 +284,14 @@ assert slope < 2.1
 
 
 plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(h, infinity_norms, 'o-', label=rf'Observed order $\hat{{q}} = {slope:.3f}$', color='orange')
 plt.loglog(
     h, np.exp(intercept) * h**2,
     'k--',
-    label=r'Reference slope $O(h^2)$'
+    label='Reference line of slope 2'
 )
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
+plt.xlabel(r'Grid spacing $h$')
+plt.ylabel(r'$\|e\|_\infty$')
 plt.legend()
 plt.tight_layout()
 plt.savefig("helmholtz_neumann.png", dpi=200)
@@ -297,63 +301,63 @@ plt.show()
 
 
 
-# ######################################## comparison plot ran with N=41 ########################################
-# import matplotlib.pyplot as plt
-# import matplotlib.gridspec as gridspec
+# ######################################## comparison plot at n = 33 ########################################
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 
-# plt.rcParams.update({
-#     'font.size': 75, 
-#     'axes.titlesize': 90,
-#     'axes.labelsize': 85,
-#     'xtick.labelsize': 60,
-#     'ytick.labelsize': 60,   
-#     'legend.fontsize': 70  
-# })
+plt.rcParams.update({
+    'font.size': 75, 
+    'axes.titlesize': 90,
+    'axes.labelsize': 85,
+    'xtick.labelsize': 60,
+    'ytick.labelsize': 60,   
+    'legend.fontsize': 70  
+})
 
 
-# # Create large figure
-# fig = plt.figure(figsize=(75, 35))  # Massive size
+# Create large figure
+fig = plt.figure(figsize=(75, 35))  # Massive size
 
-# # Use GridSpec for layout
-# gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
+# Use GridSpec for layout
+gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.25)
 
-# # Subplots
-# ax0 = plt.subplot(gs[0])
-# ax1 = plt.subplot(gs[1])
-# cax = plt.subplot(gs[2])  # For colorbar
+# Subplots
+ax0 = plt.subplot(gs[0])
+ax1 = plt.subplot(gs[1])
+cax = plt.subplot(gs[2])  # For colorbar
 
-# # Devito solution
-# c1 = ax0.contourf(X, Y, u.data[:], levels=100, cmap='viridis')
-# ax0.set_title('Devito Solution')
-# ax0.set_xlabel('x')
-# ax0.set_ylabel('y')
+# Devito solution
+c1 = ax0.contourf(X_plot, Y_plot, u_plot, levels=100, cmap='viridis')
+ax0.set_title('Devito Solution')
+ax0.set_xlabel('x')
+ax0.set_ylabel('y')
 
-# # Analytical solution
-# c2 = ax1.contourf(X, Y, analytical[:], levels=100, cmap='viridis')
-# ax1.set_title('Analytical Solution')
-# ax1.set_xlabel('x')
-# ax1.set_ylabel('y')
+# Analytical solution
+c2 = ax1.contourf(X_plot, Y_plot, exact_plot, levels=100, cmap='viridis')
+ax1.set_title('Analytical Solution')
+ax1.set_xlabel('x')
+ax1.set_ylabel('y')
 
-# # Sync color scales
-# vmin = min(u.data[:].min(), analytical.min())
-# vmax = max(u.data[:].max(), analytical.max())
-# c1.set_clim(vmin, vmax)
-# c2.set_clim(vmin, vmax)
+# Sync color scales
+vmin = min(u_plot.min(), exact_plot.min())
+vmax = max(u_plot.max(), exact_plot.max())
+c1.set_clim(vmin, vmax)
+c2.set_clim(vmin, vmax)
 
-# # Colorbar
-# cb = fig.colorbar(c2, cax=cax)
-# cb.set_label('Field u')
+# Colorbar
+cb = fig.colorbar(c2, cax=cax)
+cb.set_label('Field u')
 
 
-# for ax in [ax0, ax1]:
-#     ax.tick_params(axis='x', pad=20)
-#     ax.tick_params(axis='y', pad=20)
+for ax in [ax0, ax1]:
+    ax.tick_params(axis='x', pad=20)
+    ax.tick_params(axis='y', pad=20)
 
-# # Layout adjustment
-# plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
+# Layout adjustment
+plt.subplots_adjust(left=0.02, right=0.95, top=0.92, bottom=0.12, wspace=0.25)
 
-# # Save output
-# plt.savefig("helmholtz_comparison.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
-# plt.show()
+# Save output
+plt.savefig("helmholtz_comparison.png", dpi=200, bbox_inches='tight', pad_inches=0.2)
+plt.show()
