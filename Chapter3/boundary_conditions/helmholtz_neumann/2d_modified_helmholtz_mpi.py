@@ -31,9 +31,9 @@ so = 2
 class SubTop(SubDomain):
     name = 'subtop'
 
-    def __init__(self, S_O):
-        super().__init__()
+    def __init__(self, S_O, grid=None):
         self.S_O = S_O
+        super().__init__(grid=grid)
 
     def define(self, dimensions):
         x, y = dimensions
@@ -43,9 +43,9 @@ class SubTop(SubDomain):
 class SubBottom(SubDomain):
     name = 'subbottom'
 
-    def __init__(self, S_O):
-        super().__init__()
+    def __init__(self, S_O, grid=None):
         self.S_O = S_O
+        super().__init__(grid=grid)
 
     def define(self, dimensions):
         x, y = dimensions
@@ -55,9 +55,9 @@ class SubBottom(SubDomain):
 class SubLeft(SubDomain):
     name = 'subleft'
 
-    def __init__(self, S_O):
-        super().__init__()
+    def __init__(self, S_O, grid=None):
         self.S_O = S_O
+        super().__init__(grid=grid)
 
     def define(self, dimensions):
         x, y = dimensions
@@ -67,9 +67,9 @@ class SubLeft(SubDomain):
 class SubRight(SubDomain):
     name = 'subright'
 
-    def __init__(self, S_O):
-        super().__init__()
+    def __init__(self, S_O, grid=None):
         self.S_O = S_O
+        super().__init__(grid=grid)
 
     def define(self, dimensions):
         x, y = dimensions
@@ -194,18 +194,6 @@ def neumann_right(eq, subdomain):
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
-sub1 = SubTop(so)
-sub2 = SubBottom(so)
-sub3 = SubLeft(so)
-sub4 = SubRight(so)
-sub5 = SubPointBottomLeft()
-sub6 = SubPointBottomRight()
-sub7 = SubPointTopLeft()
-sub8 = SubPointTopRight()
-
-subdomains = (sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8)
-
-
 def analytical_solution(x, y):
     return np.cos(2*np.pi*x)*np.cos(2*np.pi*y)
 
@@ -216,8 +204,17 @@ infinity_norms = []
 
 for n in n_values:
     grid = Grid(
-        shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
+        shape=(n, n), extent=(Lx, Ly), dtype=np.float64
     )
+    top = SubTop(so, grid=grid)
+    bottom = SubBottom(so, grid=grid)
+    left = SubLeft(so, grid=grid)
+    right = SubRight(so, grid=grid)
+    bottom_left = SubPointBottomLeft(grid=grid)
+    bottom_right = SubPointBottomRight(grid=grid)
+    top_left = SubPointTopLeft(grid=grid)
+    top_right = SubPointTopRight(grid=grid)
+
     time = grid.time_dim
     t = grid.stepping_dim
     x, y = grid.dimensions
@@ -235,23 +232,24 @@ for n in n_values:
     # The reason for the added complexity here is to show how to mantain the symmetry of the 
     # matrix system -> can divide by 0.5 or 0.25 if at a corner
     # check using mat convert if it acc is symmetric
-    bcs1 = neumann_top(eqn, sub1)
-    bcs1 = Eq(0.5*bcs1.lhs, 0.5*bcs1.rhs, subdomain=sub1)
-    bcs2 = neumann_bottom(eqn, sub2)
-    bcs2 = Eq(0.5*bcs2.lhs, 0.5*bcs2.rhs, subdomain=sub2)
-    bcs3 = neumann_left(eqn, sub3)
-    bcs3 = Eq(0.5*bcs3.lhs, 0.5*bcs3.rhs, subdomain=sub3)
-    bcs4 = neumann_right(eqn, sub4)
-    bcs4 = Eq(0.5*bcs4.lhs, 0.5*bcs4.rhs, subdomain=sub4)
-    bcs5 = neumann_left(neumann_bottom(eqn, sub5), sub5)
-    bcs5 = Eq(0.25*bcs5.lhs, 0.25*bcs5.rhs, subdomain=sub5)
-    bcs6 = neumann_right(neumann_bottom(eqn, sub6), sub6)
-    bcs6 = Eq(0.25*bcs6.lhs, 0.25*bcs6.rhs, subdomain=sub6)
-    bcs7 = neumann_left(neumann_top(eqn, sub7), sub7)
-    bcs7 = Eq(0.25*bcs7.lhs, 0.25*bcs7.rhs, subdomain=sub7)
-    bcs8 = neumann_right(neumann_top(eqn, sub8), sub8)
-    bcs8 = Eq(0.25*bcs8.lhs, 0.25*bcs8.rhs, subdomain=sub8)
-    bcs = [bcs1, bcs2, bcs3, bcs4, bcs5, bcs6, bcs7, bcs8]
+    bc_top = neumann_top(eqn, top)
+    bc_top = Eq(0.5*bc_top.lhs, 0.5*bc_top.rhs, subdomain=top)
+    bc_bottom = neumann_bottom(eqn, bottom)
+    bc_bottom = Eq(0.5*bc_bottom.lhs, 0.5*bc_bottom.rhs, subdomain=bottom)
+    bc_left = neumann_left(eqn, left)
+    bc_left = Eq(0.5*bc_left.lhs, 0.5*bc_left.rhs, subdomain=left)
+    bc_right = neumann_right(eqn, right)
+    bc_right = Eq(0.5*bc_right.lhs, 0.5*bc_right.rhs, subdomain=right)
+    bc_bottom_left = neumann_left(neumann_bottom(eqn, bottom_left), bottom_left)
+    bc_bottom_left = Eq(0.25*bc_bottom_left.lhs, 0.25*bc_bottom_left.rhs, subdomain=bottom_left)
+    bc_bottom_right = neumann_right(neumann_bottom(eqn, bottom_right), bottom_right)
+    bc_bottom_right = Eq(0.25*bc_bottom_right.lhs, 0.25*bc_bottom_right.rhs, subdomain=bottom_right)
+    bc_top_left = neumann_left(neumann_top(eqn, top_left), top_left)
+    bc_top_left = Eq(0.25*bc_top_left.lhs, 0.25*bc_top_left.rhs, subdomain=top_left)
+    bc_top_right = neumann_right(neumann_top(eqn, top_right), top_right)
+    bc_top_right = Eq(0.25*bc_top_right.lhs, 0.25*bc_top_right.rhs, subdomain=top_right)
+    bcs = [bc_top, bc_bottom, bc_left, bc_right,
+           bc_bottom_left, bc_bottom_right, bc_top_left, bc_top_right]
 
     solver = petscsolve(
         [eqn]+bcs,
