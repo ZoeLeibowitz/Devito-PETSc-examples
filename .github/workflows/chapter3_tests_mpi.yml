@@ -169,23 +169,23 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 poisson_collatz_constrain_mpi.py
 
-    ################################## 319 ##################################
-    - name: Run 3_1_9 - parallel
+    ##################### boundary_conditions/laplace_mixed #####################
+    - name: Run boundary_conditions/laplace_mixed - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_9 \
+          -w /workspace/Chapter3/boundary_conditions/laplace_mixed \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_mpi.py
 
-    - name: Run 3_1_9 - parallel - constrain bcs
+    - name: Run boundary_conditions/laplace_mixed - parallel - constrain bcs
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_9 \
+          -w /workspace/Chapter3/boundary_conditions/laplace_mixed \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 rectangle2d_constrain_mpi.py
@@ -234,7 +234,6 @@ jobs:
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/3_1_7/*.png
         git add Chapter3/3_1_8/*.png
-        git add Chapter3/3_1_9/*.png
 
 
         git add Chapter3/3_3_1/*.png
