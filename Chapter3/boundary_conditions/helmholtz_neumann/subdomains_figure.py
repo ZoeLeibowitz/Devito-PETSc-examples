@@ -12,8 +12,8 @@ DOT_OUT = "#B0B0B0"
 
 N = 9
 
-fig = plt.figure(figsize=(9.5, 10.2))
-gs = fig.add_gridspec(2, 2, height_ratios=[1.75, 1.55], hspace=0.18, wspace=0.18)
+fig = plt.figure(figsize=(9.5, 8.7))
+gs = fig.add_gridspec(2, 2, height_ratios=[1.28, 1.55], hspace=0.18, wspace=0.18)
 
 ax_code = fig.add_subplot(gs[0, :])
 ax_code.set_xlim(0, 1)
@@ -30,21 +30,16 @@ code_lines = [
     (">>> class SubLeft(SubDomain):", TEXT_DARK, "bold", 13),
     ("...     name = 'subleft'", TEXT_DARK, "bold", 13),
     ("...", TEXT_DARK, "bold", 13),
-    ("...     def __init__(self, S_O, grid=None):", TEXT_DARK, "bold", 13),
-    ("...         self.S_O = S_O", TEXT_DARK, "bold", 13),
-    ("...         super().__init__(grid=grid)", TEXT_DARK, "bold", 13),
-    ("...", TEXT_DARK, "bold", 13),
     ("...     def define(self, dimensions):", TEXT_DARK, "bold", 13),
     ("...         x, y = dimensions", TEXT_DARK, "bold", 13),
-    ("...         return {x: ('left', self.S_O//2),", TEXT_DARK, "bold", 13),
-    ("...                 y: ('middle', 1, 1)}", TEXT_DARK, "bold", 13),
+    ("...         return {x: ('left', 1), y: ('middle', 1, 1)}", TEXT_DARK, "bold", 13),
     ("", TEXT_DARK, "normal", 13),
     (">>> grid = Grid(shape=(9, 9))", TEXT_DARK, "bold", 13),
-    (">>> left = SubLeft(2, grid=grid)", TEXT_DARK, "bold", 13),
+    (">>> left = SubLeft(grid=grid)", TEXT_DARK, "bold", 13),
     (">>> left.shape", TEXT_DARK, "bold", 13),
     ("(1, 7)", "#333333", "normal", 10.5),
 ]
-y0, dy = 0.945, 0.0590
+y0, dy = 0.925, 0.081
 for i, (line, color, weight, fontsize) in enumerate(code_lines):
     ax_code.text(0.05, y0 - i * dy, line, ha="left", va="center",
                  fontsize=fontsize, family="monospace", color=color,

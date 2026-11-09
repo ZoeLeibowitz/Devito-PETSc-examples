@@ -334,9 +334,9 @@ ax0.set_title('Devito Solution')
 ax0.set_xlabel('x')
 ax0.set_ylabel('y')
 
-# Analytical solution
+# Exact solution
 c2 = ax1.contourf(X_plot, Y_plot, exact_plot, levels=100, cmap='viridis')
-ax1.set_title('Analytical Solution')
+ax1.set_title('Exact Solution')
 ax1.set_xlabel('x')
 ax1.set_ylabel('y')
 
