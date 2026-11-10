@@ -1,6 +1,12 @@
 """
 The antisymmetric mirroring of modified_stencil_4th_order.py, generalised to
 any even space order so = 2m.
+
+
+Same setup as modified_stencil_4th_order.py, but the subdomains are defined
+more generally... for example, the "interior" subdomain SubMain is defined as every point at least m points from
+every side, where m=so/2. The subdomains for the modified stencisl are also adjusted according to the space order.
+
 """
 import os
 import numpy as np
