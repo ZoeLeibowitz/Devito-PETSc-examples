@@ -440,18 +440,17 @@ assert slope < 4.1
 
 # Plot
 plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(h, infinity_norms, 'o-', label=rf'Observed order $\hat{{q}} = {slope:.3f}$', color='orange')
 plt.loglog(
     h, np.exp(intercept) * h**4,
     'k--',
-    label=r'Reference slope $O(h^4)$'
+    label='Reference line of slope 4'
 )
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
+plt.xlabel(r'Grid spacing $h$')
+plt.ylabel(r'$\|e\|_\infty$')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_7.png", dpi=200)
+plt.savefig("mirror_fourth_order.png", dpi=200)
 plt.show()
 
 
@@ -506,7 +505,7 @@ ax0.set_ylabel('y')
 
 # Analytical solution
 c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
-ax1.set_title('Analytical Solution')
+ax1.set_title('Exact Solution')
 ax1.set_xlabel('x')
 ax1.set_ylabel('y')
 

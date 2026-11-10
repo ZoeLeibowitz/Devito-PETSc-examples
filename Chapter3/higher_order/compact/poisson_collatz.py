@@ -3,7 +3,6 @@ import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
                     configuration, SubDomain, norm)
-from devito.finite_differences.differentiable import EvalDerivative
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -14,15 +13,15 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-import devito.finite_differences.finite_difference as fdiff
-fdiff._PRECISION = 18
 
 # python3 poisson_collatz.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
-# ref - https://pdf.sciencedirectassets.com/272570/1-s2.0-S0021999100X02033/1-s2.0-0021999184900226/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjELj%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFQy5wqN8Qzb%2FdGuSbFRGSrbApV%2F6XmfLeQ8FEmkaD7AAiAYSK4zEefc95Igcd%2BpFS3477XMDvXbM%2FLstz7EbJ21uCq8BQjR%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAUaDDA1OTAwMzU0Njg2NSIMsyWCF9OHFhbLJfSAKpAFVcic7HhOkv4Lq4rQEiA48irK8rI9gKD3fcpuPLe%2F4oL2H709cXc8TVdwm%2FXTIyZFW6pjnqRX9Q3oXGNiFte3A3wMcSusW2A3EpYpPw%2BHi9ZXwB3WyVeYeS1FmBHvqOfe803tZRxMFI%2BSetCtWwfnOLkOUln5l5Me1L4ufFOGFQiqIu258%2F%2FvSpB62K%2FjzqjkiFEP6SxfWyB%2BbxReH46jGE6zyoYAUyfyZ8QveKRjMO38U2Wk5jkuostmvONwmJsfbfLDzrBTWvnY01lh9tcfPF6GhYVHx92TzSclUNY46mI39MvgozABQneceYAeNpMdqECcX5aSRCegGacIsB4OGTsT8lq04yjQ4YNOFvztWSvbzw9dtDEViFzAm3WDQVEYLP6He9hQuKA6xiSZZsBVQGdnSioJG%2BBhmtv1UpDfFgg6qnoMydtxmf112qJtd9fGKLkuR2HU8bfrSy1WxM6lAfq%2Fw2ET1V%2FhlJCQx4%2FTdWLE83XSi18ML4EZ291UXV81J48fw7Q3KvNYT0dlxxlcuU2XeYIFrKXBBP0x%2FDQm4q0e%2BeiqKguW6fcD8K5vcl5g%2B2zg%2FNItHVT2AqacPvEFt1DP9uyaMmHXxBV2g0v3fuGG2vVnESS9mabYZj04qYWnEtmny%2FEx1GbQ4bNAO5VcVxZowWS%2FmFp7iq%2B8KTJ%2B4V1fPa4wM3aA6Zkfs9xiHrWPsUHF0%2BcIvGujEj8SFzDrjKxU%2F6b7UzqNGbRm4ME3kGTFkHR9H8Mnm75H8XQVBNHqWoFhLF8G%2F27ROlABYDYeZbECAAscwrd9VVE0TNVRDapZrBYdTMjLB%2FWb8TyZ2cpM5s4lDJtC7fxKti6JQpZGFjP1XY4XFDA3Y8QmKK7JTbQw3uD3wwY6sgGd2zuWzi7sbhsOT3PxpsuUIoHcMCurHaT83Kq5hMoRef17aN8JnFe0IACENyKX3pD1y4k3xq0U5AywQtI%2FlfxfK3lJpDlBKdPrm28a9gEySfDD3EhHb8V7CiW9q5%2F2Nve10xAfmVYFIFWtm1buOhkAlq3QkPUkCxLbtgV0qan1pzjuRZJUQ3hZUhiXJg4KTsh9GpBznicQY6%2BEeCMkV3035AWG9oRn8Vz55rJid%2BmZpUSi&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250721T082320Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTYZNTJILVC%2F20250721%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=19b1223011648d50d624d6a9aebcace081f1583c24cb86ac6f1d3485d8c5d866&hash=f54ddef1298fe426f37f14dead5eb8cad80473bd7550f05ac4262b82eaffe93a&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=0021999184900226&tid=spdf-eb012c0c-d331-46fb-a50f-478e4494ac76&sid=397998d868be274a822ae3254cd5195e41f1gxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&rh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=010c5b52535951050c&rr=96294bb2feadeb19&cc=gb
+# ref - Gupta (1984), A fourth-order Poisson solver, J. Comput. Phys. 55(1), https://doi.org/10.1016/0021-9991(84)90022-6
 
 
-# instead of using eval derivative, can use custom weights or rotated derivative 45 https://github.com/devitocodes/devito/blob/main/devito/finite_differences/rsfd.py
-# or can just use indexed notation (see faq -> but won't work with MPI)
+# The nine point stencil is written as a sum of shifted Functions (the "f() notation").
+# Custom weights (u.dx2(weights=...)) act along one dimension, so cannot reach the
+# diagonal points, and nested derivatives (u.dx2.dy2) are not yet supported inside
+# petscsolve.
 
 PetscInitialize()
 
@@ -125,7 +124,7 @@ for n in n_values:
         bottom_left, bottom_middle, bottom_right
     ]
     weights = [1./6., 4./6., 1./6, 4./6., -20./6., 4./6., 1./6., 4./6., 1./6.]
-    nine_point_stencil_lhs = EvalDerivative(*[w*p/h_x**2 for w, p in zip(weights, points)], base=u)
+    nine_point_stencil_lhs = sum(w*p/h_x**2 for w, p in zip(weights, points))
 
     top_left = f.subs({x: x - h_x, y: y + h_y})
     top_middle = f.subs({x: x, y: y + h_y})
@@ -144,8 +143,7 @@ for n in n_values:
         bottom_left, bottom_middle, bottom_right
     ]
     weights = [0., 1./12., 0., 1./12., 8./12., 1./12., 0., 1./12., 0.]
-    # TODO: don't use EvalDerivative?
-    nine_point_stencil_rhs = EvalDerivative(*[w*p for w, p in zip(weights, points)], base=f)
+    nine_point_stencil_rhs = sum(w*p for w, p in zip(weights, points))
 
     eqn = Eq(nine_point_stencil_lhs, nine_point_stencil_rhs, subdomain=grid.interior)
 
@@ -215,18 +213,17 @@ assert slope < 4.1
 
 # Plot
 plt.figure(figsize=(6, 5))
-plt.loglog(h, infinity_norms, 'o-', label=f'Observed rate ≈ {slope:.3f}', color='orange')
+plt.loglog(h, infinity_norms, 'o-', label=rf'Observed order $\hat{{q}} = {slope:.3f}$', color='orange')
 plt.loglog(
     h, np.exp(intercept) * h**4,
     'k--',
-    label=r'Reference slope $O(h^4)$'
+    label='Reference line of slope 4'
 )
-plt.xlabel(r'Grid spacing h')
-plt.ylabel(r'$\infty$-norm error')
-plt.title('Convergence Plot')
+plt.xlabel(r'Grid spacing $h$')
+plt.ylabel(r'$\|e\|_\infty$')
 plt.legend()
 plt.tight_layout()
-plt.savefig("3_1_8.png", dpi=200)
+plt.savefig("compact_fourth_order.png", dpi=200)
 plt.show()
 
 
@@ -263,9 +260,9 @@ ax0.set_title('Devito Solution')
 ax0.set_xlabel('x')
 ax0.set_ylabel('y')
 
-# Analytical solution
+# Exact solution
 c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
-ax1.set_title('Analytical Solution')
+ax1.set_title('Exact Solution')
 ax1.set_xlabel('x')
 ax1.set_ylabel('y')
 

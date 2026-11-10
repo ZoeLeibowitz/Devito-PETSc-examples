@@ -10,8 +10,7 @@ on:
       - 'Chapter3/3_1_4/*.png'
       #  TODO: Add the neumann example for 3_1_5
       - 'Chapter3/boundary_conditions/**/*.png'
-      - 'Chapter3/3_1_7/*.png'
-      - 'Chapter3/3_1_8/*.png'
+      - 'Chapter3/higher_order/**/*.png'
 
       - 'Chapter3/3_2_1/*.png'
       - 'Chapter3/3_2_2/*.png'
@@ -104,22 +103,32 @@ jobs:
           $DOCKER_IMAGE \
           python3 2d_modified_helmholtz.py
 
-    # Run 3_1_7 - serial
-    - name: Run 3_1_7 - serial
+    # Run higher_order/mirror - serial
+    - name: Run higher_order/mirror - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_7 \
+          -w /workspace/Chapter3/higher_order/mirror \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 modified_stencil_4th_order.py
 
-    # Run 3_1_8 - serial
-    - name: Run 3_1_8 - serial
+    # Run higher_order/mirror order sweep - serial
+    - name: Run higher_order/mirror - order sweep - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_8 \
+          -w /workspace/Chapter3/higher_order/mirror \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          python3 mirror_any_order.py
+
+    # Run higher_order/compact - serial
+    - name: Run higher_order/compact - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/higher_order/compact \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 poisson_collatz.py
@@ -220,8 +229,7 @@ jobs:
         git add Chapter3/3_1_4/*.png
     
         git add Chapter3/boundary_conditions/*/*.png
-        git add Chapter3/3_1_7/*.png
-        git add Chapter3/3_1_8/*.png
+        git add Chapter3/higher_order/*/*.png
         git add Chapter3/3_2_1/*.png
         git add Chapter3/3_2_2/*.png
         git add Chapter3/3_2_3/*.png
