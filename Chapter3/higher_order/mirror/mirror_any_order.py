@@ -1,25 +1,6 @@
 """
 The antisymmetric mirroring of modified_stencil_4th_order.py, generalised to
-any even space order so = 2m, with the same 13 subdomains at every order.
-
-Problem (Gupta 1984), on [0, 16]^2 with p = 0 on the boundary:
-    -(d2p/dx2 + d2p/dy2) = f,  f = -sin(pi x/8) sin(pi y/8),
-    p = -[2 (pi/8)^2]^(-1) sin(pi x/8) sin(pi y/8).
-
-A stencil of order 2m reaches m points each way, so the rows at distance
-1, ..., m-1 from a boundary read points outside the domain. The solution is odd
-about each boundary, p(-k h) = -p(k h). The modified function folds each
-access back into the domain, as in Devito's boundary conditions tutorial
-(examples/userapi/04_boundary_conditions.ipynb): an access at index i becomes
-sign(i) * p[|i|]. This is minus the mirror image where i < 0, and leaves the
-access unchanged where i > 0, so one equation covers every row of a band of
-thickness m-1 next to the boundary.
-
-The folding uses the local index on each MPI rank, so it must only be applied
-on the subdomains next to the boundary. Applied on the whole interior, it
-would also fold the halo accesses of ranks away from the boundary.
-
-Usage: python mirror_any_order.py
+any even space order so = 2m.
 """
 import os
 import numpy as np
