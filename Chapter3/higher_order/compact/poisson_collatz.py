@@ -16,11 +16,13 @@ os.environ['CC'] = 'mpicc'
 
 # python3 poisson_collatz.py -ksp_converged_reason -ksp_type cg -ksp_rtol 1e-13 -pc_type none
 # ref - Gupta (1984), A fourth-order Poisson solver, J. Comput. Phys. 55(1), https://doi.org/10.1016/0021-9991(84)90022-6
+# -(d2p/dx2 + d2p/dy2) = f on [0, 16]^2, p = 0 on the boundary, with
+# f = -sin(pi x/8) sin(pi y/8) and p = -[2 (pi/8)^2]^(-1) sin(pi x/8) sin(pi y/8)
 
 
 # The nine point stencil is written as a sum of shifted Functions (the "f() notation").
-# Custom weights (u.dx2(weights=...)) act along one dimension, so cannot reach the
-# diagonal points, and nested derivatives (u.dx2.dy2) are not yet supported inside
+# Custom weights (p.dx2(weights=...)) act along one dimension, so cannot reach the
+# diagonal points, and nested derivatives (p.dx2.dy2) are not yet supported inside
 # petscsolve.
 
 PetscInitialize()
@@ -88,7 +90,6 @@ infinity_norms = []
 discrete_l2_norms = []
 ksp_iters = []
 
-# Not acc really used
 so = 2
 
 
@@ -97,34 +98,33 @@ for n in n_values:
         shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
     )
 
-    u = Function(name='u', grid=grid, space_order=so)
+    p = Function(name='p', grid=grid, space_order=so)
     f = Function(name='f', grid=grid, space_order=so)
     bc = Function(name='bc', grid=grid, space_order=so)
 
     ##### 9-point stencil #####
     x, y = grid.dimensions
     h_x = x.spacing
-    h_x = x.spacing
     h_y = y.spacing
 
-    top_left = u.subs({x: x - h_x, y: y + h_y})
-    top_middle = u.subs({x: x, y: y + h_y})
-    top_right = u.subs({x: x + h_x, y: y + h_y})
+    top_left = p.subs({x: x - h_x, y: y + h_y})
+    top_middle = p.subs({x: x, y: y + h_y})
+    top_right = p.subs({x: x + h_x, y: y + h_y})
 
-    middle_left = u.subs({x: x - h_x, y: y})
-    middle_middle = u.subs({x: x, y: y})
-    middle_right = u.subs({x: x + h_x, y: y})
+    middle_left = p.subs({x: x - h_x, y: y})
+    middle_middle = p.subs({x: x, y: y})
+    middle_right = p.subs({x: x + h_x, y: y})
 
-    bottom_left = u.subs({x: x - h_x, y: y - h_y})
-    bottom_middle = u.subs({x: x, y: y - h_y})
-    bottom_right = u.subs({x: x + h_x, y: y - h_y})
+    bottom_left = p.subs({x: x - h_x, y: y - h_y})
+    bottom_middle = p.subs({x: x, y: y - h_y})
+    bottom_right = p.subs({x: x + h_x, y: y - h_y})
     points = [
         top_left, top_middle, top_right,
         middle_left, middle_middle, middle_right,
         bottom_left, bottom_middle, bottom_right
     ]
-    weights = [1./6., 4./6., 1./6, 4./6., -20./6., 4./6., 1./6., 4./6., 1./6.]
-    nine_point_stencil_lhs = sum(w*p/h_x**2 for w, p in zip(weights, points))
+    weights = [1, 4, 1, 4, -20, 4, 1, 4, 1]
+    nine_point_stencil_lhs = -sum(w*pt for w, pt in zip(weights, points))/(6*h_x**2)
 
     top_left = f.subs({x: x - h_x, y: y + h_y})
     top_middle = f.subs({x: x, y: y + h_y})
@@ -143,7 +143,7 @@ for n in n_values:
         bottom_left, bottom_middle, bottom_right
     ]
     weights = [0., 1./12., 0., 1./12., 8./12., 1./12., 0., 1./12., 0.]
-    nine_point_stencil_rhs = sum(w*p for w, p in zip(weights, points))
+    nine_point_stencil_rhs = sum(w*pt for w, pt in zip(weights, points))
 
     eqn = Eq(nine_point_stencil_lhs, nine_point_stencil_rhs, subdomain=grid.interior)
 
@@ -154,7 +154,7 @@ for n in n_values:
 
     k1, k2 = 1., 1.
 
-    f.data[:] = np.float64(np.sin((np.pi*X*k1)/8.0)) * np.float64(np.sin((np.pi*Y*k2)/8.0))
+    f.data[:] = -np.float64(np.sin((np.pi*X*k1)/8.0)) * np.float64(np.sin((np.pi*Y*k2)/8.0))
 
     bc.data[:, 0] = 0.
     bc.data[:, -1] = 0.
@@ -162,19 +162,19 @@ for n in n_values:
     bc.data[-1, :] = 0.
 
     # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u, bc, subdomain=sub1)]
-    bcs += [EssentialBC(u, bc, subdomain=sub2)]
-    bcs += [EssentialBC(u, bc, subdomain=sub3)]
-    bcs += [EssentialBC(u, bc, subdomain=sub4)]
+    bcs = [EssentialBC(p, bc, subdomain=sub1)]
+    bcs += [EssentialBC(p, bc, subdomain=sub2)]
+    bcs += [EssentialBC(p, bc, subdomain=sub3)]
+    bcs += [EssentialBC(p, bc, subdomain=sub4)]
 
     exprs = [eqn] + bcs
 
-    # Can play around with initial guess -> if it's zero then cg just converges in 1 iteration because
-    # the rhs is an eigenvector of the matrix -> I think?
-    u.data[:] = 0.001
+    # A nonzero initial guess, so that CG iterates. From zero it converges in
+    # one iteration, since f is an eigenvector of the discrete operator.
+    p.data[:] = 0.001
 
     petsc = petscsolve(
-        exprs, target=u,
+        exprs, target=p,
         solver_parameters={'ksp_rtol': 1e-13, 'ksp_type': 'cg', 'pc_type': 'none'},
         options_prefix='poisson_collatz'
     )
@@ -186,11 +186,11 @@ for n in n_values:
     iters = summary.petsc[('section0', 'poisson_collatz')].KSPGetIterationNumber
     ksp_iters.append(iters)
 
-    u_exact = Function(name='u_exact', grid=grid, space_order=so)
-    u_exact.data[:] = exact(X, Y)
+    p_exact = Function(name='p_exact', grid=grid, space_order=so)
+    p_exact.data[:] = exact(X, Y)
 
     diff = Function(name='diff', grid=grid, space_order=so)
-    diff.data[:] = u_exact.data[:] - u.data[:]
+    diff.data[:] = p_exact.data[:] - p.data[:]
 
     # Compute infinity norm using numpy
     infinity_norm = np.linalg.norm(diff.data[:].ravel(), ord=np.inf)
@@ -255,26 +255,26 @@ ax1 = plt.subplot(gs[1])
 cax = plt.subplot(gs[2])  # For colorbar
 
 # Devito solution
-c1 = ax0.contourf(X, Y, u.data[:], levels=100, cmap='viridis')
+c1 = ax0.contourf(X, Y, p.data[:], levels=100, cmap='viridis')
 ax0.set_title('Devito Solution')
 ax0.set_xlabel('x')
 ax0.set_ylabel('y')
 
 # Exact solution
-c2 = ax1.contourf(X, Y, u_exact.data[:], levels=100, cmap='viridis')
+c2 = ax1.contourf(X, Y, p_exact.data[:], levels=100, cmap='viridis')
 ax1.set_title('Exact Solution')
 ax1.set_xlabel('x')
 ax1.set_ylabel('y')
 
 # Sync color scales
-vmin = min(u.data[:].min(), u_exact.data[:].min())
-vmax = max(u.data[:].max(), u_exact.data[:].max())
+vmin = min(p.data[:].min(), p_exact.data[:].min())
+vmax = max(p.data[:].max(), p_exact.data[:].max())
 c1.set_clim(vmin, vmax)
 c2.set_clim(vmin, vmax)
 
 # Colorbar
 cb = fig.colorbar(c2, cax=cax)
-cb.set_label('Field u')
+cb.set_label('Field p')
 
 
 for ax in [ax0, ax1]:
