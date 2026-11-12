@@ -90,7 +90,8 @@ infinity_norms = []
 discrete_l2_norms = []
 ksp_iters = []
 
-so = 2
+# The stencil is written by hand, so space_order only sets the halo
+so = 1
 
 
 for n in n_values:
@@ -124,6 +125,7 @@ for n in n_values:
         bottom_left, bottom_middle, bottom_right
     ]
     weights = [1, 4, 1, 4, -20, 4, 1, 4, 1]
+    # Could use EvalDerivative instead of sum
     nine_point_stencil_lhs = -sum(w*pt for w, pt in zip(weights, points))/(6*h_x**2)
 
     top_left = f.subs({x: x - h_x, y: y + h_y})
