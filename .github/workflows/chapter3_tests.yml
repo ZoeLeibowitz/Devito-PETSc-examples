@@ -13,8 +13,6 @@ on:
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
 
-      - 'Chapter3/3_2_1/*.png'
-      - 'Chapter3/3_2_2/*.png'
       - 'Chapter3/3_2_3/*.png'
       - 'Chapter3/3_2_4/*.png'
       - 'Chapter3/3_2_5/*.png'
@@ -154,26 +152,6 @@ jobs:
           $DOCKER_IMAGE \
           python3 heat_2d.py
 
-    # Run 3_2_1 - serial
-    - name: Run all .py scripts in 3_2_1 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_1 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          bash -c 'for f in *.py; do echo "Running $f..."; python3 "$f"; done'
-
-    # Run 3_2_2 - serial
-    - name: Run 3_2_2 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_2 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          python3 3_2_2_ftcs.py
-
     # Run 3_2_3 - serial
     - name: Run 3_2_3 - serial
       run: |
@@ -242,8 +220,6 @@ jobs:
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png
         git add Chapter3/time_dependent/*/*.png
-        git add Chapter3/3_2_1/*.png
-        git add Chapter3/3_2_2/*.png
         git add Chapter3/3_2_3/*.png
         git add Chapter3/3_2_4/*.png
         git add Chapter3/3_2_5/*.png

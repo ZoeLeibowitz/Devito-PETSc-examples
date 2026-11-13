@@ -179,4 +179,33 @@ fig.text(0.75, 0.008, '(b) Error', ha='center', fontsize=12)
 
 plt.tight_layout()
 plt.savefig('3_2_2_ftcs.png', bbox_inches='tight', dpi=300)
+
+# Full 2D field at T=1: FTCS, exact, and their difference.
+u_final = np.asarray(u.data[-1])
+u_exact_field = np.asarray(u_exact.data[:])
+
+fig2, axes2 = plt.subplots(1, 3, figsize=(20, 6))
+
+im0 = axes2[0].imshow(u_final.T, origin='lower', extent=[0, Lx, 0, Ly])
+axes2[0].set_title('FTCS at T=1', fontsize=13)
+axes2[0].set_xlabel('x', fontsize=11)
+axes2[0].set_ylabel('y', fontsize=11)
+plt.colorbar(im0, ax=axes2[0], fraction=0.046, pad=0.04)
+
+im1 = axes2[1].imshow(u_exact_field.T, origin='lower', extent=[0, Lx, 0, Ly])
+axes2[1].set_title('Exact at T=1', fontsize=13)
+axes2[1].set_xlabel('x', fontsize=11)
+axes2[1].set_ylabel('y', fontsize=11)
+plt.colorbar(im1, ax=axes2[1], fraction=0.046, pad=0.04)
+
+im2 = axes2[2].imshow((u_final - u_exact_field).T, origin='lower', extent=[0, Lx, 0, Ly],
+                       cmap='RdBu_r')
+axes2[2].set_title('FTCS - Exact', fontsize=13)
+axes2[2].set_xlabel('x', fontsize=11)
+axes2[2].set_ylabel('y', fontsize=11)
+plt.colorbar(im2, ax=axes2[2], fraction=0.046, pad=0.04)
+
+plt.tight_layout()
+plt.savefig('3_2_2_ftcs_field.png', bbox_inches='tight', dpi=300)
+
 plt.show()
