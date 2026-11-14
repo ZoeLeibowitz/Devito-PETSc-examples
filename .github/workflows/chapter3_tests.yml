@@ -13,7 +13,6 @@ on:
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
 
-      - 'Chapter3/3_2_3/*.png'
       - 'Chapter3/3_2_4/*.png'
       - 'Chapter3/3_2_5/*.png'
       - 'Chapter3/3_2_6/*.png'
@@ -152,15 +151,15 @@ jobs:
           $DOCKER_IMAGE \
           python3 heat_2d.py
 
-    # Run 3_2_3 - serial
-    - name: Run 3_2_3 - serial
+    # Run time_dependent/heat_3d_bcs - serial
+    - name: Run time_dependent/heat_3d_bcs - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_3 \
+          -w /workspace/Chapter3/time_dependent/heat_3d_bcs \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
-          python3 3_2_3.py
+          python3 heat_3d_bcs.py
 
     # Run 3_2_4 - serial
     - name: Run 3_2_4 - serial
@@ -220,7 +219,6 @@ jobs:
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png
         git add Chapter3/time_dependent/*/*.png
-        git add Chapter3/3_2_3/*.png
         git add Chapter3/3_2_4/*.png
         git add Chapter3/3_2_5/*.png
         git add Chapter3/3_2_6/*.png
