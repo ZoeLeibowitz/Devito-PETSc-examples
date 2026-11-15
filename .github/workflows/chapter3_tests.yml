@@ -13,9 +13,6 @@ on:
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
 
-      - 'Chapter3/3_2_4/*.png'
-      - 'Chapter3/3_2_5/*.png'
-      - 'Chapter3/3_2_6/*.png'
 
       - 'Chapter3/3_3_1/*.png'
 
@@ -161,32 +158,32 @@ jobs:
           $DOCKER_IMAGE \
           python3 heat_3d_bcs.py
 
-    # Run 3_2_4 - serial
-    - name: Run 3_2_4 - serial
+    # Run time_dependent/wave_1d - serial
+    - name: Run time_dependent/wave_1d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_4 \
+          -w /workspace/Chapter3/time_dependent/wave_1d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 wave_1d.py
 
-    # Run 3_2_5 - serial
-    - name: Run 3_2_5 - serial
+    # Run time_dependent/wave_2d - serial
+    - name: Run time_dependent/wave_2d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_5 \
+          -w /workspace/Chapter3/time_dependent/wave_2d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 wave_2d.py
 
-    # Run 3_2_6 - serial
-    - name: Run 3_2_6 - serial
+    # Run time_dependent/wave_3d - serial
+    - name: Run time_dependent/wave_3d - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_2_6 \
+          -w /workspace/Chapter3/time_dependent/wave_3d \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 wave_3d.py
@@ -219,9 +216,6 @@ jobs:
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png
         git add Chapter3/time_dependent/*/*.png
-        git add Chapter3/3_2_4/*.png
-        git add Chapter3/3_2_5/*.png
-        git add Chapter3/3_2_6/*.png
 
         git add Chapter3/3_3_1/*.png
 
