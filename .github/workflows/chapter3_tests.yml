@@ -15,7 +15,7 @@ on:
       - 'Chapter3/nonlinear/**/*.png'
 
 
-      - 'Chapter3/3_3_1/*.png'
+      - 'Chapter3/coupled/**/*.png'
 
   schedule:
     # Runs every Monday at 00:00 UTC
@@ -199,12 +199,12 @@ jobs:
           $DOCKER_IMAGE \
           python3 reaction.py
 
-    # Run 3_3_1 - serial
-    - name: Run 3_3_1 - serial
+    # Run coupled/biharmonic - serial
+    - name: Run coupled/biharmonic - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_3_1 \
+          -w /workspace/Chapter3/coupled/biharmonic \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 biharmonic.py
@@ -229,7 +229,7 @@ jobs:
         git add Chapter3/time_dependent/*/*.png
         git add Chapter3/nonlinear/*/*.png
 
-        git add Chapter3/3_3_1/*.png
+        git add Chapter3/coupled/*/*.png
 
         if git diff --cached --quiet; then
           echo "No changes to commit, skipping PR."

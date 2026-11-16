@@ -194,22 +194,22 @@ jobs:
 
     ################################## 331 (mixed petscsolve) ##################################
 
-    - name: Run 3_3_1 - parallel
+    - name: Run coupled/biharmonic - parallel
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_3_1 \
+          -w /workspace/Chapter3/coupled/biharmonic \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi.py
 
-    - name: Run 3_3_1 - parallel - constrain bcs
+    - name: Run coupled/biharmonic - parallel - constrain bcs
       run: |
         docker run --rm -t \
           -e DEVITO_MPI \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_3_1 \
+          -w /workspace/Chapter3/coupled/biharmonic \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 biharmonic_mpi_constrain.py
@@ -235,7 +235,7 @@ jobs:
         git add Chapter3/higher_order/*/*.png
 
 
-        git add Chapter3/3_3_1/*.png
+        git add Chapter3/coupled/*/*.png
 
 
         if git diff --cached --quiet; then

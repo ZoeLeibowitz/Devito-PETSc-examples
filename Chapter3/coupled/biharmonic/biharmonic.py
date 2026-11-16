@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 from devito import (Grid, Function, Eq, Operator, switchconfig,
-                    configuration, SubDomain)
+                    configuration, Border)
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -17,40 +17,6 @@ os.environ['CC'] = 'mpicc'
 
 
 PetscInitialize()
-
-
-# Subdomains to implement BCs
-
-class SubTop(SubDomain):
-    name = 'subtop'
-
-    def define(self, dimensions):
-        x, y = dimensions
-        return {x: ('middle', 1, 1), y: ('right', 1)}
-
-
-class SubBottom(SubDomain):
-    name = 'subbottom'
-
-    def define(self, dimensions):
-        x, y = dimensions
-        return {x: ('middle', 1, 1), y: ('left', 1)}
-
-
-class SubLeft(SubDomain):
-    name = 'subleft'
-
-    def define(self, dimensions):
-        x, y = dimensions
-        return {x: ('left', 1), y: y}
-
-
-class SubRight(SubDomain):
-    name = 'subright'
-
-    def define(self, dimensions):
-        x, y = dimensions
-        return {x: ('right', 1), y: y}
 
 
 def c(x):
@@ -77,13 +43,6 @@ def f_fcn(x, y):
     return d4c(x) * c(y) + 2.0 * ddc(x) * ddc(y) + c(x) * d4c(y)
 
 
-sub1 = SubTop()
-sub2 = SubBottom()
-sub3 = SubLeft()
-sub4 = SubRight()
-
-subdomains = (sub1, sub2, sub3, sub4)
-
 Lx = np.float64(1.)
 Ly = np.float64(1.)
 
@@ -96,7 +55,7 @@ v_errors = []
 
 for n in n_values:
     grid = Grid(
-        shape=(n, n), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
+        shape=(n, n), extent=(Lx, Ly), dtype=np.float64
     )
 
     u = Function(name='u', grid=grid, space_order=2)
@@ -106,8 +65,12 @@ for n in n_values:
     u_exact = Function(name='u_exact', grid=grid, space_order=2)
     lap_u = Function(name='lap_u', grid=grid, space_order=2)
 
-    eqn1 = Eq(-v.laplace, f, subdomain=grid.interior)
-    eqn2 = Eq(-u.laplace, v, subdomain=grid.interior)
+    # One Border for the boundary points of both fields
+    border = Border(grid, 1)
+    eqn_v = Eq(-v.laplace, f, subdomain=grid.interior)
+    eqn_u = Eq(-u.laplace, v, subdomain=grid.interior)
+    bc_v = EssentialBC(v, 0., subdomain=border)
+    bc_u = EssentialBC(u, 0., subdomain=border)
 
     tmpx = np.linspace(0, Lx, n).astype(np.float64)
     tmpy = np.linspace(0, Ly, n).astype(np.float64)
@@ -115,23 +78,15 @@ for n in n_values:
 
     f.data[:] = f_fcn(X, Y)
 
-    # # Create boundary condition expressions using subdomains
     # TODO: add initial guess callback for mixed systems
-    bc_u = [EssentialBC(u, 0., subdomain=sub1)]
-    bc_u += [EssentialBC(u, 0., subdomain=sub2)]
-    bc_u += [EssentialBC(u, 0., subdomain=sub3)]
-    bc_u += [EssentialBC(u, 0., subdomain=sub4)]
-    bc_v = [EssentialBC(v, 0., subdomain=sub1)]
-    bc_v += [EssentialBC(v, 0., subdomain=sub2)]
-    bc_v += [EssentialBC(v, 0., subdomain=sub3)]
-    bc_v += [EssentialBC(v, 0., subdomain=sub4)]
-
-    # T (see ref) is nonsymmetric so set default KSP type to GMRES
-    params = {'ksp_rtol': 1e-10, 'ksp_type': 'gmres', 'pc_type': 'none'}
-    petsc = petscsolve({v: [eqn1]+bc_v, u: [eqn2]+bc_u}, solver_parameters=params)
+    # The block matrix is not symmetric, so GMRES is used
+    params = {'ksp_type': 'gmres', 'pc_type': 'none', 'ksp_rtol': 1e-10}
+    # Each target mapped to its equations
+    solve = petscsolve({v: [eqn_v, bc_v], u: [eqn_u, bc_u]},
+                       solver_parameters=params)
 
     with switchconfig(language='petsc'):
-        op = Operator(petsc)
+        op = Operator(solve)
         op.apply()
 
     u_exact.data[:] = u_exact_fcn(X, Y)
@@ -139,15 +94,11 @@ for n in n_values:
 
     # Compute infinity norm for u
     u_diff = u_exact.data[:] - u.data[:]
-    u_diff_norm = np.linalg.norm(u_diff.ravel(), ord=np.inf)
-    u_error = u_diff_norm / np.linalg.norm(u_exact.data[:].ravel(), ord=np.inf)
-    u_errors.append(u_error)
+    u_errors.append(np.linalg.norm(u_diff.ravel(), ord=np.inf))
 
-    # Compute infinity norm for lap_u
+    # Compute infinity norm for v = -lap(u)
     v_diff = lap_u.data[:] - v.data[:]
-    v_diff_norm = np.linalg.norm(v_diff.ravel(), ord=np.inf)
-    v_error = v_diff_norm / np.linalg.norm(lap_u.data[:].ravel(), ord=np.inf)
-    v_errors.append(v_error)
+    v_errors.append(np.linalg.norm(v_diff.ravel(), ord=np.inf))
 
 u_slope, _ = np.polyfit(np.log(dx), np.log(u_errors), 1)
 v_slope, _ = np.polyfit(np.log(dx), np.log(v_errors), 1)
@@ -169,24 +120,18 @@ dx = np.array(dx)
 u_errors = np.array(u_errors)
 v_errors = np.array(v_errors)
 
-# Plot
-plt.figure(figsize=(8, 6))
-plt.loglog(dx, u_errors, 'o-', label=r"$u$ error", linewidth=2, markersize=6)
-plt.loglog(dx, v_errors, 's--', label=r"$v = -\nabla^{2} u$ error", linewidth=2, markersize=6)
-
-# Reference line for 2nd order
-ref_line = 3.2 * dx**2  # adjust scaling factor as needed
-plt.loglog(dx, ref_line, 'k:', label=r"$\mathcal{O}(h^2)$", linewidth=1.5)
-
-# Labels and legend
-plt.xlabel("Grid spacing, h", fontsize=16)
-plt.ylabel("$\|\cdot\|_\infty$", fontsize=16)
-plt.title("Convergence of the infinity norm for $u$ and $v$", fontsize=16)
-plt.legend(fontsize=12)
+# Convergence Plot
+plt.figure(figsize=(6, 5))
+for name, errors, slope in [('u', u_errors, u_slope), ('v', v_errors, v_slope)]:
+    plt.loglog(dx, errors, 'o-', label=rf'${name}$, $\hat{{q}} = {slope:.3f}$')
+for k, errors in enumerate([u_errors, v_errors]):
+    plt.loglog(dx, errors[0]*(dx/dx[0])**2, 'k--', lw=0.8,
+               label='Reference lines of slope 2' if k == 1 else None)
+plt.xlabel(r'Grid spacing $h$')
+plt.ylabel(r'$\|e\|_\infty$')
+plt.legend()
 plt.tight_layout()
-
-# Save plot
-plt.savefig("3_3_1_convergence.png", dpi=300)
+plt.savefig("biharmonic_convergence.png", dpi=200)
 print(u_errors)
 print(v_errors)
 
