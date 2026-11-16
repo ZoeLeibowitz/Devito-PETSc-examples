@@ -12,6 +12,7 @@ on:
       - 'Chapter3/boundary_conditions/**/*.png'
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
+      - 'Chapter3/nonlinear/**/*.png'
 
 
       - 'Chapter3/3_3_1/*.png'
@@ -188,6 +189,16 @@ jobs:
           $DOCKER_IMAGE \
           python3 wave_3d.py
 
+    # Run nonlinear/reaction - serial
+    - name: Run nonlinear/reaction - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/nonlinear/reaction \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          python3 reaction.py
+
     # Run 3_3_1 - serial
     - name: Run 3_3_1 - serial
       run: |
@@ -216,6 +227,7 @@ jobs:
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png
         git add Chapter3/time_dependent/*/*.png
+        git add Chapter3/nonlinear/*/*.png
 
         git add Chapter3/3_3_1/*.png
 
