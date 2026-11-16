@@ -225,6 +225,7 @@ print("Devito Infinity Norms: %s\n" % formatted_devito_infinity_norms)
 print("Petsc4pdes L2 Norms: %s\n" % formatted_petsc4pdes_l2_norms)
 print("Devito L2 Norms: %s\n" % formatted_devito_l2_norms)
 
-assert formatted_petsc4pdes_infinity_norms == formatted_devito_infinity_norms
-assert formatted_petsc4pdes_l2_norms == formatted_devito_l2_norms
+# Agreement to rounding
+assert np.allclose(infinity_norms, petsc4pdes_infinity_norms, rtol=1e-6, atol=1e-12)
+assert np.allclose(discrete_l2_norms, petsc4pdes_l2_norms, rtol=1e-6, atol=1e-12)
 assert ksp_iters == petsc4pdes_kspiters
