@@ -7,7 +7,6 @@ on:
     # Ignore commits to PNG files to prevent workflow loops
     paths-ignore:
       - 'Chapter3/dimensions/**/*.png'
-      - 'Chapter3/3_1_4/*.png'
       - 'Chapter3/boundary_conditions/**/*.png'
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
@@ -75,16 +74,6 @@ jobs:
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 3d_poisson.py
-
-    # Run 3_1_4 - serial
-    - name: Run 3_1_4 - serial
-      run: |
-        docker run --rm -t \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_4 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          python3 2d_laplace_sine.py
 
     # Run boundary_conditions/nullspace - serial
     - name: Run boundary_conditions/nullspace - serial
@@ -229,7 +218,6 @@ jobs:
         BRANCH_NAME="update-ch3-$(date +%s)"
         git checkout -b $BRANCH_NAME
         git add Chapter3/dimensions/*/*.png
-        git add Chapter3/3_1_4/*.png
     
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png

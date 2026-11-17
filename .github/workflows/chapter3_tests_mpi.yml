@@ -93,27 +93,6 @@ jobs:
           $DOCKER_IMAGE \
           mpiexec --oversubscribe -n $MPI_N python3 3d_poisson_mpi.py
 
-    ################################## 314 ##################################
-    - name: Run 3_1_4 - parallel
-      run: |
-        docker run --rm -t \
-          -e DEVITO_MPI \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_4 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n $MPI_N python3 2d_laplace_sine_mpi.py
-
-    - name: Run 3_1_4 - parallel - constrain bcs
-      run: |
-        docker run --rm -t \
-          -e DEVITO_MPI \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/3_1_4 \
-          -u $(id -u):$(id -g) \
-          $DOCKER_IMAGE \
-          mpiexec --oversubscribe -n $MPI_N python3 2d_laplace_sine_constrain_mpi.py
-
     # TODO: insert 315 parallel tests
 
     ##################### boundary_conditions/helmholtz_neumann #####################
@@ -229,7 +208,6 @@ jobs:
         git checkout -b $BRANCH_NAME
 
         git add Chapter3/dimensions/*/*.png
-        git add Chapter3/3_1_4/*.png
 
         git add Chapter3/boundary_conditions/*/*.png
         git add Chapter3/higher_order/*/*.png
