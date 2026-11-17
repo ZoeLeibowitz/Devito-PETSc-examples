@@ -8,7 +8,6 @@ on:
     paths-ignore:
       - 'Chapter3/dimensions/**/*.png'
       - 'Chapter3/3_1_4/*.png'
-      #  TODO: Add the neumann example for 3_1_5
       - 'Chapter3/boundary_conditions/**/*.png'
       - 'Chapter3/higher_order/**/*.png'
       - 'Chapter3/time_dependent/**/*.png'
@@ -87,7 +86,15 @@ jobs:
           $DOCKER_IMAGE \
           python3 2d_laplace_sine.py
 
-    # Don't run 3_1_5 yet -> need to fix nullspace treatment
+    # Run boundary_conditions/nullspace - serial
+    - name: Run boundary_conditions/nullspace - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/boundary_conditions/nullspace \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          python3 poisson_neumann.py
 
     # Run boundary_conditions/helmholtz_neumann - serial
     - name: Run boundary_conditions/helmholtz_neumann - serial
