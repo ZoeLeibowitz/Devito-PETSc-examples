@@ -13,7 +13,7 @@ configuration['compiler'] = 'custom'
 os.environ['CC'] = 'mpicc'
 
 
-# python3 rectangle2d.py -ksp_converged_reason -ksp_type gmres -pc_type none -ksp_max_it 500000 -ksp_rtol 1e-11
+# python3 rectangle2d.py -ksp_converged_reason -ksp_type cg -pc_type none -ksp_max_it 500000 -ksp_rtol 1e-11
 
 # solves laplace equation in 2D with dirichlet and neumann boundary conditions
 # u(0,y) = 0
@@ -157,7 +157,7 @@ for nx, ny in zip(nx_values, ny_values):
     f = Function(name='f', grid=grid, space_order=2)
     bc = Function(name='bc', grid=grid, space_order=2)
 
-    eqn = Eq(u.laplace, f, subdomain=grid.interior)
+    eqn = Eq(-u.laplace, f, subdomain=grid.interior)
 
     tmpx = np.linspace(0, Lx, nx).astype(np.float64)
     tmpy = np.linspace(0, Ly, ny).astype(np.float64)
@@ -172,14 +172,17 @@ for nx, ny in zip(nx_values, ny_values):
     # Create boundary condition expressions using subdomains
     bcs = [EssentialBC(u, bc, subdomain=sub3)]
     bcs += [EssentialBC(u, bc, subdomain=sub4)]
-    # TODO: maintain symmetry by dividing?
-    bcs += [neumann_bottom(eqn, sub2)]
-    bcs += [neumann_top(eqn, sub1)]
+    # Neumann rows scaled by one half to keep the Jacobian symmetric, as in
+    # the modified Helmholtz problem
+    bc_bottom = neumann_bottom(eqn, sub2)
+    bc_top = neumann_top(eqn, sub1)
+    bcs += [Eq(0.5*bc_bottom.lhs, 0.5*bc_bottom.rhs, subdomain=sub2)]
+    bcs += [Eq(0.5*bc_top.lhs, 0.5*bc_top.rhs, subdomain=sub1)]
 
     exprs = [eqn] + bcs
     petsc = petscsolve(
         exprs, target=u,
-        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'gmres', 'pc_type': 'none', 'ksp_max_it': 500000},
+        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'cg', 'pc_type': 'none', 'ksp_max_it': 500000},
         options_prefix='rectangle_2d'
     )
 

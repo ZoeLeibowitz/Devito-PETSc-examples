@@ -136,7 +136,7 @@ bc += [EssentialBC(q, 0., subdomain=model.grid.subdomains['subright'])]
 
 
 update_q = Eq(q.laplacian(order=2), p.forward, subdomain=model.grid.interior)
-petsc = petscsolve([update_q] + bc, target=q, solver_parameters={'ksp_type': 'cg'}, options_prefix='poisson')
+petsc = petscsolve([update_q] + bc, target=q, solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg'}, options_prefix='poisson')
 
 
 # set source and receivers

@@ -147,7 +147,7 @@ bcs += [EssentialBC(u.forward, bc, subdomain=sub4)]
 solver = petscsolve(
     [eqn] + bcs,
     target=u.forward,
-    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'gmres', 'pc_type': 'none'},
+    solver_parameters={'ksp_rtol': 1e-12, 'ksp_type': 'cg', 'pc_type': 'none'},
     options_prefix='wave_implicit'
 )
 
