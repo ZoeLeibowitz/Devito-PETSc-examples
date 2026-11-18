@@ -75,12 +75,12 @@ jobs:
           $DOCKER_IMAGE \
           python3 3d_poisson.py
 
-    # Run boundary_conditions/nullspace - serial
-    - name: Run boundary_conditions/nullspace - serial
+    # Run singular_systems/poisson_neumann - serial
+    - name: Run singular_systems/poisson_neumann - serial
       run: |
         docker run --rm -t \
           -v ${{ github.workspace }}:/workspace \
-          -w /workspace/Chapter3/boundary_conditions/nullspace \
+          -w /workspace/Chapter3/singular_systems/poisson_neumann \
           -u $(id -u):$(id -g) \
           $DOCKER_IMAGE \
           python3 poisson_neumann.py
