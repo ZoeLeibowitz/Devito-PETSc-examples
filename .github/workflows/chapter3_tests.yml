@@ -95,6 +95,16 @@ jobs:
           $DOCKER_IMAGE \
           python3 2d_modified_helmholtz.py
 
+    # Run boundary_conditions/helmholtz_neumann symmetry check - serial
+    - name: Run boundary_conditions/helmholtz_neumann - symmetry check - serial
+      run: |
+        docker run --rm -t \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/Chapter3/boundary_conditions/helmholtz_neumann \
+          -u $(id -u):$(id -g) \
+          $DOCKER_IMAGE \
+          python3 symmetry_check.py
+
     # Run higher_order/mirror - serial
     - name: Run higher_order/mirror - serial
       run: |
