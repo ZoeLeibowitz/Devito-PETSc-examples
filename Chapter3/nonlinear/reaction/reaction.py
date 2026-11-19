@@ -1,8 +1,8 @@
 import os
 import numpy as np
-from sympy import sqrt
 
 from devito import Grid, Function, Eq, Operator, Border, configuration
+from devito import sqrt
 
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize

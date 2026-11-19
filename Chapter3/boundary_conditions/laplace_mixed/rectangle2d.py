@@ -85,7 +85,9 @@ def neumann_bottom(eq, subdomain):
         if (yind - y).as_coeff_Mul()[0] < 0:
             mapper.update({f: f.subs({yind: INT(abs(yind))})})
 
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    # Row scaled by one half to keep the Jacobian symmetric, as in the
+    # modified Helmholtz problem
+    return Eq(0.5*lhs.subs(mapper), 0.5*rhs.subs(mapper), subdomain=subdomain)
 
 
 def neumann_top(eq, subdomain):
@@ -107,16 +109,17 @@ def neumann_top(eq, subdomain):
             tmp = y - INT(abs(y.symbolic_max - yind))
             mapper.update({f: f.subs({yind: tmp})})
 
-    return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
+    # Row scaled by one half to keep the Jacobian symmetric
+    return Eq(0.5*lhs.subs(mapper), 0.5*rhs.subs(mapper), subdomain=subdomain)
 
 
-sub1 = SubTop()
-sub2 = SubBottom()
-sub3 = SubLeft()
-sub4 = SubRight()
+top = SubTop()
+bottom = SubBottom()
+left = SubLeft()
+right = SubRight()
 # sub5 = SubMain()
 
-subdomains = (sub1, sub2, sub3, sub4)
+subdomains = (top, bottom, left, right)
 
 def exact(x, y):
     tmp1 = np.float64(np.sinh(2.0*np.float64(np.pi)))
@@ -149,6 +152,7 @@ discrete_l2_norms = []
 ksp_iters = []
 
 for nx, ny in zip(nx_values, ny_values):
+    # Set up the rectangular grid
     grid = Grid(
         shape=(nx, ny), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
     )
@@ -169,22 +173,16 @@ for nx, ny in zip(nx_values, ny_values):
     bc.data[0, :] = np.float64(0.) # u(0,y) = 0
     bc.data[nx-1, :] = np.float64(np.cos(np.float64(np.pi * tmpy))) # u(2,y) = cos(pi*y)
 
-    # Create boundary condition expressions using subdomains
-    bcs = [EssentialBC(u, bc, subdomain=sub3)]
-    bcs += [EssentialBC(u, bc, subdomain=sub4)]
-    # Neumann rows scaled by one half to keep the Jacobian symmetric, as in
-    # the modified Helmholtz problem
-    bc_bottom = neumann_bottom(eqn, sub2)
-    bc_top = neumann_top(eqn, sub1)
-    bcs += [Eq(0.5*bc_bottom.lhs, 0.5*bc_bottom.rhs, subdomain=sub2)]
-    bcs += [Eq(0.5*bc_top.lhs, 0.5*bc_top.rhs, subdomain=sub1)]
+    # Dirichlet conditions on the left and right
+    bcs = [EssentialBC(u, bc, subdomain=left)]
+    bcs += [EssentialBC(u, bc, subdomain=right)]
+    # Neumann conditions on the bottom and top
+    bcs += [neumann_bottom(eqn, bottom)]
+    bcs += [neumann_top(eqn, top)]
 
-    exprs = [eqn] + bcs
-    petsc = petscsolve(
-        exprs, target=u,
-        solver_parameters={'ksp_rtol': 1e-11, 'ksp_type': 'cg', 'pc_type': 'none', 'ksp_max_it': 500000},
-        options_prefix='rectangle_2d'
-    )
+    params = {'ksp_rtol': 1e-11, 'ksp_type': 'cg', 'pc_type': 'none', 'ksp_max_it': 500000}
+    petsc = petscsolve([eqn] + bcs, target=u, solver_parameters=params,
+                       options_prefix='rectangle_2d')
 
     with switchconfig(log_level='DEBUG'):
         op = Operator(petsc, language='petsc')
