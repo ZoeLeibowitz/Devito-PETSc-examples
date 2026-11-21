@@ -17,8 +17,10 @@ y_coords = np.linspace(0, 1.0, ny)
 X, Y = np.meshgrid(x_coords, y_coords, indexing='ij')
 u.data[0] = np.sin(np.pi*X) * np.sin(np.pi*Y)
 
-dt, nt = 0.01, 200
 op = Operator(stencil)
+# A time step within the explicit stability limit
+dt = 0.2 * grid.spacing[0]**2 / alpha**2
+nt = 160  # time steps, ending at T = 2
 op.apply(dt=dt, time_M=nt-1)
 print(op.ccode)
 
