@@ -53,16 +53,16 @@ def draw_card(y_bottom, title, subtitle, highlighted):
     if subtitle:
         ax.text(
             card_cx, cy + 0.12, title, ha="center", va="center",
-            fontsize=10.5, fontweight="bold", color=TEXT_DARK, zorder=4,
+            fontsize=12.5, fontweight="bold", color=TEXT_DARK, zorder=4,
         )
         ax.text(
             card_cx, cy - 0.15, subtitle, ha="center", va="center",
-            fontsize=8, style="italic", color="#333333", zorder=4,
+            fontsize=11, style="italic", color="#333333", zorder=4,
         )
     else:
         ax.text(
             card_cx, cy, title, ha="center", va="center",
-            fontsize=10.5, fontweight="bold", color=TEXT_DARK, zorder=4,
+            fontsize=12.5, fontweight="bold", color=TEXT_DARK, zorder=4,
         )
 
 
