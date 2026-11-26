@@ -256,8 +256,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
             un = Derivative(u, (y, 0), x0={y: y})
             vn = Derivative(v, (x, 0), x0={x: x})
             uu, vv, uv = uc**2, vc**2, un*vn
-            hu = (uu - uu.shift(x, -hx))/hx + (uv.shift(y, hy) - uv)/hy
-            hv = (uv.shift(x, hx) - uv)/hx + (vv - vv.shift(y, -hy))/hy
+            hu = (uu - uu.subs({x: x - hx}))/hx + (uv.subs({y: y + hy}) - uv)/hy
+            hv = (uv.subs({x: x + hx}) - uv)/hx + (vv - vv.subs({y: y - hy}))/hy
             return hu, hv
 
         hu, hv = flux(u, v)
@@ -364,7 +364,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
 
     with switchconfig(language='petsc'):
         op = Operator(exprs)
-        print(op.ccode)
+        # print(op.ccode)
 
     # then gather to rank 0 here?
 
