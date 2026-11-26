@@ -48,7 +48,7 @@ for a in range(N):
 
 lab = dict(fontsize=FS, zorder=6,
            bbox=dict(boxstyle='round,pad=0.06', fc='white', ec='none', alpha=0.85))
-ax.text(1.5, 1.5 - 0.09, r'$p_{i+\frac{1}{2},\,j+\frac{1}{2}}$', color=P_COLOUR,
+ax.text(1.5, 1.5 - 0.09, r'$\phi_{i+\frac{1}{2},\,j+\frac{1}{2}}$', color=P_COLOUR,
         ha='center', va='top', **lab)
 ax.text(1, 1.5 + 0.08, r'$u_{i,\,j+\frac{1}{2}}$', color=U_COLOUR, ha='center',
         va='bottom', **lab)

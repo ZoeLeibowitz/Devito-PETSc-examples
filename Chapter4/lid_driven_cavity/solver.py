@@ -26,7 +26,7 @@ def _neumann_bottom(eq, t, subdomain):
     for f in funcs:
         yind = f.indices[-1]
         if (yind - yind_target).as_coeff_Mul()[0] < 0:
-            if f.name == 'p':
+            if f.name == 'phi':
                 mapper[f] = f.subs({yind: yind_target})
             if f.name == 'u' or f.name == 'plotfunc_u':
                 mapper[f] = -f.subs({yind: yind_target})
@@ -45,7 +45,7 @@ def _neumann_top(eq, t, subdomain):
     for f in funcs:
         yind = f.indices[-1]
         if (yind - yind_target).as_coeff_Mul()[0] > 0:
-            if f.name == 'p':
+            if f.name == 'phi':
                 mapper[f] = f.subs({yind: yind_target})
             if f.name == 'u':
                 mapper[f] = 2 - f.subs({yind: yind_target})
@@ -64,7 +64,7 @@ def _neumann_left(eq, t, subdomain):
     for f in funcs:
         xind = f.indices[-2]
         if (xind - xind_target).as_coeff_Mul()[0] < 0:
-            if f.name == 'p':
+            if f.name == 'phi':
                 mapper[f] = f.subs({xind: xind_target})
             if f.name == 'v' or f.name == 'plotfunc_v':
                 mapper[f] = -f.subs({xind: xind_target})
@@ -83,7 +83,7 @@ def _neumann_right(eq, t, subdomain):
     for f in funcs:
         xind = f.indices[-2]
         if (xind - xind_target).as_coeff_Mul()[0] > 0:
-            if f.name == 'p':
+            if f.name == 'phi':
                 mapper[f] = f.subs({xind: xind_target})
             if f.name == 'v':
                 mapper[f] = -f.subs({xind: xind_target})
@@ -96,56 +96,56 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
     so = 2
 
-    class PTopLeft(SubDomain):
-        name = 'p_top_left'
+    class PhiTopLeft(SubDomain):
+        name = 'phi_top_left'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('middle', ny-2, 1)}
 
-    class PTopRow(SubDomain):
-        name = 'p_top_row'
+    class PhiTopRow(SubDomain):
+        name = 'phi_top_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('middle', ny-2, 1)}
 
-    class PTopRight(SubDomain):
-        name = 'p_top_right'
+    class PhiTopRight(SubDomain):
+        name = 'phi_top_right'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', ny-2, 1)}
 
-    class PLeftColumn(SubDomain):
-        name = 'p_left_column'
+    class PhiLeftColumn(SubDomain):
+        name = 'phi_left_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('middle', 1, 2)}
 
-    class PInterior(SubDomain):
-        name = 'p_interior'
+    class PhiInterior(SubDomain):
+        name = 'phi_interior'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('middle', 1, 2)}
 
-    class PRightColumn(SubDomain):
-        name = 'p_right_column'
+    class PhiRightColumn(SubDomain):
+        name = 'phi_right_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', 1, 2)}
 
-    class PBottomLeft(SubDomain):
-        name = 'p_bottom_left'
+    class PhiBottomLeft(SubDomain):
+        name = 'phi_bottom_left'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('left', 1)}
 
-    class PBottomRow(SubDomain):
-        name = 'p_bottom_row'
+    class PhiBottomRow(SubDomain):
+        name = 'phi_bottom_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('left', 1)}
 
-    class PBottomRight(SubDomain):
-        name = 'p_bottom_right'
+    class PhiBottomRight(SubDomain):
+        name = 'phi_bottom_right'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('left', 1)}
@@ -224,16 +224,16 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
 
     grid = Grid(shape=(nx, ny), extent=(1., 1.), dtype=np.float64)
 
-    # SubDomains of p
-    p_interior = PInterior(grid=grid)
-    p_top_row = PTopRow(grid=grid)
-    p_bottom_row = PBottomRow(grid=grid)
-    p_left_column = PLeftColumn(grid=grid)
-    p_right_column = PRightColumn(grid=grid)
-    p_top_left = PTopLeft(grid=grid)
-    p_top_right = PTopRight(grid=grid)
-    p_bottom_right = PBottomRight(grid=grid)
-    p_bottom_left = PBottomLeft(grid=grid)
+    # SubDomains of phi
+    phi_interior = PhiInterior(grid=grid)
+    phi_top_row = PhiTopRow(grid=grid)
+    phi_bottom_row = PhiBottomRow(grid=grid)
+    phi_left_column = PhiLeftColumn(grid=grid)
+    phi_right_column = PhiRightColumn(grid=grid)
+    phi_top_left = PhiTopLeft(grid=grid)
+    phi_top_right = PhiTopRight(grid=grid)
+    phi_bottom_right = PhiBottomRight(grid=grid)
+    phi_bottom_left = PhiBottomLeft(grid=grid)
 
     # SubDomains of u
     u_interior = UInterior(grid=grid)
@@ -261,12 +261,12 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
 
     u = TimeFunction(name='u', grid=grid, space_order=so, time_order=time_order, staggered=y)
     v = TimeFunction(name='v', grid=grid, space_order=so, time_order=time_order, staggered=x)
-    p = Function(name='p', grid=grid, space_order=so, staggered=(x, y))
+    phi = Function(name='phi', grid=grid, space_order=so, staggered=(x, y))
 
     # Convection
     if conservative:
         # Conservative form ... Each velocity is
-        # interpolated to the cell centres (CELL, where p is stored) and to the grid
+        # interpolated to the cell centres (CELL, where phi is stored) and to the grid
         # nodes (NODE). A zeroth order Derivative with x0 does this.
         hx, hy = x.spacing, y.spacing
 
@@ -309,7 +309,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     ux_cc = u.forward.dx(x0=x + x.spacing/2)
     vy_cc = v.forward.dy(x0=y + y.spacing/2)
 
-    eq_p = Eq(p.laplace, (1./dt_c)*(ux_cc + vy_cc), subdomain=p_interior)
+    eq_phi = Eq(phi.laplace, (1./dt_c)*(ux_cc + vy_cc), subdomain=phi_interior)
 
     # u BCs (tent)
     bc_tmp_u = Function(name='bc_tmp_u', grid=grid, space_order=so, staggered=y)
@@ -332,25 +332,25 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
                               options_prefix='vtent_solve',
                               solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
-    # p BCs, homogeneous Neumann on every wall. The system is then singular, with the
+    # phi BCs, homogeneous Neumann on every wall. The system is then singular, with the
     # constants as its null space, which is passed to the solver
-    bc_p = [_neumann_left(_neumann_top(eq_p, p, p_top_left), p, p_top_left)]
-    bc_p += [_neumann_top(eq_p, p, p_top_row)]
-    bc_p += [_neumann_right(_neumann_top(eq_p, p, p_top_right), p, p_top_right)]
-    bc_p += [_neumann_left(eq_p, p, p_left_column)]
-    bc_p += [_neumann_right(eq_p, p, p_right_column)]
-    bc_p += [_neumann_bottom(eq_p, p, p_bottom_row)]
-    bc_p += [_neumann_right(_neumann_bottom(eq_p, p, p_bottom_right), p, p_bottom_right)]
-    bc_p += [_neumann_left(_neumann_bottom(eq_p, p, p_bottom_left), p, p_bottom_left)]
+    bc_phi = [_neumann_left(_neumann_top(eq_phi, phi, phi_top_left), phi, phi_top_left)]
+    bc_phi += [_neumann_top(eq_phi, phi, phi_top_row)]
+    bc_phi += [_neumann_right(_neumann_top(eq_phi, phi, phi_top_right), phi, phi_top_right)]
+    bc_phi += [_neumann_left(eq_phi, phi, phi_left_column)]
+    bc_phi += [_neumann_right(eq_phi, phi, phi_right_column)]
+    bc_phi += [_neumann_bottom(eq_phi, phi, phi_bottom_row)]
+    bc_phi += [_neumann_right(_neumann_bottom(eq_phi, phi, phi_bottom_right), phi, phi_bottom_right)]
+    bc_phi += [_neumann_left(_neumann_bottom(eq_phi, phi, phi_bottom_left), phi, phi_bottom_left)]
 
-    pressure_solve = petscsolve([eq_p] + bc_p, p,
+    pressure_solve = petscsolve([eq_phi] + bc_phi, phi,
                                 options_prefix='pressure_solve',
                                 nullspace=NullSpace(constant=True),
                                 solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
     # Velocity correction
-    update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=u_interior)
-    update_v = Eq(v.forward, v.forward - dt_c*p.dy, subdomain=v_interior)
+    update_u = Eq(u.forward, u.forward - dt_c*phi.dx, subdomain=u_interior)
+    update_v = Eq(v.forward, v.forward - dt_c*phi.dy, subdomain=v_interior)
 
     bc_u = [Eq(u.forward, 0, subdomain=u_left_wall)]
     bc_u += [Eq(u.forward, 0, subdomain=u_right_wall)]
@@ -429,7 +429,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
         # and check convergence every check_every steps.
         u.data[:] = 0.
         v.data[:] = 0.
-        p.data[:] = 0.
+        phi.data[:] = 0.
 
         dx = 1./(nx - 1)
         dt_conv = 0.5 * dx
