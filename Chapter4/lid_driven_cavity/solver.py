@@ -4,7 +4,7 @@ import numpy as np
 from devito import (Grid, TimeFunction, Function, Eq, Operator, Border,
                     configuration, SubDomain, NODE, Derivative, switchconfig, Constant, solve)
 from devito.symbolics import retrieve_functions
-from devito.petsc import petscsolve, EssentialBC
+from devito.petsc import petscsolve, EssentialBC, NullSpace
 from devito.petsc.initialize import PetscInitialize
 from devito.mpi.distributed import MPI
 
@@ -132,8 +132,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', 1, 2)}
 
-    class PPin(SubDomain):
-        name = 'p_pin'
+    class PBottomLeft(SubDomain):
+        name = 'p_bottom_left'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('left', 1)}
@@ -233,7 +233,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     p_top_left = PTopLeft(grid=grid)
     p_top_right = PTopRight(grid=grid)
     p_bottom_right = PBottomRight(grid=grid)
-    p_pin = PPin(grid=grid)
+    p_bottom_left = PBottomLeft(grid=grid)
 
     # SubDomains of u
     u_interior = UInterior(grid=grid)
@@ -332,10 +332,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
                               options_prefix='vtent_solve',
                               solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
-    # p BCs
-    bc_tmp_p = Function(name='bc_tmp_p', grid=grid, space_order=so, staggered=(x, y))
-    bc_tmp_p.data[:] = 0.
-
+    # p BCs, homogeneous Neumann on every wall. The system is then singular, with the
+    # constants as its null space, which is passed to the solver
     bc_p = [_neumann_left(_neumann_top(eq_p, p, p_top_left), p, p_top_left)]
     bc_p += [_neumann_top(eq_p, p, p_top_row)]
     bc_p += [_neumann_right(_neumann_top(eq_p, p, p_top_right), p, p_top_right)]
@@ -343,10 +341,11 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     bc_p += [_neumann_right(eq_p, p, p_right_column)]
     bc_p += [_neumann_bottom(eq_p, p, p_bottom_row)]
     bc_p += [_neumann_right(_neumann_bottom(eq_p, p, p_bottom_right), p, p_bottom_right)]
-    bc_p += [EssentialBC(p, bc_tmp_p, subdomain=p_pin)]
+    bc_p += [_neumann_left(_neumann_bottom(eq_p, p, p_bottom_left), p, p_bottom_left)]
 
     pressure_solve = petscsolve([eq_p] + bc_p, p,
                                 options_prefix='pressure_solve',
+                                nullspace=NullSpace(constant=True),
                                 solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
     # Velocity correction
@@ -388,13 +387,13 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
                          staggered=NODE)
     
 
-    border_u = Border(grid, 1, dims={x: x, y: 'left'})
+    border_u = Border(grid, 1, dims={x: x, y: 'left'}, name='border_u')
     eq_interp_u = Eq(plotfunc_u, u, subdomain=grid.interior)
-    border_lid = Border(grid, 1, dims={y: 'right'})
+    border_lid = Border(grid, 1, dims={y: 'right'}, name='border_lid')
     eq_interp_u = [eq_interp_u] + [Eq(plotfunc_u, 0, subdomain=border_u)] + [Eq(plotfunc_u, 1, subdomain=border_lid)]
     op_interp_u = Operator(eq_interp_u)
 
-    border_v = Border(grid, 1)
+    border_v = Border(grid, 1, name='border_v')
     eq_interp_v = Eq(plotfunc_v, v, subdomain=grid.interior)
     eq_interp_v = [eq_interp_v] + [Eq(plotfunc_v, 0, subdomain=border_v)]
     op_interp_v = Operator(eq_interp_v)
@@ -411,7 +410,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     vorticity_eqn = Eq(vorticity, v.dx - u.dy)
     op_vorticity = Operator([eq_ghost_u, eq_ghost_v, vorticity_eqn])
 
-    border = Border(grid, 1)
+    border = Border(grid, 1, name='border_psi')
     stream_bc = [EssentialBC(stream, 0., subdomain=border)]
     stream_eqn = Eq(stream.laplace, -(v.dx - u.dy), subdomain=grid.interior)
     stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve',
