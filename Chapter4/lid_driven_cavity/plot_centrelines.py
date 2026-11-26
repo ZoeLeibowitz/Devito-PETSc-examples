@@ -51,5 +51,5 @@ for name in ('u', 'v'):
         plt.ylabel(r'$v(x, 0.5)$')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f'figures/centreline_{name}.png', dpi=200)
+    plt.savefig(f'centreline_{name}.png', dpi=200)
     plt.close()

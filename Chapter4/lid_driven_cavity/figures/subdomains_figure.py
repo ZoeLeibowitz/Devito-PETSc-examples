@@ -155,6 +155,6 @@ arrows(ax, np.zeros((N, N), dtype=bool))
 region_box(ax, outside, color=DOT_OUT, linestyle='--')
 finish(ax, "outside the cavity", "removed by petscsolve")
 
-out = Path(__file__).parent / "figures" / "cavity_u_subdomains.png"
+out = Path(__file__).parent / "cavity_u_subdomains.png"
 plt.savefig(out, dpi=300, bbox_inches="tight", pad_inches=0.3, facecolor="white")
 print(f"Saved {out}")
