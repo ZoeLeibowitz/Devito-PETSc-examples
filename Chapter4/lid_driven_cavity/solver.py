@@ -96,140 +96,160 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
     so = 2
 
-    class Sub1(SubDomain):
-        name = 'sub1'
+    class PTopLeft(SubDomain):
+        name = 'p_top_left'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('middle', ny-2, 1)}
 
-    class Sub2(SubDomain):
-        name = 'sub2'
+    class PTopRow(SubDomain):
+        name = 'p_top_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('middle', ny-2, 1)}
 
-    class Sub3(SubDomain):
-        name = 'sub3'
+    class PTopRight(SubDomain):
+        name = 'p_top_right'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', ny-2, 1)}
 
-    class Sub4(SubDomain):
-        name = 'sub4'
+    class PLeftColumn(SubDomain):
+        name = 'p_left_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('middle', 1, 2)}
 
-    class Sub5(SubDomain):
-        name = 'sub5'
+    class PInterior(SubDomain):
+        name = 'p_interior'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('middle', 1, 2)}
 
-    class Sub6(SubDomain):
-        name = 'sub6'
+    class PRightColumn(SubDomain):
+        name = 'p_right_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', 1, 2)}
 
-    class Sub7(SubDomain):
-        name = 'sub7'
+    class PPin(SubDomain):
+        name = 'p_pin'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('left', 1)}
 
-    class Sub8(SubDomain):
-        name = 'sub8'
+    class PBottomRow(SubDomain):
+        name = 'p_bottom_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('left', 1)}
 
-    class Sub9(SubDomain):
-        name = 'sub9'
+    class PBottomRight(SubDomain):
+        name = 'p_bottom_right'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('left', 1)}
 
-    class Sub10(SubDomain):
-        name = 'sub10'
+    class UGhost(SubDomain):
+        name = 'u_ghost'
         def define(self, dimensions):
             x, y = dimensions
             return {x: x, y: ('right', 1)}
 
-    class Sub11(SubDomain):
-        name = 'sub11'
+    class URightWall(SubDomain):
+        name = 'u_right_wall'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('right', 1), y: ('left', ny-1)}
 
-    class Sub12(SubDomain):
-        name = 'sub12'
+    class UBottomRow(SubDomain):
+        name = 'u_bottom_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 1), y: ('left', 1)}
 
-    class Sub13(SubDomain):
-        name = 'sub13'
+    class UTopRow(SubDomain):
+        name = 'u_top_row'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 1), y: ('middle', ny-2, 1)}
 
-    class Sub14(SubDomain):
-        name = 'sub14'
+    class ULeftWall(SubDomain):
+        name = 'u_left_wall'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('left', ny-1)}
 
-    class Sub15(SubDomain):
-        name = 'sub15'
+    class UInterior(SubDomain):
+        name = 'u_interior'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 1), y: ('middle', 1, 2)}
 
-    class Sub16(SubDomain):
-        name = 'sub16'
+    class VRightColumn(SubDomain):
+        name = 'v_right_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', nx-2, 1), y: ('middle', 1, 1)}
 
-    class Sub17(SubDomain):
-        name = 'sub17'
+    class VInterior(SubDomain):
+        name = 'v_interior'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('middle', 1, 2), y: ('middle', 1, 1)}
 
-    class Sub18(SubDomain):
-        name = 'sub18'
+    class VTopWall(SubDomain):
+        name = 'v_top_wall'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', nx-1), y: ('right', 1)}
 
-    class Sub19(SubDomain):
-        name = 'sub19'
+    class VBottomWall(SubDomain):
+        name = 'v_bottom_wall'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', nx-1), y: ('left', 1)}
 
-    class Sub20(SubDomain):
-        name = 'sub20'
+    class VLeftColumn(SubDomain):
+        name = 'v_left_column'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('left', 1), y: ('middle', 1, 1)}
 
-    class Sub21(SubDomain):
-        name = 'sub21'
+    class VGhost(SubDomain):
+        name = 'v_ghost'
         def define(self, dimensions):
             x, y = dimensions
             return {x: ('right', 1), y: y}
 
-    subdomains = tuple(cls() for cls in [
-        Sub1, Sub2, Sub3, Sub4, Sub5, Sub6, Sub7, Sub8, Sub9, Sub10,
-        Sub11, Sub12, Sub13, Sub14, Sub15, Sub16, Sub17, Sub18, Sub19,
-        Sub20, Sub21,
-    ])
+    grid = Grid(shape=(nx, ny), extent=(1., 1.), dtype=np.float64)
 
-    grid = Grid(shape=(nx, ny), extent=(1., 1.), subdomains=subdomains,
-                dtype=np.float64)
+    # SubDomains of p
+    p_interior = PInterior(grid=grid)
+    p_top_row = PTopRow(grid=grid)
+    p_bottom_row = PBottomRow(grid=grid)
+    p_left_column = PLeftColumn(grid=grid)
+    p_right_column = PRightColumn(grid=grid)
+    p_top_left = PTopLeft(grid=grid)
+    p_top_right = PTopRight(grid=grid)
+    p_bottom_right = PBottomRight(grid=grid)
+    p_pin = PPin(grid=grid)
+
+    # SubDomains of u
+    u_interior = UInterior(grid=grid)
+    u_left_wall = ULeftWall(grid=grid)
+    u_right_wall = URightWall(grid=grid)
+    u_bottom_row = UBottomRow(grid=grid)
+    u_top_row = UTopRow(grid=grid)
+    u_ghost = UGhost(grid=grid)
+
+    # SubDomains of v
+    v_interior = VInterior(grid=grid)
+    v_bottom_wall = VBottomWall(grid=grid)
+    v_top_wall = VTopWall(grid=grid)
+    v_left_column = VLeftColumn(grid=grid)
+    v_right_column = VRightColumn(grid=grid)
+    v_ghost = VGhost(grid=grid)
 
     x, y = grid.dimensions
     t = grid.stepping_dim
@@ -283,84 +303,72 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
         diff_u = (1./re)*(u.dx2 + u.dy2)
         diff_v = (1./re)*(v.dx2 + v.dy2)
 
-    eq_u_tent = Eq(u.dt + conv_u, diff_u, subdomain=grid.subdomains['sub15'])
-    eq_v_tent = Eq(v.dt + conv_v, diff_v, subdomain=grid.subdomains['sub17'])
+    eq_u_tent = Eq(u.dt + conv_u, diff_u, subdomain=u_interior)
+    eq_v_tent = Eq(v.dt + conv_v, diff_v, subdomain=v_interior)
 
     ux_cc = u.forward.dx(x0=x + x.spacing/2)
     vy_cc = v.forward.dy(x0=y + y.spacing/2)
 
-    eq_p = Eq(p.laplace, (1./dt_c)*(ux_cc + vy_cc), subdomain=grid.subdomains['sub5'])
+    eq_p = Eq(p.laplace, (1./dt_c)*(ux_cc + vy_cc), subdomain=p_interior)
 
     # u BCs (tent)
     bc_tmp_u = Function(name='bc_tmp_u', grid=grid, space_order=so, staggered=y)
-    bc_u_tent = [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub14'])]
-    bc_u_tent += [EssentialBC(u.forward, 0, subdomain=grid.subdomains['sub11'])]
-    bc_u_tent += [_neumann_bottom(eq_u_tent, u, subdomain=grid.subdomains['sub12'])]
-    bc_u_tent += [_neumann_top(eq_u_tent, u, subdomain=grid.subdomains['sub13'])]
+    bc_u_tent = [EssentialBC(u.forward, 0, subdomain=u_left_wall)]
+    bc_u_tent += [EssentialBC(u.forward, 0, subdomain=u_right_wall)]
+    bc_u_tent += [_neumann_bottom(eq_u_tent, u, subdomain=u_bottom_row)]
+    bc_u_tent += [_neumann_top(eq_u_tent, u, subdomain=u_top_row)]
 
     u_tent_solve = petscsolve([eq_u_tent] + bc_u_tent, u.forward,
                               options_prefix='utent_solve',
                               solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
-    
-    # This can be done in postprocessing before doing the interpolation but just doing it here for ease
-    # Essentially, I apply this mapping already when updating the nodes for u along sub13
-    bc_u_halo = [Eq(u.forward, 2 - u.forward.subs({y + y.spacing/2: y - y.spacing/2}), subdomain=grid.subdomains['sub10'])]
-    # pretty sure this can be dropped, potentially want to add it in post processing before interpolation but it doesn't need to be part of the solve
-    # since i modify the u equation along sub12 to account for this
-    # before:
-    # bc_u_halo = [Eq(u[t+1, x, ny-1], 2 - u[t+1, x, ny-2])]
-    # bc_u_halo += [Eq(u[t+1, x, -1], -u[t+1, x, 0])]
 
     # v BCs (tent)
-    bc_v_tent = [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub18'])]
-    bc_v_tent += [EssentialBC(v.forward, 0, subdomain=grid.subdomains['sub19'])]
-    bc_v_tent += [_neumann_left(eq_v_tent, v, subdomain=grid.subdomains['sub20'])]
-    bc_v_tent += [_neumann_right(eq_v_tent, v, subdomain=grid.subdomains['sub16'])]
+    bc_v_tent = [EssentialBC(v.forward, 0, subdomain=v_top_wall)]
+    bc_v_tent += [EssentialBC(v.forward, 0, subdomain=v_bottom_wall)]
+    bc_v_tent += [_neumann_left(eq_v_tent, v, subdomain=v_left_column)]
+    bc_v_tent += [_neumann_right(eq_v_tent, v, subdomain=v_right_column)]
 
     v_tent_solve = petscsolve([eq_v_tent] + bc_v_tent, v.forward,
                               options_prefix='vtent_solve',
                               solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
-    bc_v_halo = [Eq(v.forward, -v.forward.subs({x+x.spacing/2: x-x.spacing/2}), subdomain=grid.subdomains['sub21'])]
-
     # p BCs
     bc_tmp_p = Function(name='bc_tmp_p', grid=grid, space_order=so, staggered=(x, y))
     bc_tmp_p.data[:] = 0.
 
-    sub = subdomains
-    bc_p = [_neumann_left(_neumann_top(eq_p, p, sub[0]), p, sub[0])]
-    bc_p += [_neumann_top(eq_p, p, sub[1])]
-    bc_p += [_neumann_right(_neumann_top(eq_p, p, sub[2]), p, sub[2])]
-    bc_p += [_neumann_left(eq_p, p, sub[3])]
-    bc_p += [_neumann_right(eq_p, p, sub[5])]
-    bc_p += [_neumann_bottom(eq_p, p, sub[7])]
-    bc_p += [_neumann_right(_neumann_bottom(eq_p, p, sub[8]), p, sub[8])]
-    bc_p += [EssentialBC(p, bc_tmp_p, subdomain=grid.subdomains['sub7'])]
+    bc_p = [_neumann_left(_neumann_top(eq_p, p, p_top_left), p, p_top_left)]
+    bc_p += [_neumann_top(eq_p, p, p_top_row)]
+    bc_p += [_neumann_right(_neumann_top(eq_p, p, p_top_right), p, p_top_right)]
+    bc_p += [_neumann_left(eq_p, p, p_left_column)]
+    bc_p += [_neumann_right(eq_p, p, p_right_column)]
+    bc_p += [_neumann_bottom(eq_p, p, p_bottom_row)]
+    bc_p += [_neumann_right(_neumann_bottom(eq_p, p, p_bottom_right), p, p_bottom_right)]
+    bc_p += [EssentialBC(p, bc_tmp_p, subdomain=p_pin)]
 
     pressure_solve = petscsolve([eq_p] + bc_p, p,
                                 options_prefix='pressure_solve',
                                 solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-7})
 
     # Velocity correction
-    update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=grid.subdomains['sub15'])
-    update_v = Eq(v.forward, v.forward - dt_c*p.dy, subdomain=grid.subdomains['sub17'])
+    update_u = Eq(u.forward, u.forward - dt_c*p.dx, subdomain=u_interior)
+    update_v = Eq(v.forward, v.forward - dt_c*p.dy, subdomain=v_interior)
 
-    bc_u = [Eq(u.forward, 0, subdomain=grid.subdomains['sub14'])]
-    bc_u += [Eq(u.forward, 0, subdomain=grid.subdomains['sub11'])]
-    bc_u += [_neumann_bottom(update_u, u, subdomain=grid.subdomains['sub12'])]
-    bc_u += [_neumann_top(update_u, u, subdomain=grid.subdomains['sub13'])]
+    bc_u = [Eq(u.forward, 0, subdomain=u_left_wall)]
+    bc_u += [Eq(u.forward, 0, subdomain=u_right_wall)]
+    bc_u += [_neumann_bottom(update_u, u, subdomain=u_bottom_row)]
+    bc_u += [_neumann_top(update_u, u, subdomain=u_top_row)]
 
-    bc_v = [Eq(v.forward, 0, subdomain=grid.subdomains['sub18'])]
-    bc_v += [Eq(v.forward, 0, subdomain=grid.subdomains['sub19'])]
-    bc_v += [_neumann_left(update_v, v, subdomain=grid.subdomains['sub20'])]
-    bc_v += [_neumann_right(update_v, v, subdomain=grid.subdomains['sub16'])]
+    bc_v = [Eq(v.forward, 0, subdomain=v_top_wall)]
+    bc_v += [Eq(v.forward, 0, subdomain=v_bottom_wall)]
+    bc_v += [_neumann_left(update_v, v, subdomain=v_left_column)]
+    bc_v += [_neumann_right(update_v, v, subdomain=v_right_column)]
     
     # from IPython import embed; embed()
-    exprs = ([u_tent_solve] + bc_u_halo +
-             [v_tent_solve] + bc_v_halo +
+    exprs = ([u_tent_solve] +
+             [v_tent_solve] +
              [pressure_solve] +
-             [update_u] + bc_u + bc_u_halo +
-             [update_v] + bc_v + bc_v_halo)
+             [update_u] + bc_u +
+             [update_v] + bc_v)
 
     with switchconfig(language='petsc'):
         op = Operator(exprs)
@@ -382,7 +390,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
 
     border_u = Border(grid, 1, dims={x: x, y: 'left'})
     eq_interp_u = Eq(plotfunc_u, u, subdomain=grid.interior)
-    eq_interp_u = [eq_interp_u] + [Eq(plotfunc_u, 0, subdomain=border_u)] + [Eq(plotfunc_u, 1, subdomain=grid.subdomains['sub10'])]
+    border_lid = Border(grid, 1, dims={y: 'right'})
+    eq_interp_u = [eq_interp_u] + [Eq(plotfunc_u, 0, subdomain=border_u)] + [Eq(plotfunc_u, 1, subdomain=border_lid)]
     op_interp_u = Operator(eq_interp_u)
 
     border_v = Border(grid, 1)
@@ -390,10 +399,17 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     eq_interp_v = [eq_interp_v] + [Eq(plotfunc_v, 0, subdomain=border_v)]
     op_interp_v = Operator(eq_interp_v)
 
+    # Ghost values outside the cavity, 2 - u in the row of u above the lid and -v in the
+    # column of v beyond the right wall. Only needed for vorticity post processing
+    eq_ghost_u = Eq(u, 2 - u.subs({y + y.spacing/2: y - y.spacing/2}),
+                 subdomain=u_ghost)
+    eq_ghost_v = Eq(v, -v.subs({x + x.spacing/2: x - x.spacing/2}),
+                 subdomain=v_ghost)
+
     # TODO: fix the wall vorticity on the left and bottom walls. Fix with the same
     # antisymmetric mirror on the left and bottom wall nodes.
     vorticity_eqn = Eq(vorticity, v.dx - u.dy)
-    op_vorticity = Operator(vorticity_eqn)
+    op_vorticity = Operator([eq_ghost_u, eq_ghost_v, vorticity_eqn])
 
     border = Border(grid, 1)
     stream_bc = [EssentialBC(stream, 0., subdomain=border)]
