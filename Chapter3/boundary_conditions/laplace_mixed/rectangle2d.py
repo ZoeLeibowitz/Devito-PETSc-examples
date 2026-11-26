@@ -113,14 +113,6 @@ def neumann_top(eq, subdomain):
     return Eq(0.5*lhs.subs(mapper), 0.5*rhs.subs(mapper), subdomain=subdomain)
 
 
-top = SubTop()
-bottom = SubBottom()
-left = SubLeft()
-right = SubRight()
-# sub5 = SubMain()
-
-subdomains = (top, bottom, left, right)
-
 def exact(x, y):
     tmp1 = np.float64(np.sinh(2.0*np.float64(np.pi)))
     tmp2 = np.float64(np.cos(np.float64(np.pi)*y))
@@ -152,10 +144,10 @@ discrete_l2_norms = []
 ksp_iters = []
 
 for nx, ny in zip(nx_values, ny_values):
-    # Set up the rectangular grid
-    grid = Grid(
-        shape=(nx, ny), extent=(Lx, Ly), subdomains=subdomains, dtype=np.float64
-    )
+    # Set up the rectangular grid and its SubDomains
+    grid = Grid(shape=(nx, ny), extent=(Lx, Ly), dtype=np.float64)
+    left, right = SubLeft(grid=grid), SubRight(grid=grid)
+    bottom, top = SubBottom(grid=grid), SubTop(grid=grid)
 
     u = Function(name='u', grid=grid, space_order=2)
     f = Function(name='f', grid=grid, space_order=2)
