@@ -390,6 +390,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     eq_interp_v = [eq_interp_v] + [Eq(plotfunc_v, 0, subdomain=border_v)]
     op_interp_v = Operator(eq_interp_v)
 
+    # TODO: fix the wall vorticity on the left and bottom walls. Fix with the same
+    # antisymmetric mirror on the left and bottom wall nodes.
     vorticity_eqn = Eq(vorticity, v.dx - u.dy)
     op_vorticity = Operator(vorticity_eqn)
 

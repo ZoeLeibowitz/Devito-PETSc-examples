@@ -23,14 +23,20 @@ for name in ('u', 'v'):
     for re_val, n in cases:
         d = np.load(f'results/re{re_val}_{n}.npz')
         mid = (n - 1)//2
+        # Staggered values on the centrelines, u at (0.5, y_j + h/2) and v at
+        # (x_i + h/2, 0.5) for the n - 1 points inside the cavity, with the wall values
+        # (u = 0 at the bottom and 1 at the lid, v = 0 at both walls) at the ends
+        s = np.concatenate([[0.], (np.arange(n - 1) + 0.5)/(n - 1), [1.]])
+        u_line = np.concatenate([[0.], d['u_stag'][mid, :n-1], [1.]])
+        v_line = np.concatenate([[0.], d['v_stag'][:n-1, mid], [0.]])
         if name == 'u':
-            plt.plot(d['u'][mid, :], d['y'], color='k', **styles[re_val],
+            plt.plot(u_line, s, color='k', **styles[re_val],
                      label=rf'$\mathrm{{Re}} = {re_val}$, ${n} \times {n}$')
             plt.plot(u_ghia[re_val], y_ghia, 'ko', fillstyle='none')
             if re_val in u_marchi:
                 plt.plot(u_marchi[re_val], k_marchi, 'kx')
         else:
-            plt.plot(d['x'], d['v'][:, mid], color='k', **styles[re_val],
+            plt.plot(s, v_line, color='k', **styles[re_val],
                      label=rf'$\mathrm{{Re}} = {re_val}$, ${n} \times {n}$')
             plt.plot(x_ghia, v_ghia[re_val], 'ko', fillstyle='none')
             if re_val in v_marchi:
