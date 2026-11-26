@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from devito import (Grid, TimeFunction, Function, Eq, Operator, Border,
-                    configuration, SubDomain, NODE, switchconfig, Constant, solve)
+                    configuration, SubDomain, NODE, Derivative, switchconfig, Constant, solve)
 from devito.symbolics import retrieve_functions
 from devito.petsc import petscsolve, EssentialBC
 from devito.petsc.initialize import PetscInitialize
@@ -90,7 +90,7 @@ def _neumann_right(eq, t, subdomain):
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
-def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
+def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
 
     # ab2 - Adams-Bashforth 2 for convection, otherwise forward Euler
     # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
@@ -244,12 +244,36 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     p = Function(name='p', grid=grid, space_order=so, staggered=(x, y))
 
     # Convection
-    if ab2:
-        conv_u = (3./2.)*(u*u.dxc + v*u.dyc) - (1./2.)*(u.backward*u.backward.dxc + v.backward*u.backward.dyc)
-        conv_v = (3./2.)*(u*v.dxc + v*v.dyc) - (1./2.)*(u.backward*v.backward.dxc + v.backward*v.backward.dyc)
+    if conservative:
+        # Conservative form ... Each velocity is
+        # interpolated to the cell centres (CELL, where p is stored) and to the grid
+        # nodes (NODE). A zeroth order Derivative with x0 does this.
+        hx, hy = x.spacing, y.spacing
+
+        def flux(u, v):
+            uc = Derivative(u, (x, 0), x0={x: x + hx/2})
+            vc = Derivative(v, (y, 0), x0={y: y + hy/2})
+            un = Derivative(u, (y, 0), x0={y: y})
+            vn = Derivative(v, (x, 0), x0={x: x})
+            uu, vv, uv = uc**2, vc**2, un*vn
+            hu = (uu - uu.shift(x, -hx))/hx + (uv.shift(y, hy) - uv)/hy
+            hv = (uv.shift(x, hx) - uv)/hx + (vv - vv.shift(y, -hy))/hy
+            return hu, hv
+
+        hu, hv = flux(u, v)
+        if ab2:
+            hu_b, hv_b = flux(u.backward, v.backward)
+            conv_u = (3./2.)*hu - (1./2.)*hu_b
+            conv_v = (3./2.)*hv - (1./2.)*hv_b
+        else:
+            conv_u, conv_v = hu, hv
     else:
-        conv_u = u*u.dxc + v*u.dyc
-        conv_v = u*v.dxc + v*v.dyc
+        if ab2:
+            conv_u = (3./2.)*(u*u.dxc + v*u.dyc) - (1./2.)*(u.backward*u.backward.dxc + v.backward*u.backward.dyc)
+            conv_v = (3./2.)*(u*v.dxc + v*v.dyc) - (1./2.)*(u.backward*v.backward.dxc + v.backward*v.backward.dyc)
+        else:
+            conv_u = u*u.dxc + v*u.dyc
+            conv_v = u*v.dxc + v*v.dyc
 
     # Diffusion
     if implicit_diffusion:
@@ -372,7 +396,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
     border = Border(grid, 1)
     stream_bc = [EssentialBC(stream, 0., subdomain=border)]
     stream_eqn = Eq(stream.laplace, -(v.dx - u.dy), subdomain=grid.interior)
-    stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve')
+    stream_solver = petscsolve([stream_eqn]+stream_bc, stream, options_prefix='stream_solve',
+                               solver_parameters={'ksp_type': 'cg', 'ksp_rtol': 1e-12})
 
     with switchconfig(language='petsc'):
         op_stream = Operator([stream_solver])
@@ -467,6 +492,15 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
             u_snap = u.data[tb]
             v_snap = v.data[tb]
 
+        # Steady state residual, the change in each velocity over the last time step
+        # divided by the step
+
+        res = None
+        if _my_rank == 0:
+            prev = (tb - 1) % n_slots
+            res = max(np.abs(u_g[tb] - u_g[prev]).max(),
+                      np.abs(v_g[tb] - v_g[prev]).max())/dt_val
+
         return (x_coord.copy(), y_coord.copy(),
                 plotfunc_u.data_gather(rank=0),
                 plotfunc_v.data_gather(rank=0),
@@ -474,6 +508,7 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False):
                 stream.data_gather(rank=0),
                 _my_rank,
                 u_snap,
-                v_snap)
+                v_snap,
+                res)
 
     return run_cavity_flow
