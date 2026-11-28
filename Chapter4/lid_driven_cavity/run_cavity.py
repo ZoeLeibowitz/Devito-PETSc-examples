@@ -25,7 +25,7 @@ TOL = 1e-7
 def run(re_val, n):
 
     # Run the solver and return the fields and primary vortex
-    solve = make_solver(nx=n, ny=n, ab2=True, implicit_diffusion=True, conservative=True)
+    solve = make_solver(nx=n, ny=n, conservative=True)
     x, y, u, v, omega, psi, rank, u_stag, v_stag, res = solve(re_val, t_end=T[re_val],
                                                               fixed=True)
     if rank != 0:

@@ -90,10 +90,9 @@ def _neumann_right(eq, t, subdomain):
     return Eq(lhs.subs(mapper), rhs.subs(mapper), subdomain=subdomain)
 
 
-def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
+def make_solver(nx, ny, conservative=True):
 
-    # ab2 - Adams-Bashforth 2 for convection, otherwise forward Euler
-    # implicit_diffusion - Crank-Nicolson for diffusion, otherwise forward Euler
+    # Adams-Bashforth 2 for convection, Crank-Nicolson for diffusion
     so = 2
 
     class PhiTopLeft(SubDomain):
@@ -257,7 +256,8 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
     re = Constant(name='re', dtype=np.float64)
     dt_c = Constant(name='dt_c', dtype=np.float64)
 
-    time_order = 2 if ab2 else 1
+    # AB2 needs u and v at time levels n and n-1
+    time_order = 2
 
     u = TimeFunction(name='u', grid=grid, space_order=so, time_order=time_order, staggered=y)
     v = TimeFunction(name='v', grid=grid, space_order=so, time_order=time_order, staggered=x)
@@ -281,27 +281,16 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
             return hu, hv
 
         hu, hv = flux(u, v)
-        if ab2:
-            hu_b, hv_b = flux(u.backward, v.backward)
-            conv_u = (3./2.)*hu - (1./2.)*hu_b
-            conv_v = (3./2.)*hv - (1./2.)*hv_b
-        else:
-            conv_u, conv_v = hu, hv
+        hu_b, hv_b = flux(u.backward, v.backward)
+        conv_u = (3./2.)*hu - (1./2.)*hu_b
+        conv_v = (3./2.)*hv - (1./2.)*hv_b
     else:
-        if ab2:
-            conv_u = (3./2.)*(u*u.dxc + v*u.dyc) - (1./2.)*(u.backward*u.backward.dxc + v.backward*u.backward.dyc)
-            conv_v = (3./2.)*(u*v.dxc + v*v.dyc) - (1./2.)*(u.backward*v.backward.dxc + v.backward*v.backward.dyc)
-        else:
-            conv_u = u*u.dxc + v*u.dyc
-            conv_v = u*v.dxc + v*v.dyc
+        conv_u = (3./2.)*(u*u.dxc + v*u.dyc) - (1./2.)*(u.backward*u.backward.dxc + v.backward*u.backward.dyc)
+        conv_v = (3./2.)*(u*v.dxc + v*v.dyc) - (1./2.)*(u.backward*v.backward.dxc + v.backward*v.backward.dyc)
 
-    # Diffusion
-    if implicit_diffusion:
-        diff_u = (1./(2.*re))*(u.dx2 + u.dy2) + (1./(2.*re))*(u.forward.dx2 + u.forward.dy2)
-        diff_v = (1./(2.*re))*(v.dx2 + v.dy2) + (1./(2.*re))*(v.forward.dx2 + v.forward.dy2)
-    else:
-        diff_u = (1./re)*(u.dx2 + u.dy2)
-        diff_v = (1./re)*(v.dx2 + v.dy2)
+    # Diffusion, Crank-Nicolson
+    diff_u = (1./(2.*re))*(u.dx2 + u.dy2) + (1./(2.*re))*(u.forward.dx2 + u.forward.dy2)
+    diff_v = (1./(2.*re))*(v.dx2 + v.dy2) + (1./(2.*re))*(v.forward.dx2 + v.forward.dy2)
 
     eq_u_tent = Eq(u.dt + conv_u, diff_u, subdomain=u_interior)
     eq_v_tent = Eq(v.dt + conv_v, diff_v, subdomain=v_interior)
@@ -431,14 +420,10 @@ def make_solver(nx, ny, ab2=False, implicit_diffusion=False, conservative=True):
         v.data[:] = 0.
         phi.data[:] = 0.
 
+        # Courant number 1/2 at the speed of the lid. Diffusion is implicit, so it
+        # imposes no limit
         dx = 1./(nx - 1)
-        dt_conv = 0.5 * dx
-
-        if implicit_diffusion:
-            dt_val = dt_conv
-        else:
-            dt_diff = (0.5 * re_val * dx**2) / 4.0
-            dt_val = min(dt_conv, dt_diff)
+        dt_val = 0.5 * dx
 
         re.data = np.float64(re_val)
         dt_c.data = np.float64(dt_val)

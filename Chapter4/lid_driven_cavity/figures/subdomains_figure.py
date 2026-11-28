@@ -120,21 +120,22 @@ ax_code.axis("off")
 ax_code.add_patch(FancyBboxPatch(
     (0.01, 0.03), 0.98, 0.94, boxstyle="round,pad=0.02,rounding_size=0.03",
     linewidth=1.6, edgecolor=MID_GREEN, facecolor=FILL_GREEN,
-    transform=ax_code.transAxes, zorder=1))
+    transform=ax_code.transAxes, zorder=1, clip_on=False))
 code_lines = [
-    (">>> class UBottomRow(SubDomain):", TEXT_DARK, "bold", 13),
-    ("...     name = 'u_bottom_row'", TEXT_DARK, "bold", 13),
-    ("...", TEXT_DARK, "bold", 13),
-    ("...     def define(self, dimensions):", TEXT_DARK, "bold", 13),
-    ("...         x, y = dimensions", TEXT_DARK, "bold", 13),
-    ("...         return {x: ('middle', 1, 1), y: ('left', 1)}", TEXT_DARK, "bold", 13),
-    ("", TEXT_DARK, "normal", 13),
-    (f">>> grid = Grid(shape=({N}, {N}), extent=(1., 1.))", TEXT_DARK, "bold", 13),
-    (">>> u_bottom_row = UBottomRow(grid=grid)", TEXT_DARK, "bold", 13),
-    (">>> u_bottom_row.shape", TEXT_DARK, "bold", 13),
-    (str(shapes['u_bottom_row']), "#333333", "normal", 10.5),
+    (f">>> nx, ny = {N}, {N}", TEXT_DARK, "bold", 12),
+    (">>> class UTopRow(SubDomain):", TEXT_DARK, "bold", 12),
+    ("...     name = 'u_top_row'", TEXT_DARK, "bold", 12),
+    ("...", TEXT_DARK, "bold", 12),
+    ("...     def define(self, dimensions):", TEXT_DARK, "bold", 12),
+    ("...         x, y = dimensions", TEXT_DARK, "bold", 12),
+    ("...         return {x: ('middle', 1, 1), y: ('middle', ny-2, 1)}", TEXT_DARK, "bold", 12),
+    ("...", TEXT_DARK, "bold", 12),
+    (">>> grid = Grid(shape=(nx, ny), extent=(1., 1.))", TEXT_DARK, "bold", 12),
+    (">>> u_top_row = UTopRow(grid=grid)", TEXT_DARK, "bold", 12),
+    (">>> u_top_row.shape", TEXT_DARK, "bold", 12),
+    (str(shapes['u_top_row']), "#333333", "normal", 10.5),
 ]
-y0, dy = 0.915, 0.083
+y0, dy = 0.915, 0.0755
 for i, (line, color, weight, fontsize) in enumerate(code_lines):
     ax_code.text(0.05, y0 - i * dy, line, ha="left", va="center", fontsize=fontsize,
                  family="monospace", color=color, fontweight=weight,
